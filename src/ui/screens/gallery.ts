@@ -54,7 +54,11 @@ export function renderGallery(root: HTMLElement): void {
         ...range(APPEARANCE_OPTIONS.outfitColor).map((i) => fighter({ ...BASE_LOOK, outfitColor: i }, 'parkour', `Outfit ${i + 1}`, `outfit-${i}`)),
       ),
       h('h2', {}, 'Pets'),
-      h('div', { class: 'gallery-grid' }, ...Object.values(PETS).map((p) => tile(p.name, drawPet(p.id), `${p.id}.png`, !!artImage(m.pets?.[p.id])))),
+      h(
+        'div',
+        { class: 'gallery-grid' },
+        ...[...Object.values(PETS), { id: 'spirit', name: 'Spirit (summon)' }].map((p) => tile(p.name, drawPet(p.id), `${p.id}.png`, !!artImage(m.pets?.[p.id]))),
+      ),
       h('h2', {}, 'Weapons'),
       h(
         'div',

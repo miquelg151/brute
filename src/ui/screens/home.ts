@@ -1,5 +1,5 @@
-import { CLASSES, FIGHTS_PER_DAY, ORIGINS, SKILLS, fightsLeft, xpToNext, type SaveData } from '../../core';
-import { maxHpOf, totalStats } from '../describe';
+import { CLASSES, FIGHTS_PER_DAY, GEAR, ORIGINS, SKILLS, fightsLeft, xpToNext, type SaveData } from '../../core';
+import { gearEffects, maxHpOf, maxManaOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
 import { icon, iconHeading, iconValue } from '../icons';
 import { CLASS_COLORS } from '../palette';
@@ -32,7 +32,8 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
     }, 3000);
   });
 
-  const stat = (name: 'health' | 'strength' | 'agility' | 'speed', value: number, label: string) =>
+  const mana = maxManaOf(c);
+  const stat = (name: 'health' | 'strength' | 'agility' | 'speed' | 'magic' | 'mana', value: number, label: string) =>
     h('div', { class: 'stat', title: label }, icon(name, label, 3), h('span', { class: 'stat-value' }, String(value)));
 
   root.append(
@@ -61,10 +62,23 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
         stat('agility', stats.agility, 'Agility'),
         stat('speed', stats.speed, 'Speed'),
       ),
+      stats.magic > 0 || mana > 0 ? h('div', { class: 'stats stats-2' }, stat('magic', stats.magic, 'Magic'), stat('mana', mana, 'Mana')) : '',
       iconHeading('weapon', 'Weapons'),
       h('div', { class: 'slots' }, ...(c.weapons.length ? c.weapons.map(weaponSlot) : [slot(null, 'Fists only')])),
       iconHeading('pet', 'Pets'),
       h('div', { class: 'slots' }, ...(c.pets.length ? c.pets.map(petSlot) : [slot(null, 'None yet')])),
+      c.gear.length
+        ? h(
+            'section',
+            {},
+            iconHeading('armor', 'Gear'),
+            h(
+              'ul',
+              { class: 'skill-list' },
+              ...c.gear.map((id) => h('li', {}, h('strong', {}, GEAR[id]?.name ?? id), ' ', h('span', {}, GEAR[id] ? gearEffects(GEAR[id]) : ''))),
+            ),
+          )
+        : '',
       iconHeading('skill', 'Skills'),
       h(
         'ul',

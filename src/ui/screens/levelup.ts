@@ -1,4 +1,4 @@
-import { CLASSES, UPGRADES_BY_ID, type SaveData } from '../../core';
+import { CLASSES, GEAR, SPELLS, UPGRADES_BY_ID, type SaveData } from '../../core';
 import { upgradeDetail, upgradeKindLabel } from '../describe';
 import { h } from '../dom';
 import { icon, type IconName } from '../icons';
@@ -13,7 +13,15 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
     const classPool = u.pool === 'general' ? null : u.pool;
     const art = u.kind === 'weapon' ? drawWeapon(u.ref) : u.kind === 'pet' ? drawPet(u.ref) : null;
     // Stat upgrades show the icon of the stat they raise most; skills show the skill icon.
-    const mainStat = (u.kind === 'stat' ? Object.entries(u.stats).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0]?.[0] : 'skill') as IconName;
+    const mainStat = (
+      u.kind === 'stat'
+        ? Object.entries(u.stats).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0]?.[0]
+        : u.kind === 'gear'
+          ? GEAR[u.ref]?.slot
+          : SPELLS[u.ref]
+            ? 'magic'
+            : 'skill'
+    ) as IconName;
     const picture = art ? slot(art, '') : h('div', { class: 'slot' }, h('div', { class: 'slot-art' }, icon(mainStat, u.name, 4)));
     return h(
       'button',

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Rng, SPECIAL_MIN_QUALITY, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
+import { Rng, SKILLS, SPECIAL_MIN_QUALITY, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
 import { artImage, artManifest } from '../ui/art';
 import { drawFighter, drawPet, drawWeapon } from '../ui/sprites';
 
@@ -10,6 +10,20 @@ export const ARENA_ZOOM = 3;
 const GROUND_Y = 165;
 const SCALE = 2;
 const FONT = '"Shantell Sans Variable", sans-serif';
+const BAR_W = 140;
+
+export type BreakEvent = Extract<FightEvent, { t: 'break' }>;
+
+/** Where each main fighter stands when a break starts. */
+export interface FighterState {
+  name: string;
+  hp: number;
+  maxHp: number;
+  stamina: number;
+  maxStamina: number;
+  mana: number;
+  maxMana: number;
+}
 
 interface UnitView {
   sprite: Phaser.GameObjects.Image;
@@ -17,27 +31,35 @@ interface UnitView {
   homeY: number;
   /** 1 faces right (team 0), -1 faces left (team 1). */
   dir: 1 | -1;
-  maxHp: number;
+  name: string;
   isMain: boolean;
+  hp: number;
+  maxHp: number;
+  stamina: number;
+  maxStamina: number;
+  mana: number;
+  maxMana: number;
   bar: Phaser.GameObjects.Graphics;
-  drawBar: (hp: number) => void;
+  ring: Phaser.GameObjects.Graphics;
   weapon: Phaser.GameObjects.Image | null;
 }
 
 const KIND_LABEL: Partial<Record<HitKind, string>> = { combo: 'COMBO', counter: 'COUNTER', double: 'x2' };
 
 export interface ReplayHooks {
-  /** Asks the player to perform a special strike; resolves with its timing quality (0-100). */
-  requestSpecial: () => Promise<number>;
-  /** Re-runs the deterministic simulation with the special inputs collected so far. */
-  resimulate: (specials: number[]) => FightLog;
-  onFinished: (log: FightLog, specials: number[]) => void;
+  /** Lets the player perform a special strike and records it. */
+  requestSpecial: () => Promise<void>;
+  /** Lets the player decide at a break and records it. */
+  requestBreak: (event: BreakEvent, fighters: [FighterState, FighterState]) => Promise<void>;
+  /** Re-runs the deterministic simulation with the inputs recorded so far. */
+  resimulate: () => FightLog;
+  onFinished: (log: FightLog) => void;
 }
 
 /**
  * Plays a FightLog event by event. Has no game logic: when the log stops at a
- * special strike, it asks for the input and continues with the re-simulated log,
- * whose earlier events are identical.
+ * player input, it asks for it and continues with the re-simulated log, whose
+ * earlier events are identical.
  */
 export class ReplayScene extends Phaser.Scene {
   private views: UnitView[] = [];
@@ -76,7 +98,7 @@ export class ReplayScene extends Phaser.Scene {
     const rng = new Rng(this.log.seed);
     for (let x = -10; x < ARENA_W; ) {
       const w = rng.int(24, 48);
-      const top = rng.int(40, 110);
+      const top = rng.int(48, 110);
       g.fillStyle(0x15171f).fillRect(x, top, w, GROUND_Y - top);
       g.fillStyle(0xffb347);
       for (let wy = top + 6; wy < GROUND_Y - 14; wy += 9) {
@@ -91,7 +113,7 @@ export class ReplayScene extends Phaser.Scene {
   }
 
   private createUnits(): void {
-    const petCount: [number, number] = [0, 0];
+    const sideCount: [number, number] = [0, 0];
     this.log.roster.forEach((info, idx) => {
       const dir: 1 | -1 = info.team === 0 ? 1 : -1;
       const key = `unit-${idx}`;
@@ -104,40 +126,79 @@ export class ReplayScene extends Phaser.Scene {
         x = info.team === 0 ? 105 : ARENA_W - 105;
         y = GROUND_Y + 2;
       } else {
-        const k = petCount[info.team]++;
+        const k = sideCount[info.team]++;
         x = info.team === 0 ? 65 - k * 26 : ARENA_W - 65 + k * 26;
         y = GROUND_Y + 12 + (k % 2) * 6;
       }
       const sprite = this.add.image(x, y, key).setOrigin(0.5, 1).setScale(SCALE).setFlipX(dir === -1).setDepth(y);
+      if (info.summoned) sprite.setAlpha(0);
 
-      const bar = this.add.graphics().setDepth(1000);
-      const drawBar = info.isMain
-        ? (hp: number) => {
-            const bx = info.team === 0 ? 8 : ARENA_W - 8 - 140;
-            bar.clear().fillStyle(0x111111).fillRect(bx - 1, 17, 142, 8);
-            bar.fillStyle(0x7f1d1d).fillRect(bx, 18, 140, 6);
-            bar.fillStyle(0x22c55e).fillRect(info.team === 0 ? bx : bx + 140 - Math.round((140 * hp) / info.maxHp), 18, Math.round((140 * hp) / info.maxHp), 6);
-          }
-        : (hp: number) => {
-            const bx = x - 10;
-            const by = y - sprite.displayHeight - 6;
-            bar.clear().fillStyle(0x111111).fillRect(bx - 1, by - 1, 22, 4);
-            bar.fillStyle(0x22c55e).fillRect(bx, by, Math.round((20 * hp) / info.maxHp), 2);
-          };
-      drawBar(info.maxHp);
+      const view: UnitView = {
+        sprite,
+        homeX: x,
+        homeY: y,
+        dir,
+        name: info.name,
+        isMain: info.isMain,
+        hp: info.summoned ? 0 : info.maxHp,
+        maxHp: info.maxHp,
+        stamina: info.maxStamina,
+        maxStamina: info.maxStamina,
+        mana: info.maxMana,
+        maxMana: info.maxMana,
+        bar: this.add.graphics().setDepth(1000),
+        ring: this.add.graphics().setDepth(y + 2),
+        weapon: null,
+      };
+      this.views.push(view);
+      this.drawBars(view);
 
       if (info.isMain) {
         this.add
-          .text(info.team === 0 ? 8 : ARENA_W - 8, 6, info.name, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color: '#ffffff', resolution: ARENA_ZOOM })
+          .text(info.team === 0 ? 8 : ARENA_W - 8, 3, info.name, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color: '#ffffff', resolution: ARENA_ZOOM })
           .setOrigin(info.team === 0 ? 0 : 1, 0)
           .setDepth(1000);
       }
-      this.views.push({ sprite, homeX: x, homeY: y, dir, maxHp: info.maxHp, isMain: info.isMain, bar, drawBar, weapon: null });
     });
+  }
+
+  /** Health for everyone; stamina and mana under it for main fighters. */
+  private drawBars(v: UnitView): void {
+    const g = v.bar.clear();
+    if (!v.isMain) {
+      if (v.hp <= 0) return;
+      const bx = v.homeX - 10;
+      const by = v.homeY - v.sprite.displayHeight - 6;
+      g.fillStyle(0x111111).fillRect(bx - 1, by - 1, 22, 4);
+      g.fillStyle(0x22c55e).fillRect(bx, by, Math.round((20 * v.hp) / v.maxHp), 2);
+      return;
+    }
+    const left = v.dir === 1;
+    const bx = left ? 8 : ARENA_W - 8 - BAR_W;
+    const meter = (y: number, h: number, value: number, max: number, color: number, back: number) => {
+      const w = max > 0 ? Math.round((BAR_W * Math.max(0, value)) / max) : 0;
+      g.fillStyle(0x111111).fillRect(bx - 1, y - 1, BAR_W + 2, h + 2);
+      g.fillStyle(back).fillRect(bx, y, BAR_W, h);
+      g.fillStyle(color).fillRect(left ? bx : bx + BAR_W - w, y, w, h);
+    };
+    meter(17, 6, v.hp, v.maxHp, 0x22c55e, 0x7f1d1d);
+    meter(25, 2, v.stamina, v.maxStamina, v.stamina < 25 ? 0xff8a3d : 0x8bd450, 0x2a2f22);
+    if (v.maxMana > 0) meter(29, 2, v.mana, v.maxMana, 0x5b8cff, 0x1c2340);
+  }
+
+  private drawWard(v: UnitView, amount: number): void {
+    v.ring.clear();
+    if (amount <= 0) return;
+    v.ring.lineStyle(1.5, 0x7df9ff, 0.9).strokeEllipse(v.homeX, v.homeY - v.sprite.displayHeight / 2, 34, v.sprite.displayHeight + 10);
   }
 
   private view(idx: number): UnitView {
     return this.views[idx]!;
+  }
+
+  private snapshot(team: 0 | 1): FighterState {
+    const v = this.views.find((u, i) => u.isMain && this.log.roster[i]!.team === team)!;
+    return { name: v.name, hp: v.hp, maxHp: v.maxHp, stamina: v.stamina, maxStamina: v.maxStamina, mana: v.mana, maxMana: v.maxMana };
   }
 
   private wait(ms: number): Promise<void> {
@@ -149,8 +210,22 @@ export class ReplayScene extends Phaser.Scene {
   }
 
   private floatText(x: number, y: number, text: string, color: string): void {
-    const t = this.add.text(x, y, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color, stroke: '#000000', strokeThickness: 3, resolution: ARENA_ZOOM }).setOrigin(0.5).setDepth(2000);
-    this.tweens.add({ targets: t, y: y - 18, alpha: 0, duration: 700, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
+    const t = this.add
+      .text(x, y, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color, stroke: '#000000', strokeThickness: 3, resolution: ARENA_ZOOM })
+      .setOrigin(0.5)
+      .setDepth(2000);
+    this.tweens.add({ targets: t, y: y - 18, alpha: 0, duration: 750, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
+  }
+
+  private async banner(text: string, color: string, ms: number): Promise<void> {
+    const box = this.add.rectangle(ARENA_W / 2, 90, ARENA_W, 30, 0x000000, 0.65).setDepth(3000);
+    const label = this.add
+      .text(ARENA_W / 2, 90, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '18px', color, resolution: ARENA_ZOOM })
+      .setOrigin(0.5)
+      .setDepth(3001);
+    await this.wait(ms);
+    box.destroy();
+    label.destroy();
   }
 
   private headY(v: UnitView): number {
@@ -163,24 +238,32 @@ export class ReplayScene extends Phaser.Scene {
   }
 
   private async play(): Promise<void> {
-    await this.wait(500);
-    const specials: number[] = [];
+    await this.wait(400);
     for (let i = 0; i < this.log.events.length; i++) {
       let e = this.log.events[i]!;
       if (e.t === 'special' && e.quality === null) {
-        specials.push(await this.hooks.requestSpecial());
-        this.log = this.hooks.resimulate(specials);
+        await this.hooks.requestSpecial();
+        this.log = this.hooks.resimulate();
+        e = this.log.events[i]!;
+      } else if (e.t === 'break' && e.choices[0] === null) {
+        await this.hooks.requestBreak(e, [this.snapshot(0), this.snapshot(1)]);
+        this.log = this.hooks.resimulate();
         e = this.log.events[i]!;
       }
       await this.handle(e);
     }
     await this.wait(400);
-    this.showBanner();
-    this.hooks.onFinished(this.log, specials);
+    const won = this.log.winner === 0;
+    void this.banner(won ? 'VICTORY' : 'DEFEAT', won ? '#ffd23f' : '#ff6b6b', 60_000);
+    this.hooks.onFinished(this.log);
   }
 
   private handle(e: FightEvent): Promise<void> {
     switch (e.t) {
+      case 'round':
+        return this.banner(`Round ${e.round}`, '#efe8d8', 700);
+      case 'break':
+        return this.wait(200);
       case 'draw':
         return this.onDraw(e.actor, e.weapon);
       case 'hit':
@@ -188,10 +271,24 @@ export class ReplayScene extends Phaser.Scene {
         return this.onStrike(e.actor, e.target, e.kind, e.damage, e.hp, e.t === 'block');
       case 'dodge':
         return this.onDodge(e.actor, e.target, e.kind);
+      case 'miss':
+        return this.onMiss(e.actor);
       case 'disarm':
         return this.onDisarm(e.target);
       case 'heal':
         return this.onHeal(e.actor, e.amount, e.hp);
+      case 'cast':
+        return this.onCast(e.actor, e.spell, e.target);
+      case 'ward':
+        return this.onWard(e.actor, e.absorbed, e.left);
+      case 'summon':
+        return this.onSummon(e.actor, e.hp);
+      case 'unsummon':
+        return this.onUnsummon(e.actor);
+      case 'rest':
+        return this.onRest(e.actor);
+      case 'res':
+        return this.onResources(e.actor, e.stamina, e.mana);
       case 'special':
         return this.onSpecial(e.actor, e.quality ?? 0);
       case 'death':
@@ -199,10 +296,17 @@ export class ReplayScene extends Phaser.Scene {
     }
   }
 
+  private async onResources(actor: number, stamina: number, mana: number): Promise<void> {
+    const v = this.view(actor);
+    v.stamina = stamina;
+    v.mana = mana;
+    this.drawBars(v);
+  }
+
   private async onSpecial(actor: number, quality: number): Promise<void> {
     const v = this.view(actor);
     const [text, color] =
-      quality >= 90 ? ['PERFECT!', '#facc15'] : quality >= SPECIAL_MIN_QUALITY ? ['SPECIAL!', '#fb923c'] : ['MISSED', '#9ca3af'];
+      quality >= 90 ? ['PERFECT!', '#ffd23f'] : quality >= SPECIAL_MIN_QUALITY ? ['SPECIAL!', '#fb923c'] : ['MISSED', '#9ca3af'];
     this.floatText(v.sprite.x, this.headY(v) - 8, text, color);
     if (quality >= SPECIAL_MIN_QUALITY) {
       this.cameras.main.flash(120, 255, 220, 120);
@@ -248,10 +352,20 @@ export class ReplayScene extends Phaser.Scene {
     await impact();
   }
 
-  private async impactHit(def: UnitView, damage: number, hp: number, blocked: boolean): Promise<void> {
-    def.sprite.setTintFill(blocked ? 0x93c5fd : 0xffffff);
-    this.floatText(def.sprite.x, this.headY(def), blocked ? `BLOCK ${damage}` : `-${damage}`, blocked ? '#93c5fd' : '#f87171');
-    def.drawBar(hp);
+  /** A glowing orb from the caster to the target (or past it, on a dodge). */
+  private async orb(att: UnitView, def: UnitView, past: boolean, impact: () => Promise<void>): Promise<void> {
+    const orb = this.add.circle(att.sprite.x + att.dir * 10, att.sprite.y - 26, 4, 0xb388ff).setStrokeStyle(1, 0xf1e6ff).setDepth(1500);
+    await this.tween({ targets: orb, x: def.sprite.x + (past ? def.dir * -30 : 0), y: def.sprite.y - 22, duration: 260, ease: 'Sine.easeIn' });
+    orb.destroy();
+    await impact();
+  }
+
+  private async impactHit(def: UnitView, damage: number, hp: number, blocked: boolean, magic: boolean): Promise<void> {
+    def.sprite.setTintFill(blocked ? 0x93c5fd : magic ? 0xd9c2ff : 0xffffff);
+    const color = blocked ? '#93c5fd' : magic ? '#d0b3ff' : '#ff6b6b';
+    if (damage > 0) this.floatText(def.sprite.x, this.headY(def), blocked ? `BLOCK ${damage}` : `-${damage}`, color);
+    def.hp = hp;
+    this.drawBars(def);
     await this.tween({ targets: def.sprite, x: def.sprite.x - def.dir * 4, duration: 50, yoyo: true });
     def.sprite.clearTint();
   }
@@ -260,9 +374,10 @@ export class ReplayScene extends Phaser.Scene {
     const att = this.view(actor);
     const def = this.view(target);
     const label = KIND_LABEL[kind];
-    if (label) this.floatText(att.sprite.x, this.headY(att), label, '#facc15');
-    const impact = () => this.impactHit(def, damage, hp, blocked);
-    if (kind === 'throw') await this.throwAt(att, def, impact);
+    if (label) this.floatText(att.sprite.x, this.headY(att), label, '#ffd23f');
+    const impact = () => this.impactHit(def, damage, hp, blocked, kind === 'spell');
+    if (kind === 'spell') await this.orb(att, def, false, impact);
+    else if (kind === 'throw') await this.throwAt(att, def, impact);
     else await this.melee(att, def, kind === 'combo' || kind === 'double', impact);
   }
 
@@ -273,8 +388,61 @@ export class ReplayScene extends Phaser.Scene {
       this.floatText(def.sprite.x, this.headY(def), 'DODGE', '#ffffff');
       await this.tween({ targets: def.sprite, x: def.homeX - def.dir * 14, y: def.homeY - 8, duration: 100, yoyo: true, onUpdate: () => this.placeWeapon(def) });
     };
-    if (kind === 'throw') await this.throwAt(att, def, hop);
+    if (kind === 'spell') await this.orb(att, def, true, hop);
+    else if (kind === 'throw') await this.throwAt(att, def, hop);
     else await this.melee(att, def, kind === 'combo' || kind === 'double', hop);
+  }
+
+  private async onMiss(actor: number): Promise<void> {
+    const v = this.view(actor);
+    this.floatText(v.sprite.x, this.headY(v), 'BLINDED', '#efe8d8');
+    await this.tween({ targets: v.sprite, x: v.homeX + v.dir * 6, duration: 120, yoyo: true });
+  }
+
+  private async onCast(actor: number, spell: string, target: number | null): Promise<void> {
+    const v = this.view(actor);
+    this.floatText(v.sprite.x, this.headY(v) - 6, SKILLS[spell]?.name ?? spell, '#d0b3ff');
+    v.sprite.setTint(0xd9c2ff);
+    await this.tween({ targets: v.sprite, y: v.homeY - 4, duration: 120, yoyo: true });
+    v.sprite.clearTint();
+    if (spell === 'flash' && target !== null) {
+      const t = this.view(target);
+      this.cameras.main.flash(90, 255, 255, 255);
+      t.sprite.setTintFill(0xffffff);
+      await this.wait(160);
+      t.sprite.clearTint();
+    }
+  }
+
+  private async onWard(actor: number, absorbed: number, left: number): Promise<void> {
+    const v = this.view(actor);
+    this.drawWard(v, left);
+    if (absorbed === 0) this.floatText(v.sprite.x, this.headY(v), 'WARD', '#7df9ff');
+    else this.floatText(v.sprite.x + 10, this.headY(v) + 8, `-${absorbed}`, '#7df9ff');
+    await this.wait(absorbed === 0 ? 250 : 120);
+  }
+
+  private async onSummon(actor: number, hp: number): Promise<void> {
+    const v = this.view(actor);
+    v.hp = hp;
+    v.sprite.setPosition(v.homeX, v.homeY).setAngle(0).clearTint();
+    this.floatText(v.homeX, this.headY(v), 'SPIRIT!', '#a5f3fc');
+    await this.tween({ targets: v.sprite, alpha: 0.85, duration: 300 });
+    this.drawBars(v);
+  }
+
+  private async onUnsummon(actor: number): Promise<void> {
+    const v = this.view(actor);
+    v.hp = 0;
+    this.drawBars(v);
+    await this.tween({ targets: v.sprite, alpha: 0, y: v.homeY - 10, duration: 300 });
+    v.sprite.setY(v.homeY);
+  }
+
+  private async onRest(actor: number): Promise<void> {
+    const v = this.view(actor);
+    this.floatText(v.sprite.x, this.headY(v), 'catching breath', '#c9c2d6');
+    await this.tween({ targets: v.sprite, scaleY: SCALE * 0.92, duration: 200, yoyo: true });
   }
 
   private async onDisarm(target: number): Promise<void> {
@@ -291,14 +459,17 @@ export class ReplayScene extends Phaser.Scene {
     const v = this.view(actor);
     v.sprite.setTint(0x86efac);
     this.floatText(v.sprite.x, this.headY(v), `+${amount}`, '#4ade80');
-    v.drawBar(hp);
+    v.hp = hp;
+    this.drawBars(v);
     await this.wait(350);
     v.sprite.clearTint();
   }
 
   private async onDeath(actor: number): Promise<void> {
     const v = this.view(actor);
-    v.drawBar(0);
+    v.hp = 0;
+    this.drawBars(v);
+    this.drawWard(v, 0);
     v.weapon?.destroy();
     v.weapon = null;
     v.sprite.setTint(0x777777);
@@ -306,17 +477,7 @@ export class ReplayScene extends Phaser.Scene {
       v.sprite.setOrigin(0.5, 0.9);
       await this.tween({ targets: v.sprite, angle: -90 * v.dir, duration: 400, ease: 'Bounce.easeOut' });
     } else {
-      v.bar.clear();
       await this.tween({ targets: v.sprite, alpha: 0, y: v.sprite.y + 4, duration: 350 });
     }
-  }
-
-  private showBanner(): void {
-    const won = this.log.winner === 0;
-    this.add.rectangle(ARENA_W / 2, 80, ARENA_W, 34, 0x000000, 0.7).setDepth(3000);
-    this.add
-      .text(ARENA_W / 2, 80, won ? 'VICTORY' : 'DEFEAT', { fontFamily: FONT, fontStyle: 'bold', fontSize: '22px', color: won ? '#ffd23f' : '#ff6b6b', resolution: ARENA_ZOOM })
-      .setOrigin(0.5)
-      .setDepth(3001);
   }
 }

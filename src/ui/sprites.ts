@@ -103,12 +103,33 @@ function placeholderFighter(look: Appearance, classId: ClassId): HTMLCanvasEleme
         rect(5, 1, 6, 2, '#4d7c0f');
         rect(11, 2, 2, 1, '#3f6212');
         break;
+      case 'mystic':
+        // Deep hood with glowing neon runes on the chest.
+        rect(4, 0, 7, 2, '#2d2148');
+        rect(4, 2, 1, 7, '#2d2148');
+        rect(10, 1, 1, 2, '#2d2148');
+        px(6, 12, '#7df9ff');
+        px(8, 12, '#7df9ff');
+        px(7, 13, '#ff5dd8');
+        px(7, 11, '#ff5dd8');
+        break;
     }
   });
 }
 
 function placeholderPet(petId: string): HTMLCanvasElement {
   switch (petId) {
+    case 'spirit':
+      return sprite(10, 12, (px, rect) => {
+        rect(2, 0, 6, 2, '#a5f3fc');
+        rect(1, 2, 8, 6, '#a5f3fc');
+        rect(1, 8, 2, 3, '#a5f3fc');
+        rect(4, 8, 2, 4, '#a5f3fc');
+        rect(7, 8, 2, 3, '#a5f3fc');
+        rect(2, 2, 1, 6, '#e0fbff');
+        px(5, 4, '#1e1b4b');
+        px(7, 4, '#1e1b4b');
+      });
     case 'crow':
       return sprite(8, 8, (px, rect) => {
         rect(1, 3, 5, 3, '#27272a');

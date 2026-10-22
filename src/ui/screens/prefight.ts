@@ -1,92 +1,38 @@
 import {
   CLASSES,
   DEFAULT_PLAN,
+  GEAR,
   LOADOUT_SIZE,
   ORIGINS,
   PETS,
   SKILLS,
   STANCES,
-  STANCE_IDS,
   TARGETS,
-  TARGET_IDS,
   TRAITS,
   WEAPONS,
   WEAPON_STYLES,
-  WEAPON_STYLE_IDS,
+  gearFor,
   loadoutFor,
   traitsOf,
   warmupBonus,
+  type GearChoice,
   type Plan,
   type SaveData,
-  type TacticOption,
-  type Trait,
 } from '../../core';
-import { maxHpOf, totalStats } from '../describe';
+import { maxHpOf, maxManaOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
+import { TRAIT_ICONS, icon, iconValue, statRow } from '../icons';
 import { playWarmup } from '../minigames';
 import { CLASS_COLORS } from '../palette';
-import { TRAIT_ICONS, icon, iconValue, statRow } from '../icons';
+import { gearPicker, planEditor, weaponPicker } from '../plan';
 import { drawFighter } from '../sprites';
 
 interface PrefightActions {
   onWarmup: (score: number) => void;
-  onStart: (plan: Plan, weapons: string[]) => void;
+  onStart: (plan: Plan, weapons: string[], gear: GearChoice) => void;
 }
 
 const names = (ids: string[], name: (id: string) => string | undefined) => (ids.length ? ids.map((id) => name(id) ?? id).join(', ') : 'None');
-
-/** A card per option: effects with arrows, and the trait it is strong against (ticked if the opponent has it). */
-function optionGroup<Id extends string>(
-  ids: readonly Id[],
-  defs: Record<Id, TacticOption<Id>>,
-  foeTraits: Trait[],
-  selected: Id,
-  onPick: (id: Id) => void,
-): HTMLElement {
-  const buttons = ids.map((id) => {
-    const def = defs[id];
-    const matches = def.strongVs !== null && foeTraits.includes(def.strongVs);
-    const btn = h(
-      'button',
-      { class: 'choice option', 'aria-pressed': id === selected ? 'true' : 'false' },
-      h('div', { class: 'choice-title' }, def.name),
-      h(
-        'ul',
-        { class: 'effects' },
-        ...(def.effects.length
-          ? def.effects.map((e) =>
-              h(
-                'li',
-                { class: e.good ? 'up' : 'down' },
-                h('span', { 'aria-hidden': 'true' }, e.good ? '▲ ' : '▼ '),
-                e.stat ? iconValue(e.stat.name, e.text, e.stat.value) : e.text,
-              ),
-            )
-          : [h('li', { class: 'flat' }, 'No bonus, no weakness')]),
-      ),
-      def.strongVs
-        ? h(
-            'div',
-            { class: matches ? 'strong-vs match' : 'strong-vs' },
-            matches ? '✓ ' : '',
-            'Strong against ',
-            icon(TRAIT_ICONS[def.strongVs] ?? 'skill', TRAITS[def.strongVs].name, 2),
-            ` ${TRAITS[def.strongVs].name.toLowerCase()}`,
-          )
-        : '',
-    );
-    btn.addEventListener('click', () => {
-      buttons.forEach((b) => {
-        b.classList.toggle('selected', b === btn);
-        b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
-      });
-      onPick(id);
-    });
-    if (id === selected) btn.classList.add('selected');
-    return btn;
-  });
-  return h('div', { class: ids.length === 3 ? 'choice-grid cols-3' : 'choice-grid' }, ...buttons);
-}
 
 export function renderPrefight(root: HTMLElement, save: SaveData, actions: PrefightActions): void {
   const fight = save.pendingFight!;
@@ -94,36 +40,11 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
   const foe = fight.opponent;
   const foeStats = totalStats(foe);
   const foeTraits = traitsOf(foe);
+  const foeGear = gearFor(foe);
+  const foeMana = maxManaOf(foe);
   const plan: Plan = { ...DEFAULT_PLAN };
   const loadout = new Set(loadoutFor(me));
-
-  // Loadout picker, only needed when the fighter owns more weapons than they can bring.
-  let loadoutSection: HTMLElement | string = '';
-  if (me.weapons.length > LOADOUT_SIZE) {
-    const hint = h('div', { class: 'dim small' });
-    const refreshHint = () => (hint.textContent = `${loadout.size} of ${LOADOUT_SIZE} chosen`);
-    const chips = me.weapons.map((id) => {
-      const w = WEAPONS[id];
-      const chip = h('button', { class: 'chip-toggle' }, w?.name ?? id, w ? h('span', { class: 'dim small' }, ` ${w.damage} dmg${w.accuracy ? `, ${w.accuracy > 0 ? '+' : ''}${w.accuracy}% aim` : ''}`) : '');
-      chip.classList.toggle('selected', loadout.has(id));
-      chip.addEventListener('click', () => {
-        if (loadout.has(id)) loadout.delete(id);
-        else if (loadout.size < LOADOUT_SIZE) loadout.add(id);
-        chip.classList.toggle('selected', loadout.has(id));
-        refreshHint();
-      });
-      return chip;
-    });
-    refreshHint();
-    loadoutSection = h(
-      'section',
-      {},
-      h('h2', {}, `Bring up to ${LOADOUT_SIZE} weapons`),
-      h('p', { class: 'lede small' }, 'Accurate weapons are better against fighters who dodge a lot.'),
-      h('div', { class: 'slots' }, ...chips),
-      hint,
-    );
-  }
+  const worn: GearChoice = gearFor(me);
 
   const warmupInfo = h('p', { class: 'dim small' });
   const warmupBtn = h('button', { class: 'btn' }, 'Warm up');
@@ -145,11 +66,12 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
   });
 
   const fightBtn = h('button', { class: 'btn btn-primary btn-big' }, 'Start fight');
-  fightBtn.addEventListener('click', () => actions.onStart({ ...plan }, [...loadout]));
+  fightBtn.addEventListener('click', () => actions.onStart({ ...plan }, [...loadout], { ...worn }));
 
   const side = (canvas: HTMLCanvasElement, name: string, sub: HTMLElement) =>
     h('div', { class: 'poster-side' }, h('div', { class: 'spot' }, canvas), h('div', { class: 'poster-name' }, name), sub);
   const foePlan = fight.opponentPlan;
+  const foeWorn = [foeGear.armor, foeGear.accessory].filter((g): g is string => !!g);
 
   screen.append(
     h('h1', {}, 'Next fight'),
@@ -186,9 +108,21 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
         'dl',
         { class: 'intel' },
         h('dt', {}, icon('stance', 'Plan')),
-        h('dd', {}, `${STANCES[foePlan.stance].name}, ${TARGETS[foePlan.target].name.toLowerCase()}, ${WEAPON_STYLES[foePlan.weaponStyle].name.toLowerCase()} weapons`),
+        // In live fights the opponent chooses at the same time, so their plan stays a mystery.
+        h(
+          'dd',
+          {},
+          fight.live
+            ? 'Hidden: they choose at the same time as you'
+            : `${STANCES[foePlan.stance].name}, ${TARGETS[foePlan.target].name.toLowerCase()}, ${WEAPON_STYLES[foePlan.weaponStyle].name.toLowerCase()} weapons`,
+        ),
         h('dt', { class: 'sr-only' }, 'Stats'),
-        h('dd', { class: 'span-2' }, statRow(maxHpOf(foe), foeStats.strength, foeStats.agility, foeStats.speed)),
+        h(
+          'dd',
+          { class: 'span-2' },
+          statRow(maxHpOf(foe), foeStats.strength, foeStats.agility, foeStats.speed),
+          foeStats.magic > 0 || foeMana > 0 ? h('span', { class: 'icon-row' }, iconValue('magic', 'Magic', foeStats.magic), iconValue('mana', 'Mana', foeMana)) : '',
+        ),
         h('dt', {}, icon('origin', 'Origin')),
         h('dd', {}, ORIGINS[foe.originId]?.name ?? ''),
         h('dt', {}, icon('skill', 'Skills')),
@@ -197,16 +131,16 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
         h('dd', {}, names(foe.weapons, (id) => WEAPONS[id]?.name)),
         h('dt', {}, icon('pet', 'Pets')),
         h('dd', {}, names(foe.pets, (id) => PETS[id]?.name)),
+        h('dt', {}, icon('armor', 'Gear')),
+        h('dd', {}, names(foeWorn, (id) => GEAR[id]?.name)),
       ),
     ),
-    h('p', { class: 'lede small' }, 'Options marked ✓ are strong against something this opponent has.'),
-    h('h2', {}, 'Stance'),
-    optionGroup(STANCE_IDS, STANCES, foeTraits, plan.stance, (id) => (plan.stance = id)),
-    h('h2', {}, 'Target'),
-    optionGroup(TARGET_IDS, TARGETS, foeTraits, plan.target, (id) => (plan.target = id)),
-    h('h2', {}, 'Weapon use'),
-    optionGroup(WEAPON_STYLE_IDS, WEAPON_STYLES, foeTraits, plan.weaponStyle, (id) => (plan.weaponStyle = id)),
-    loadoutSection,
+    h('p', { class: 'lede small' }, 'Options marked ✓ are strong against something this opponent has. You can change them at each break.'),
+    ...planEditor(plan, foeTraits),
+    me.weapons.length > LOADOUT_SIZE
+      ? h('section', {}, h('h2', {}, `Bring up to ${LOADOUT_SIZE} weapons`), h('p', { class: 'lede small' }, 'Accurate weapons are better against fighters who dodge a lot.'), weaponPicker(me.weapons, loadout))
+      : '',
+    me.gear.length > 0 ? h('section', {}, h('h2', {}, 'Gear'), gearPicker(me.gear, worn)) : '',
     h('h2', {}, 'Warm-up'),
     h('section', { class: 'card' }, warmupInfo, warmupBtn),
     fightBtn,

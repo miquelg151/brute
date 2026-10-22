@@ -47,9 +47,9 @@ function show(): void {
         recordWarmup(current, score);
         storeSave(current);
       },
-      onStart: (plan, weapons) => {
+      onStart: (plan, weapons, gear) => {
         // Locked and saved before the replay, so reloading cannot change the choices.
-        startFight(current, plan, weapons);
+        startFight(current, plan, weapons, gear);
         storeSave(current);
         show();
       },

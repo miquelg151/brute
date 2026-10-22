@@ -91,7 +91,7 @@ export interface FightOptions {
 
 export const ROUNDS = 3;
 /** Length of a round, in initiative ticks. */
-export const ROUND_TICKS = 48;
+export const ROUND_TICKS = 30;
 /** Own turn within each round on which an interactive fighter gets a special strike. */
 export const SPECIAL_TURN = 3;
 /** Below this timing quality the special fails and the turn plays normally. */

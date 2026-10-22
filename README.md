@@ -10,6 +10,7 @@ opponent, pick a stance and land special strikes in daily fights.
 | `npm run dev` | Runs the game at http://localhost:5199 (add `?gallery` for the art gallery) |
 | `npm test` | Runs the game-logic tests |
 | `npm run balance` | Simulates thousands of fights and reports class, skill and stance balance |
+| `npx tsx tools/rounds.ts` | How many rounds fights last at each level |
 | `npm run build` | Type-checks and builds the production version into `dist/` |
 
 ## Where things are
@@ -22,5 +23,5 @@ opponent, pick a stance and land special strikes in daily fights.
 | `public/art/` | Your custom pixel art (see `docs/ART.md`) |
 | `tools/` | The balance tool |
 
-Fights are deterministic: the same fighters, seed and player inputs always give the
+The combat rules are described in `docs/COMBAT.md`. Fights are deterministic: the same fighters, seed and player inputs always give the
 same result, which is what will let a server verify fights later.

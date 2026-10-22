@@ -1008,3 +1008,45 @@ h2 {
     padding-top: calc(var(--step) * 5);
   }
 }
+
+/* Breaks between rounds */
+.break-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step);
+  margin-top: var(--step);
+}
+
+.break-fighter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--step);
+  flex-wrap: wrap;
+}
+
+/* Gear choice */
+.gear-picker {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 1.5);
+}
+
+.gear-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gear-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  max-width: 100%;
+}
+
+.stats-2 {
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 4px;
+}

@@ -10,6 +10,7 @@ export const CLASS_COLORS: Record<ClassId, string> = {
   parkour: '#4fd1e8',
   bouncer: '#c3c7d4',
   tamer: '#9fd356',
+  mystic: '#b388ff',
 };
 
 /** Darkens (negative) or lightens (positive) a #rrggbb color by an amount in [-1, 1]. */

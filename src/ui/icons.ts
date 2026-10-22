@@ -83,6 +83,30 @@ const ICONS = {
     rows: ['O.O.O', 'O.O.O', '.O.O.O', '.O.O.O', 'O.O.O', 'O.O.O'],
     colors: { O: '#ff8a3d' },
   },
+  stamina: {
+    rows: ['...G...', '..GGG..', '.GGGGG.', 'GGWGGGG', 'GGGGGGG', '.GGGGG.', '..GGG..'],
+    colors: { G: '#8bd450', W: '#e4ffd0' },
+  },
+  mana: {
+    rows: ['...B...', '..BBB..', '.BBWBB.', 'BBBWBBB', '.BBBBB.', '..BBB..', '...B...'],
+    colors: { B: '#5b8cff', W: '#d6e4ff' },
+  },
+  magic: {
+    rows: ['P.....P', '.P...P.', '..PPP..', '.PPWPP.', '..PPP..', '.P...P.', 'P.....P'],
+    colors: { P: '#b388ff', W: '#f1e6ff' },
+  },
+  magicResist: {
+    rows: ['PPPPPPP', 'PWPPPPP', 'PPP.PPP', '.PP.PP.', '..PPP..', '...P...'],
+    colors: { P: '#9b6dff', W: '#e9ddff' },
+  },
+  accessory: {
+    rows: ['..YYY..', '.Y...Y.', 'Y.....Y', 'Y.....Y', '.Y...Y.', '..YYY..'],
+    colors: { Y: '#ffd23f' },
+  },
+  round: {
+    rows: ['.KKKKK.', 'K..K..K', 'K..K..K', 'K..KK.K', 'K.....K', '.KKKKK.'],
+    colors: { K: '#efe8d8' },
+  },
   counter: {
     rows: ['...T...', '..TT...', '.TTTTT.', '..TT..T', '...T..T', '......T', '.TTTTT.'],
     colors: { T: '#2ec4b6' },
@@ -123,6 +147,7 @@ export const TRAIT_ICONS: Record<string, IconName> = {
   heavy_hitter: 'heavy',
   has_pets: 'pet',
   counters: 'counter',
+  magic_user: 'magic',
 };
 
 /** Health, strength, agility and speed as a row of icon + value. */
