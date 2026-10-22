@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLASS_IDS,
+  DEFAULT_PLAN,
   FIGHTS_PER_DAY,
   Rng,
   UPGRADES_BY_ID,
@@ -17,6 +18,7 @@ import {
   prepareFight,
   recordWarmup,
   rollOffer,
+  traitsOf,
   simulateFight,
   startFight,
   warmupBonus,
@@ -33,7 +35,7 @@ const look: Appearance = { skinTone: 0, hairStyle: 0, hairColor: 0, outfitColor:
 /** Plays a whole daily fight like the UI does, answering every special with `quality`. */
 function playAuto(save: SaveData, day: number, quality = 50) {
   if (!prepareFight(save, day)) return null;
-  startFight(save, 'balanced', save.character.weapons);
+  startFight(save, DEFAULT_PLAN, save.character.weapons);
   const specials: number[] = [];
   while (simulateFight(save, specials).winner === null) specials.push(quality);
   return finishFight(save, specials);
@@ -199,9 +201,9 @@ describe('game', () => {
     prepareFight(save, 1);
     recordWarmup(save, 80);
     recordWarmup(save, 100);
-    startFight(save, 'defensive', []);
-    const locked = startFight(save, 'aggressive', ['bat']);
-    expect(locked).toEqual({ stance: 'defensive', weapons: [], warmup: 80 });
+    startFight(save, { stance: 'defensive', target: 'pets', weaponStyle: 'keep' }, []);
+    const locked = startFight(save, DEFAULT_PLAN, ['bat']);
+    expect(locked).toEqual({ stance: 'defensive', target: 'pets', weaponStyle: 'keep', weapons: [], warmup: 80 });
   });
 });
 
@@ -244,5 +246,31 @@ describe('skill', () => {
     expect(warmupBonus(0)).toBe(0);
     expect(warmupBonus(100)).toBe(5);
     expect(warmupBonus(500)).toBe(5);
+  });
+});
+
+describe('tactics', () => {
+  it('pets first aims only at pets while they live', () => {
+    const me = generateOpponent(6, new Rng(21), 'brawler');
+    const tamer = createCharacter('T', look, 'tamer', 'port');
+    const log = runFight(me, tamer, 8, { a: { target: 'pets' } });
+    const dogIdx = log.roster.findIndex((u) => u.defId === 'dog');
+    const dogDeath = log.events.findIndex((e) => e.t === 'death' && e.actor === dogIdx);
+    const before = dogDeath === -1 ? log.events : log.events.slice(0, dogDeath);
+    for (const e of before) if ((e.t === 'hit' || e.t === 'dodge' || e.t === 'block') && e.actor === 0) expect(e.target).toBe(dogIdx);
+  });
+
+  it('keep style never throws', () => {
+    const c = generateOpponent(12, new Rng(4), 'bouncer');
+    for (let seed = 0; seed < 50; seed++) {
+      const log = runFight(c, generateOpponent(12, new Rng(seed), 'brawler'), seed, { a: { weaponStyle: 'keep' } });
+      expect(log.events.some((e) => (e.t === 'hit' || e.t === 'dodge' || e.t === 'block') && e.actor === 0 && e.kind === 'throw')).toBe(false);
+    }
+  });
+
+  it('traits describe the opponent', () => {
+    expect(traitsOf(createCharacter('T', look, 'tamer', 'port'))).toEqual(expect.arrayContaining(['has_pets', 'many_hits']));
+    expect(traitsOf(createCharacter('B', look, 'bouncer', 'port'))).toContain('tough');
+    expect(traitsOf(createCharacter('P', look, 'parkour', 'port'))).toContain('counters');
   });
 });

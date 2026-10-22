@@ -1,16 +1,15 @@
-import { STANCE_IDS, type Stance } from './catalog';
 import { createCharacter } from './character';
 import { loadoutFor, runFight, type FightLog } from './fight';
 import { generateOpponent } from './opponents';
 import { XP_LOSS, XP_WIN, addXp, applyUpgrade, rollOffer, useFight, type DailyFights } from './progression';
 import { Rng, mixSeed } from './rng';
+import { DEFAULT_PLAN, STANCE_IDS, TARGET_IDS, WEAPON_STYLE_IDS, type Plan } from './tactics';
 import type { Appearance, Character, ClassId } from './types';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 /** What the player decides before a fight. Locked once the fight starts. */
-export interface Tactics {
-  stance: Stance;
+export interface Tactics extends Plan {
   weapons: string[];
   /** Warm-up minigame score, 0-100 (0 if skipped). */
   warmup: number;
@@ -19,7 +18,8 @@ export interface Tactics {
 /** The fight the player is about to play. Stored so reloading never rerolls the opponent. */
 export interface PendingFight {
   opponent: Character;
-  opponentStance: Stance;
+  /** The opponent's own plan, visible to the player before choosing theirs. */
+  opponentPlan: Plan;
   seed: number;
   /** Warm-up score, set once the minigame is played (it can only be played once). */
   warmup: number | null;
@@ -62,7 +62,7 @@ export function newGame(name: string, appearance: Appearance, classId: ClassId, 
 }
 
 export function defaultTactics(c: Character): Tactics {
-  return { stance: 'balanced', weapons: loadoutFor(c), warmup: 0 };
+  return { ...DEFAULT_PLAN, weapons: loadoutFor(c), warmup: 0 };
 }
 
 /** Offers are derived from the save seed and level, so reloading never rerolls them. */
@@ -85,7 +85,8 @@ export function prepareFight(save: SaveData, today: number): PendingFight | null
   save.fightCount++;
   const level = Math.max(1, save.character.level + rng.int(-1, 2));
   const opponent = generateOpponent(level, rng);
-  save.pendingFight = { opponent, opponentStance: rng.pick(STANCE_IDS), seed: rng.next(), warmup: null, tactics: null };
+  const opponentPlan: Plan = { stance: rng.pick(STANCE_IDS), target: rng.pick(TARGET_IDS), weaponStyle: rng.pick(WEAPON_STYLE_IDS) };
+  save.pendingFight = { opponent, opponentPlan, seed: rng.next(), warmup: null, tactics: null };
   return save.pendingFight;
 }
 
@@ -96,10 +97,16 @@ export function recordWarmup(save: SaveData, score: number): void {
 }
 
 /** Locks the player's choices. Later calls keep the first choice. */
-export function startFight(save: SaveData, stance: Stance, weapons: string[]): Tactics {
+export function startFight(save: SaveData, plan: Plan, weapons: string[]): Tactics {
   const fight = save.pendingFight;
   if (!fight) throw new Error('No pending fight');
-  fight.tactics ??= { stance, weapons: loadoutFor(save.character, weapons), warmup: fight.warmup ?? 0 };
+  fight.tactics ??= {
+    stance: plan.stance,
+    target: plan.target,
+    weaponStyle: plan.weaponStyle,
+    weapons: loadoutFor(save.character, weapons),
+    warmup: fight.warmup ?? 0,
+  };
   return fight.tactics;
 }
 
@@ -109,7 +116,7 @@ export function simulateFight(save: SaveData, specials: number[]): FightLog {
   if (!fight?.tactics) throw new Error('Fight not started');
   return runFight(save.character, fight.opponent, fight.seed, {
     a: { ...fight.tactics, interactive: true, specials },
-    b: { stance: fight.opponentStance },
+    b: { ...fight.opponentPlan },
   });
 }
 

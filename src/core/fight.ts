@@ -1,4 +1,6 @@
-import { CLASSES, FISTS_DAMAGE, LOADOUT_SIZE, ORIGINS, PETS, STANCES, WEAPONS, type Stance } from './catalog';
+import { CLASSES, FISTS_DAMAGE, LOADOUT_SIZE, ORIGINS, PETS, WEAPONS } from './catalog';
+import { maxHpFor } from './character';
+import { STANCES, TARGETS, WEAPON_STYLES, type Stance, type TargetMode, type WeaponStyle } from './tactics';
 import { Rng } from './rng';
 import { addStats, type Appearance, type Character } from './types';
 
@@ -39,6 +41,8 @@ export interface FightLog {
 /** Per-team choices and player inputs. Everything here is part of what makes a fight reproducible. */
 export interface TeamOptions {
   stance?: Stance;
+  target?: TargetMode;
+  weaponStyle?: WeaponStyle;
   /** Weapons brought into this fight (subset of the owned ones, max LOADOUT_SIZE). Defaults to the first owned ones. */
   weapons?: string[];
   /** Warm-up minigame score, 0-100. */
@@ -92,10 +96,10 @@ interface Unit {
   interactive: boolean;
   specials: readonly number[];
   specialsUsed: number;
-}
-
-export function maxHpFor(health: number, hpPercent: number): number {
-  return Math.floor(((30 + 5 * health) * (100 + hpPercent)) / 100);
+  /** Chance to aim at the enemy fighter while their pets are alive. */
+  fighterChance: number;
+  throwChance: number;
+  drawChance: number;
 }
 
 /** The weapons actually brought into a fight: only owned ones, at most LOADOUT_SIZE. */
@@ -113,6 +117,8 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
   const origin = ORIGINS[c.originId];
   if (!cls || !origin) throw new Error(`Invalid character '${c.name}'`);
   const stance = STANCES[opts.stance ?? 'balanced'];
+  const fighterChance = TARGETS[opts.target ?? 'mixed'].fighterChance;
+  const style = WEAPON_STYLES[opts.weaponStyle ?? 'normal'];
   const stats = addStats(cls.baseStats, c.bonusStats);
   const skills = new Set(c.skills);
   const maxHp = maxHpFor(stats.health, origin.hpPercent);
@@ -141,6 +147,10 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     interactive: opts.interactive ?? false,
     specials: opts.specials ?? [],
     specialsUsed: 0,
+    fighterChance,
+    // The Thrower skill makes any style except "keep" throw much more.
+    throwChance: style.throwChance === 0 ? 0 : style.throwChance + (skills.has('thrower') ? 27 : 0),
+    drawChance: style.drawChance,
   });
 
   const petBoost = skills.has('pack_leader') ? 125 : 100;
@@ -172,6 +182,9 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
       interactive: false,
       specials: [],
       specialsUsed: 0,
+      fighterChance,
+      throwChance: 0,
+      drawChance: 0,
     });
   }
 }
@@ -203,7 +216,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
 
   const pickTarget = (u: Unit): Unit => {
     const pets = enemiesOf(u).filter((e) => !e.isMain);
-    if (pets.length === 0 || rng.chance(65)) return enemyMainOf(u);
+    if (pets.length === 0 || rng.chance(u.fighterChance)) return enemyMainOf(u);
     return rng.pick(pets);
   };
 
@@ -231,12 +244,12 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (u.isMain && winner === null) winner = by.team;
   };
 
-  /** Resolves one attack. Returns true if the target survived. Specials cannot be dodged. */
+  /** Resolves one attack. Returns true if the target survived. Specials and throws cannot be dodged. */
   const attack = (att: Unit, def: Unit, kind: HitKind, quality = 0): boolean => {
     const weaponId = att.isMain ? att.weapon : null;
-    if (kind !== 'special' && rng.chance(dodgeChance(att, def))) {
+    if (kind !== 'special' && kind !== 'throw' && rng.chance(dodgeChance(att, def))) {
       events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
-      const melee = kind !== 'throw' && kind !== 'counter';
+      const melee = kind !== 'counter';
       if (melee && def.skills.has('counter') && rng.chance(50)) attack(def, att, 'counter');
       return true;
     }
@@ -289,12 +302,12 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     u.turns++;
     if (trySpecial(u)) return;
     const target = pickTarget(u);
-    if (u.isMain && u.undrawn.length > 0 && rng.chance(u.weapon === null ? 50 : 15)) {
+    if (u.isMain && u.undrawn.length > 0 && rng.chance(u.weapon === null ? u.drawChance : 15)) {
       const [weapon] = u.undrawn.splice(rng.int(0, u.undrawn.length), 1);
       u.weapon = weapon!;
       events.push({ t: 'draw', actor: u.idx, weapon: u.weapon });
     }
-    if (u.isMain && u.weapon && rng.chance(u.skills.has('thrower') ? 35 : 8)) {
+    if (u.isMain && u.weapon && rng.chance(u.throwChance)) {
       attack(u, target, 'throw');
       u.weapon = null;
       return;

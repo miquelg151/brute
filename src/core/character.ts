@@ -18,3 +18,7 @@ export function createCharacter(name: string, appearance: Appearance, classId: C
     pets: cls.startPet ? [cls.startPet] : [],
   };
 }
+
+export function maxHpFor(health: number, hpPercent: number): number {
+  return Math.floor(((30 + 5 * health) * (100 + hpPercent)) / 100);
+}

@@ -484,6 +484,77 @@ a {
   background: var(--sodium-glow);
 }
 
+/* Strategy options */
+.option {
+  gap: 6px;
+}
+
+.choice-grid.cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--step);
+}
+
+.cols-3 .option {
+  padding: 8px;
+}
+
+.cols-3 .choice-title {
+  font-size: 15px;
+}
+
+.cols-3 .effects,
+.cols-3 .strong-vs {
+  font-size: 12px;
+}
+
+.effects {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.effects .up {
+  color: var(--good);
+}
+
+.effects .down {
+  color: var(--bad);
+}
+
+.effects .flat {
+  color: var(--dim);
+}
+
+.strong-vs {
+  font-size: 13px;
+  color: var(--dim);
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 2px dashed var(--line);
+}
+
+.strong-vs.match {
+  color: var(--sodium);
+  border-top-color: var(--sodium-deep);
+}
+
+.traits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trait {
+  color: var(--sodium);
+}
+
 /* Fight */
 .arena {
   position: relative;
