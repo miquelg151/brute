@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Rng, SPECIAL_MIN_QUALITY, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
+import { artImage, artManifest } from '../ui/art';
 import { drawFighter, drawPet, drawWeapon } from '../ui/sprites';
 
 export const ARENA_W = 320;
@@ -60,23 +61,29 @@ export class ReplayScene extends Phaser.Scene {
   }
 
   private drawBackground(): void {
+    const custom = artImage(artManifest().background);
+    if (custom) {
+      this.textures.addImage('background', custom);
+      this.add.image(0, 0, 'background').setOrigin(0);
+      return;
+    }
     const g = this.add.graphics();
-    g.fillStyle(0x2b2140).fillRect(0, 0, ARENA_W, GROUND_Y);
+    g.fillStyle(0x222634).fillRect(0, 0, ARENA_W, GROUND_Y);
     // City skyline, seeded by the fight so a replay always looks the same.
     const rng = new Rng(this.log.seed);
     for (let x = -10; x < ARENA_W; ) {
       const w = rng.int(24, 48);
       const top = rng.int(40, 110);
-      g.fillStyle(0x1c1630).fillRect(x, top, w, GROUND_Y - top);
-      g.fillStyle(0xf5d76e);
+      g.fillStyle(0x15171f).fillRect(x, top, w, GROUND_Y - top);
+      g.fillStyle(0xffb347);
       for (let wy = top + 6; wy < GROUND_Y - 14; wy += 9) {
         for (let wx = x + 4; wx < x + w - 4; wx += 7) if (rng.chance(25)) g.fillRect(wx, wy, 3, 4);
       }
       x += w + rng.int(2, 8);
     }
-    g.fillStyle(0x3a3a46).fillRect(0, GROUND_Y, ARENA_W, ARENA_H - GROUND_Y);
-    g.fillStyle(0x55556a).fillRect(0, GROUND_Y, ARENA_W, 3);
-    g.fillStyle(0x6b6b80);
+    g.fillStyle(0x30333f).fillRect(0, GROUND_Y, ARENA_W, ARENA_H - GROUND_Y);
+    g.fillStyle(0x4b4f5e).fillRect(0, GROUND_Y, ARENA_W, 3);
+    g.fillStyle(0x5c6070);
     for (let x = 8; x < ARENA_W; x += 32) g.fillRect(x, GROUND_Y + 20, 16, 2);
   }
 

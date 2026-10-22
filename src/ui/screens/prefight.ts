@@ -10,7 +10,7 @@ interface PrefightActions {
   onStart: (stance: Stance, weapons: string[]) => void;
 }
 
-const list = (ids: string[], name: (id: string) => string) => (ids.length ? ids.map(name).join(', ') : 'none');
+const names = (ids: string[], name: (id: string) => string | undefined) => (ids.length ? ids.map((id) => name(id) ?? id).join(', ') : 'None');
 
 export function renderPrefight(root: HTMLElement, save: SaveData, actions: PrefightActions): void {
   const fight = save.pendingFight!;
@@ -20,7 +20,6 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
   let stance: Stance = 'balanced';
   const loadout = new Set(loadoutFor(me));
 
-  // Stance picker
   const stanceButtons = STANCE_IDS.map((id) => {
     const s = STANCES[id];
     const btn = h('button', { class: 'choice' }, h('div', { class: 'choice-title' }, s.name), h('div', { class: 'choice-desc' }, s.description));
@@ -33,12 +32,12 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
   });
 
   // Loadout picker, only needed when the fighter owns more weapons than they can bring.
-  let loadoutSection: HTMLElement | null = null;
+  let loadoutSection: HTMLElement | string = '';
   if (me.weapons.length > LOADOUT_SIZE) {
-    const hint = h('div', { class: 'muted small' });
-    const refreshHint = () => (hint.textContent = `${loadout.size}/${LOADOUT_SIZE} chosen`);
+    const hint = h('div', { class: 'dim small' });
+    const refreshHint = () => (hint.textContent = `${loadout.size} of ${LOADOUT_SIZE} chosen`);
     const chips = me.weapons.map((id) => {
-      const chip = h('button', { class: 'chip toggle' }, WEAPONS[id]?.name ?? id);
+      const chip = h('button', { class: 'chip-toggle' }, WEAPONS[id]?.name ?? id);
       chip.classList.toggle('selected', loadout.has(id));
       chip.addEventListener('click', () => {
         if (loadout.has(id)) loadout.delete(id);
@@ -49,18 +48,20 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
       return chip;
     });
     refreshHint();
-    loadoutSection = h('section', {}, h('h2', {}, `Weapons to bring (max ${LOADOUT_SIZE})`), h('div', { class: 'chip-row' }, ...chips), hint);
+    loadoutSection = h('section', {}, h('h2', {}, `Bring up to ${LOADOUT_SIZE} weapons`), h('div', { class: 'slots' }, ...chips), hint);
   }
 
-  // Warm-up: one attempt per fight
-  const warmupInfo = h('div', { class: 'muted small' });
-  const warmupBtn = h('button', { class: 'btn' }, 'Warm up (8s)');
+  const warmupInfo = h('p', { class: 'dim small' });
+  const warmupBtn = h('button', { class: 'btn' }, 'Warm up');
   const refreshWarmup = (score: number | null) => {
     warmupBtn.classList.toggle('hidden', score !== null);
     warmupInfo.textContent =
-      score === null ? 'Optional. One try. Up to +5% damage in this fight.' : `Warm-up score ${score}: +${warmupBonus(score)}% damage`;
+      score === null
+        ? 'Optional. Tap targets for 8 seconds, once per fight. Worth up to +5% damage.'
+        : `You scored ${score}: +${warmupBonus(score)}% damage this fight.`;
   };
   refreshWarmup(fight.warmup);
+
   const screen = h('main', { class: 'screen prefight' });
   warmupBtn.addEventListener('click', async () => {
     warmupBtn.disabled = true;
@@ -69,34 +70,47 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
     refreshWarmup(score);
   });
 
-  const fightBtn = h('button', { class: 'btn btn-primary btn-big' }, 'Fight!');
+  const fightBtn = h('button', { class: 'btn btn-primary btn-big' }, 'Start fight');
   fightBtn.addEventListener('click', () => actions.onStart(stance, [...loadout]));
 
+  const side = (canvas: HTMLCanvasElement, name: string, sub: HTMLElement) =>
+    h('div', { class: 'poster-side' }, h('div', { class: 'spot' }, canvas), h('div', { class: 'poster-name' }, name), sub);
+
   screen.append(
-    h('h1', {}, 'Next opponent'),
+    h('h1', {}, 'Next fight'),
     h(
       'div',
-      { class: 'versus-row' },
-      h('div', { class: 'preview' }, pixelArt(drawFighter(me.appearance, me.classId), 4)),
+      { class: 'poster' },
+      side(pixelArt(drawFighter(me.appearance, me.classId), 4), me.name, h('div', { class: 'dim small' }, `Level ${me.level}`)),
       h('div', { class: 'vs' }, 'VS'),
-      h('div', { class: 'preview' }, pixelArt(drawFighter(foe.appearance, foe.classId), 4, true)),
+      side(
+        pixelArt(drawFighter(foe.appearance, foe.classId), 4, true),
+        foe.name,
+        h('div', { class: 'small', style: `color:${CLASS_COLORS[foe.classId]}` }, `Level ${foe.level} ${CLASSES[foe.classId].name}`),
+      ),
     ),
+    h('h2', {}, `What you know about ${foe.name}`),
     h(
-      'section',
-      { class: 'panel foe' },
-      h('div', { class: 'choice-title' }, `${foe.name} - Lv ${foe.level}`),
-      h('div', { style: `color:${CLASS_COLORS[foe.classId]}` }, `${CLASSES[foe.classId].name}, ${ORIGINS[foe.originId]?.name ?? ''}`),
-      h('div', { class: 'small' }, `HP ${maxHpOf(foe)}  STR ${foeStats.strength}  AGI ${foeStats.agility}  SPD ${foeStats.speed}`),
-      h('div', { class: 'small' }, `Stance: ${STANCES[fight.opponentStance].name}`),
-      h('div', { class: 'small muted' }, `Skills: ${list(foe.skills, (id) => SKILLS[id]?.name ?? id)}`),
-      h('div', { class: 'small muted' }, `Weapons: ${list(foe.weapons, (id) => WEAPONS[id]?.name ?? id)}`),
-      h('div', { class: 'small muted' }, `Pets: ${list(foe.pets, (id) => PETS[id]?.name ?? id)}`),
+      'dl',
+      { class: 'card intel' },
+      h('dt', {}, 'Stance'),
+      h('dd', {}, STANCES[fight.opponentStance].name),
+      h('dt', {}, 'Stats'),
+      h('dd', {}, `HP ${maxHpOf(foe)}, STR ${foeStats.strength}, AGI ${foeStats.agility}, SPD ${foeStats.speed}`),
+      h('dt', {}, 'Origin'),
+      h('dd', {}, ORIGINS[foe.originId]?.name ?? ''),
+      h('dt', {}, 'Skills'),
+      h('dd', {}, names(foe.skills, (id) => SKILLS[id]?.name)),
+      h('dt', {}, 'Weapons'),
+      h('dd', {}, names(foe.weapons, (id) => WEAPONS[id]?.name)),
+      h('dt', {}, 'Pets'),
+      h('dd', {}, names(foe.pets, (id) => PETS[id]?.name)),
     ),
     h('h2', {}, 'Your stance'),
     h('div', { class: 'choice-grid' }, ...stanceButtons),
-    loadoutSection ?? '',
+    loadoutSection,
     h('h2', {}, 'Warm-up'),
-    h('section', { class: 'panel' }, warmupInfo, warmupBtn),
+    h('section', { class: 'card' }, warmupInfo, warmupBtn),
     fightBtn,
   );
   root.append(screen);

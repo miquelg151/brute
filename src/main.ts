@@ -1,8 +1,11 @@
 import '@fontsource/press-start-2p/400.css';
+import '@fontsource/dotgothic16/400.css';
 import './style.css';
 import { chooseUpgrade, dayNumber, prepareFight, recordWarmup, startFight, type SaveData } from './core';
+import { loadArt } from './ui/art';
 import { renderCreate } from './ui/screens/create';
 import { renderFight } from './ui/screens/fight';
+import { renderGallery } from './ui/screens/gallery';
 import { renderHome } from './ui/screens/home';
 import { renderLevelUp } from './ui/screens/levelup';
 import { renderPrefight } from './ui/screens/prefight';
@@ -70,6 +73,10 @@ function show(): void {
   });
 }
 
-// Phaser draws text with the pixel font, so wait for it (briefly) before the first render.
+// Phaser draws text with the pixel font, so wait for it (briefly) and for custom art before the first render.
 const fontTimeout = new Promise((resolve) => setTimeout(resolve, 1500));
-void Promise.race([document.fonts.load('8px "Press Start 2P"'), fontTimeout]).finally(show);
+const fontsReady = Promise.race([document.fonts.load('8px "Press Start 2P"'), fontTimeout]);
+void Promise.all([fontsReady, loadArt()]).finally(() => {
+  if (new URLSearchParams(location.search).has('gallery')) renderGallery(root);
+  else show();
+});

@@ -6,10 +6,10 @@ export const OUTFIT_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#eab308', '#a855
 export const HAIR_STYLE_NAMES = ['Short', 'Mohawk', 'Long', 'Bald'];
 
 export const CLASS_COLORS: Record<ClassId, string> = {
-  brawler: '#ef4444',
-  parkour: '#22d3ee',
-  bouncer: '#a3a3a3',
-  tamer: '#84cc16',
+  brawler: '#ff6b5b',
+  parkour: '#4fd1e8',
+  bouncer: '#c3c7d4',
+  tamer: '#9fd356',
 };
 
 /** Darkens (negative) or lightens (positive) a #rrggbb color by an amount in [-1, 1]. */

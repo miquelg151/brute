@@ -1,6 +1,8 @@
-// Placeholder pixel art drawn in code, so the prototype needs no image assets.
+// Sprites for fighters, pets and weapons. Hand-made art from public/art is used when
+// present (see art.ts); otherwise a placeholder drawn in code.
 // Every sprite faces right; the replay flips it for the right-hand team.
 import type { Appearance, ClassId } from '../core';
+import { artImage, artManifest, imageToCanvas } from './art';
 import { HAIR_COLORS, OUTFIT_COLORS, SKIN_TONES, shade } from './palette';
 
 type Px = (x: number, y: number, color: string) => void;
@@ -37,7 +39,7 @@ function sprite(w: number, h: number, draw: (px: Px, rect: Rect) => void): HTMLC
   return canvas;
 }
 
-export function drawFighter(look: Appearance, classId: ClassId): HTMLCanvasElement {
+function placeholderFighter(look: Appearance, classId: ClassId): HTMLCanvasElement {
   const skin = SKIN_TONES[look.skinTone] ?? SKIN_TONES[0]!;
   const hair = HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[0]!;
   const outfit = OUTFIT_COLORS[look.outfitColor] ?? OUTFIT_COLORS[0]!;
@@ -105,7 +107,7 @@ export function drawFighter(look: Appearance, classId: ClassId): HTMLCanvasEleme
   });
 }
 
-export function drawPet(petId: string): HTMLCanvasElement {
+function placeholderPet(petId: string): HTMLCanvasElement {
   switch (petId) {
     case 'crow':
       return sprite(8, 8, (px, rect) => {
@@ -143,7 +145,7 @@ export function drawPet(petId: string): HTMLCanvasElement {
   }
 }
 
-export function drawWeapon(weaponId: string): HTMLCanvasElement {
+function placeholderWeapon(weaponId: string): HTMLCanvasElement {
   switch (weaponId) {
     case 'chain':
       return sprite(10, 3, (px) => {
@@ -183,4 +185,36 @@ export function drawWeapon(weaponId: string): HTMLCanvasElement {
         px(10, 0, '#92400e');
       });
   }
+}
+
+/** Layered custom fighter: body, outfit, hair (tinted), then untinted class details. */
+function customFighter(look: Appearance, classId: ClassId): HTMLCanvasElement | null {
+  const f = artManifest().fighter;
+  const body = artImage(f?.body);
+  if (!f || !body) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = body.naturalWidth;
+  canvas.height = body.naturalHeight;
+  imageToCanvas(body, SKIN_TONES[look.skinTone], canvas);
+  const outfit = artImage(f.outfit?.[classId]);
+  if (outfit) imageToCanvas(outfit, OUTFIT_COLORS[look.outfitColor], canvas);
+  const hair = artImage(f.hair?.[look.hairStyle]);
+  if (hair) imageToCanvas(hair, HAIR_COLORS[look.hairColor], canvas);
+  const extra = artImage(f.extra?.[classId]);
+  if (extra) imageToCanvas(extra, undefined, canvas);
+  return canvas;
+}
+
+export function drawFighter(look: Appearance, classId: ClassId): HTMLCanvasElement {
+  return customFighter(look, classId) ?? placeholderFighter(look, classId);
+}
+
+export function drawPet(petId: string): HTMLCanvasElement {
+  const img = artImage(artManifest().pets?.[petId]);
+  return img ? imageToCanvas(img) : placeholderPet(petId);
+}
+
+export function drawWeapon(weaponId: string): HTMLCanvasElement {
+  const img = artImage(artManifest().weapons?.[weaponId]);
+  return img ? imageToCanvas(img) : placeholderWeapon(weaponId);
 }

@@ -31,9 +31,9 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
   let classId: ClassId = 'brawler';
   let originId = ORIGIN_IDS[0]!;
 
-  const preview = h('div', { class: 'preview' });
-  const nameInput = h('input', { class: 'name-input', maxLength: 14, placeholder: 'Your fighter name', autocomplete: 'off' });
-  const startBtn = h('button', { class: 'btn btn-primary', disabled: true }, 'Start');
+  const preview = h('div', { class: 'spot spot-big' });
+  const nameInput = h('input', { class: 'name-input', maxLength: 14, placeholder: 'Name your fighter', autocomplete: 'off' });
+  const startBtn = h('button', { class: 'btn btn-primary btn-big', disabled: true }, 'Create fighter');
   const lookValues = new Map<keyof Appearance, HTMLElement>();
 
   const refreshPreview = () => {
@@ -62,10 +62,16 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
     );
   };
 
-  const choiceGrid = <T extends string>(ids: readonly T[], card: (id: T) => HTMLElement, onPick: (id: T) => void, selected: T) => {
+  const choiceGrid = <T extends string>(
+    ids: readonly T[],
+    card: (id: T) => HTMLElement,
+    onPick: (id: T) => void,
+    selected: T,
+    accent?: (id: T) => string,
+  ) => {
     const grid = h('div', { class: 'choice-grid' });
     const buttons = ids.map((id) => {
-      const btn = h('button', { class: 'choice' }, card(id));
+      const btn = h('button', { class: 'choice', style: accent?.(id) ?? '' }, card(id));
       btn.addEventListener('click', () => {
         buttons.forEach((b) => b.classList.remove('selected'));
         btn.classList.add('selected');
@@ -86,8 +92,8 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
       {},
       h('div', { class: 'choice-title', style: `color:${CLASS_COLORS[id]}` }, c.name),
       h('div', { class: 'choice-desc' }, c.description),
-      h('div', { class: 'choice-meta' }, `HP ${s.health} STR ${s.strength} AGI ${s.agility} SPD ${s.speed}`),
-      h('div', { class: 'choice-meta' }, `Skill: ${SKILLS[c.startSkill]?.name ?? ''}`),
+      h('div', { class: 'choice-stats' }, `HP ${s.health}, STR ${s.strength}, AGI ${s.agility}, SPD ${s.speed}`),
+      h('div', { class: 'choice-stats' }, `Starts with ${SKILLS[c.startSkill]?.name ?? ''}`),
     );
   };
 
@@ -109,18 +115,21 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
       'main',
       { class: 'screen create' },
       h('h1', {}, 'New fighter'),
+      h('p', { class: 'lede' }, 'Pick a look, a fighting style and where you grew up.'),
       preview,
       nameInput,
       h('h2', {}, 'Look'),
       h(
         'section',
-        { class: 'panel' },
+        { class: 'card' },
         ...LOOK_ROWS.map((r) => lookRow(r.key, r.label)),
-        h('button', { class: 'btn btn-small', onclick: () => (Object.assign(look, randomLook()), refreshPreview()) }, 'Randomize'),
+        h('button', { class: 'btn btn-small', onclick: () => (Object.assign(look, randomLook()), refreshPreview()) }, 'Random look'),
       ),
       h('h2', {}, 'Class'),
-      choiceGrid(CLASS_IDS, classCard, (id) => ((classId = id), refreshPreview()), classId),
+      h('p', { class: 'lede small' }, 'Sets your starting stats and skill, and which upgrades you see most.'),
+      choiceGrid(CLASS_IDS, classCard, (id) => ((classId = id), refreshPreview()), classId, (id) => `--accent:${CLASS_COLORS[id]}`),
       h('h2', {}, 'Origin'),
+      h('p', { class: 'lede small' }, 'A small bonus in every fight.'),
       choiceGrid(ORIGIN_IDS, originCard, (id) => (originId = id), originId),
       startBtn,
     ),

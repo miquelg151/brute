@@ -14,14 +14,14 @@ export function renderFight(root: HTMLElement, save: SaveData, onSaved: () => vo
   const speedBtn = h('button', { class: 'btn btn-small' }, 'x1');
   const skipBtn = h('button', { class: 'btn btn-small' }, 'Skip');
   const controls = h('div', { class: 'fight-controls' }, speedBtn, skipBtn);
-  const summary = h('div', { class: 'fight-summary hidden' });
+  const summary = h('div', { class: 'card fight-summary hidden' });
   const continueBtn = h('button', { class: 'btn btn-primary hidden' }, 'Continue');
 
   root.append(
     h(
       'main',
       { class: 'screen fight' },
-      h('div', { class: 'versus' }, `${save.character.name} vs ${opponent.name} (Lv ${opponent.level})`),
+      h('div', { class: 'versus' }, `${save.character.name} vs ${opponent.name}, level ${opponent.level}`),
       arena,
       controls,
       summary,
@@ -37,8 +37,8 @@ export function renderFight(root: HTMLElement, save: SaveData, onSaved: () => vo
       const result = finishFight(save, specials);
       onSaved();
       summary.append(
-        h('div', { class: result.won ? 'win' : 'loss' }, result.won ? `You beat ${opponent.name}!` : `${opponent.name} won this time.`),
-        h('div', { class: 'muted' }, `+${result.xpGained} XP${result.levelsGained > 0 ? ' - LEVEL UP!' : ''}`),
+        h('div', { class: `result ${result.won ? 'win' : 'loss'}` }, result.won ? `You beat ${opponent.name}` : `${opponent.name} won`),
+        h('div', { class: 'dim' }, `+${result.xpGained} XP${result.levelsGained > 0 ? '. You levelled up!' : ''}`),
       );
       controls.classList.add('hidden');
       summary.classList.remove('hidden');
@@ -51,7 +51,7 @@ export function renderFight(root: HTMLElement, save: SaveData, onSaved: () => vo
     width: ARENA_W,
     height: ARENA_H,
     pixelArt: true,
-    backgroundColor: '#1e1b2e',
+    backgroundColor: '#0b0c10',
     banner: false,
     audio: { noAudio: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_HORIZONTALLY },
