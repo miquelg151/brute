@@ -1,10 +1,11 @@
 import '@fontsource/press-start-2p/400.css';
 import './style.css';
-import { chooseUpgrade, dayNumber, playFight, type SaveData } from './core';
+import { chooseUpgrade, dayNumber, prepareFight, recordWarmup, startFight, type SaveData } from './core';
 import { renderCreate } from './ui/screens/create';
 import { renderFight } from './ui/screens/fight';
 import { renderHome } from './ui/screens/home';
 import { renderLevelUp } from './ui/screens/levelup';
+import { renderPrefight } from './ui/screens/prefight';
 import { clearSave, loadSave, storeSave } from './ui/storage';
 
 const root = document.getElementById('app')!;
@@ -33,15 +34,33 @@ function show(): void {
     return;
   }
 
+  const fight = current.pendingFight;
+  if (fight?.tactics) {
+    renderFight(root, current, () => storeSave(current), show);
+    return;
+  }
+  if (fight) {
+    renderPrefight(root, current, {
+      onWarmup: (score) => {
+        recordWarmup(current, score);
+        storeSave(current);
+      },
+      onStart: (stance, weapons) => {
+        // Locked and saved before the replay, so reloading cannot change the choices.
+        startFight(current, stance, weapons);
+        storeSave(current);
+        show();
+      },
+    });
+    return;
+  }
+
   const today = dayNumber(new Date());
   renderHome(root, current, today, {
     onFight: () => {
-      const result = playFight(current, today);
-      if (!result) return show();
-      // Saved before the replay, so closing the app mid-fight cannot reroll the result.
+      prepareFight(current, today);
       storeSave(current);
-      root.replaceChildren();
-      renderFight(root, result, show);
+      show();
     },
     onReset: () => {
       clearSave();

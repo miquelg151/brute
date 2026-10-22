@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Rng, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
+import { Rng, SPECIAL_MIN_QUALITY, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
 import { drawFighter, drawPet, drawWeapon } from '../ui/sprites';
 
 export const ARENA_W = 320;
@@ -23,15 +23,29 @@ interface UnitView {
 
 const KIND_LABEL: Partial<Record<HitKind, string>> = { combo: 'COMBO', counter: 'COUNTER', double: 'x2' };
 
-/** Plays a FightLog event by event. Has no game logic: the outcome is already decided. */
+export interface ReplayHooks {
+  /** Asks the player to perform a special strike; resolves with its timing quality (0-100). */
+  requestSpecial: () => Promise<number>;
+  /** Re-runs the deterministic simulation with the special inputs collected so far. */
+  resimulate: (specials: number[]) => FightLog;
+  onFinished: (log: FightLog, specials: number[]) => void;
+}
+
+/**
+ * Plays a FightLog event by event. Has no game logic: when the log stops at a
+ * special strike, it asks for the input and continues with the re-simulated log,
+ * whose earlier events are identical.
+ */
 export class ReplayScene extends Phaser.Scene {
   private views: UnitView[] = [];
+  private log: FightLog;
 
   constructor(
-    private readonly log: FightLog,
-    private readonly onFinished: () => void,
+    initialLog: FightLog,
+    private readonly hooks: ReplayHooks,
   ) {
     super('replay');
+    this.log = initialLog;
   }
 
   setSpeed(speed: number): void {
@@ -140,10 +154,19 @@ export class ReplayScene extends Phaser.Scene {
 
   private async play(): Promise<void> {
     await this.wait(500);
-    for (const e of this.log.events) await this.handle(e);
+    const specials: number[] = [];
+    for (let i = 0; i < this.log.events.length; i++) {
+      let e = this.log.events[i]!;
+      if (e.t === 'special' && e.quality === null) {
+        specials.push(await this.hooks.requestSpecial());
+        this.log = this.hooks.resimulate(specials);
+        e = this.log.events[i]!;
+      }
+      await this.handle(e);
+    }
     await this.wait(400);
     this.showBanner();
-    this.onFinished();
+    this.hooks.onFinished(this.log, specials);
   }
 
   private handle(e: FightEvent): Promise<void> {
@@ -159,8 +182,23 @@ export class ReplayScene extends Phaser.Scene {
         return this.onDisarm(e.target);
       case 'heal':
         return this.onHeal(e.actor, e.amount, e.hp);
+      case 'special':
+        return this.onSpecial(e.actor, e.quality ?? 0);
       case 'death':
         return this.onDeath(e.actor);
+    }
+  }
+
+  private async onSpecial(actor: number, quality: number): Promise<void> {
+    const v = this.view(actor);
+    const [text, color] =
+      quality >= 90 ? ['PERFECT!', '#facc15'] : quality >= SPECIAL_MIN_QUALITY ? ['SPECIAL!', '#fb923c'] : ['MISSED', '#9ca3af'];
+    this.floatText(v.sprite.x, this.headY(v) - 8, text, color);
+    if (quality >= SPECIAL_MIN_QUALITY) {
+      this.cameras.main.flash(120, 255, 220, 120);
+      await this.tween({ targets: v.sprite, scaleX: SCALE * 1.15, scaleY: SCALE * 1.15, duration: 120, yoyo: true });
+    } else {
+      await this.wait(250);
     }
   }
 

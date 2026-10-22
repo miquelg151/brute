@@ -1,29 +1,27 @@
 import Phaser from 'phaser';
-import type { FightResult } from '../../core';
+import { finishFight, simulateFight, type SaveData } from '../../core';
 import { ARENA_H, ARENA_W, ReplayScene } from '../../fight/ReplayScene';
 import { h } from '../dom';
+import { playSpecialStrike } from '../minigames';
 
 const SPEEDS = [1, 2, 4];
 const SKIP_SPEED = 40;
 
-export function renderFight(root: HTMLElement, result: FightResult, onDone: () => void): void {
+/** Plays the started pending fight. `onSaved` is called once the result is applied to the save. */
+export function renderFight(root: HTMLElement, save: SaveData, onSaved: () => void, onDone: () => void): void {
+  const opponent = save.pendingFight!.opponent;
   const arena = h('div', { class: 'arena' });
   const speedBtn = h('button', { class: 'btn btn-small' }, 'x1');
   const skipBtn = h('button', { class: 'btn btn-small' }, 'Skip');
   const controls = h('div', { class: 'fight-controls' }, speedBtn, skipBtn);
-  const summary = h(
-    'div',
-    { class: 'fight-summary hidden' },
-    h('div', { class: result.won ? 'win' : 'loss' }, result.won ? `You beat ${result.opponent.name}!` : `${result.opponent.name} won this time.`),
-    h('div', { class: 'muted' }, `+${result.xpGained} XP${result.levelsGained > 0 ? ' - LEVEL UP!' : ''}`),
-  );
+  const summary = h('div', { class: 'fight-summary hidden' });
   const continueBtn = h('button', { class: 'btn btn-primary hidden' }, 'Continue');
 
   root.append(
     h(
       'main',
       { class: 'screen fight' },
-      h('div', { class: 'versus' }, `${result.log.roster[0]?.name} vs ${result.opponent.name} (Lv ${result.opponent.level})`),
+      h('div', { class: 'versus' }, `${save.character.name} vs ${opponent.name} (Lv ${opponent.level})`),
       arena,
       controls,
       summary,
@@ -32,10 +30,20 @@ export function renderFight(root: HTMLElement, result: FightResult, onDone: () =
   );
 
   // Created after the arena is in the DOM: Phaser sizes the canvas from its parent.
-  const scene = new ReplayScene(result.log, () => {
-    controls.classList.add('hidden');
-    summary.classList.remove('hidden');
-    continueBtn.classList.remove('hidden');
+  const scene = new ReplayScene(simulateFight(save, []), {
+    requestSpecial: () => playSpecialStrike(arena),
+    resimulate: (specials) => simulateFight(save, specials),
+    onFinished: (_log, specials) => {
+      const result = finishFight(save, specials);
+      onSaved();
+      summary.append(
+        h('div', { class: result.won ? 'win' : 'loss' }, result.won ? `You beat ${opponent.name}!` : `${opponent.name} won this time.`),
+        h('div', { class: 'muted' }, `+${result.xpGained} XP${result.levelsGained > 0 ? ' - LEVEL UP!' : ''}`),
+      );
+      controls.classList.add('hidden');
+      summary.classList.remove('hidden');
+      continueBtn.classList.remove('hidden');
+    },
   });
   const game = new Phaser.Game({
     type: Phaser.AUTO,

@@ -50,6 +50,31 @@ export type UpgradeDef =
   | { id: string; kind: 'stat'; pool: UpgradePool; name: string; stats: Partial<Stats> }
   | { id: string; kind: 'weapon' | 'skill' | 'pet'; pool: UpgradePool; name: string; ref: string };
 
+export type Stance = 'balanced' | 'aggressive' | 'defensive' | 'agile';
+
+export interface StanceDef {
+  id: Stance;
+  name: string;
+  description: string;
+  /** Percent added to damage. */
+  damage: number;
+  armor: number;
+  dodge: number;
+}
+
+/** Chosen before each fight after seeing the opponent: the tactical part of the game. */
+export const STANCES: Record<Stance, StanceDef> = {
+  balanced: { id: 'balanced', name: 'Balanced', description: 'No changes.', damage: 0, armor: 0, dodge: 0 },
+  aggressive: { id: 'aggressive', name: 'Aggressive', description: '+18% damage, -8% dodge. Good against sturdy fighters.', damage: 18, armor: 0, dodge: -8 },
+  defensive: { id: 'defensive', name: 'Defensive', description: '+2 armor, -15% damage. Good against many small hits.', damage: -15, armor: 2, dodge: 0 },
+  agile: { id: 'agile', name: 'Agile', description: '+15% dodge (can go over the usual cap), -12% damage. Good against big slow hits.', damage: -12, armor: 0, dodge: 15 },
+};
+
+export const STANCE_IDS = Object.keys(STANCES) as Stance[];
+
+/** Max weapons a fighter brings into one fight. */
+export const LOADOUT_SIZE = 3;
+
 /** Damage of an unarmed main fighter, before strength. */
 export const FISTS_DAMAGE = 3;
 

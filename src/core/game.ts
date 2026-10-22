@@ -1,11 +1,31 @@
+import { STANCE_IDS, type Stance } from './catalog';
 import { createCharacter } from './character';
-import { runFight, type FightLog } from './fight';
+import { loadoutFor, runFight, type FightLog } from './fight';
 import { generateOpponent } from './opponents';
 import { XP_LOSS, XP_WIN, addXp, applyUpgrade, rollOffer, useFight, type DailyFights } from './progression';
 import { Rng, mixSeed } from './rng';
 import type { Appearance, Character, ClassId } from './types';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
+
+/** What the player decides before a fight. Locked once the fight starts. */
+export interface Tactics {
+  stance: Stance;
+  weapons: string[];
+  /** Warm-up minigame score, 0-100 (0 if skipped). */
+  warmup: number;
+}
+
+/** The fight the player is about to play. Stored so reloading never rerolls the opponent. */
+export interface PendingFight {
+  opponent: Character;
+  opponentStance: Stance;
+  seed: number;
+  /** Warm-up score, set once the minigame is played (it can only be played once). */
+  warmup: number | null;
+  /** Set when the fight starts; from then on the choices cannot change. */
+  tactics: Tactics | null;
+}
 
 /** Everything the game persists. Plain JSON, designed to be synced to a server later. */
 export interface SaveData {
@@ -17,6 +37,7 @@ export interface SaveData {
   /** Level-ups not yet chosen. While > 0 the player must pick from `offer` before fighting. */
   pendingLevelUps: number;
   offer: string[] | null;
+  pendingFight: PendingFight | null;
 }
 
 export interface FightResult {
@@ -36,7 +57,12 @@ export function newGame(name: string, appearance: Appearance, classId: ClassId, 
     daily: { day: -1, used: 0 },
     pendingLevelUps: 0,
     offer: null,
+    pendingFight: null,
   };
+}
+
+export function defaultTactics(c: Character): Tactics {
+  return { stance: 'balanced', weapons: loadoutFor(c), warmup: 0 };
 }
 
 /** Offers are derived from the save seed and level, so reloading never rerolls them. */
@@ -45,8 +71,13 @@ function offerFor(save: SaveData): string[] {
   return rollOffer(save.character, rng);
 }
 
-/** Plays one daily fight against a generated opponent. Returns null if not allowed right now. */
-export function playFight(save: SaveData, today: number): FightResult | null {
+/**
+ * Uses one daily fight and picks the opponent, so the player can study it and
+ * choose tactics. Returns the existing pending fight if there is one, or null
+ * if fighting is not allowed right now.
+ */
+export function prepareFight(save: SaveData, today: number): PendingFight | null {
+  if (save.pendingFight) return save.pendingFight;
   if (save.pendingLevelUps > 0) return null;
   if (!useFight(save.daily, today)) return null;
 
@@ -54,7 +85,39 @@ export function playFight(save: SaveData, today: number): FightResult | null {
   save.fightCount++;
   const level = Math.max(1, save.character.level + rng.int(-1, 2));
   const opponent = generateOpponent(level, rng);
-  const log = runFight(save.character, opponent, rng.next());
+  save.pendingFight = { opponent, opponentStance: rng.pick(STANCE_IDS), seed: rng.next(), warmup: null, tactics: null };
+  return save.pendingFight;
+}
+
+export function recordWarmup(save: SaveData, score: number): void {
+  const fight = save.pendingFight;
+  if (!fight || fight.warmup !== null || fight.tactics) return;
+  fight.warmup = Math.max(0, Math.min(100, Math.round(score)));
+}
+
+/** Locks the player's choices. Later calls keep the first choice. */
+export function startFight(save: SaveData, stance: Stance, weapons: string[]): Tactics {
+  const fight = save.pendingFight;
+  if (!fight) throw new Error('No pending fight');
+  fight.tactics ??= { stance, weapons: loadoutFor(save.character, weapons), warmup: fight.warmup ?? 0 };
+  return fight.tactics;
+}
+
+/** Simulates the started fight with the special-strike inputs given so far. */
+export function simulateFight(save: SaveData, specials: number[]): FightLog {
+  const fight = save.pendingFight;
+  if (!fight?.tactics) throw new Error('Fight not started');
+  return runFight(save.character, fight.opponent, fight.seed, {
+    a: { ...fight.tactics, interactive: true, specials },
+    b: { stance: fight.opponentStance },
+  });
+}
+
+/** Resolves the started fight with all inputs, awards XP and clears it. */
+export function finishFight(save: SaveData, specials: number[]): FightResult {
+  const fight = save.pendingFight!;
+  const log = simulateFight(save, specials);
+  if (log.winner === null) throw new Error('Fight still waiting for input');
 
   const won = log.winner === 0;
   const xpGained = won ? XP_WIN : XP_LOSS;
@@ -63,7 +126,8 @@ export function playFight(save: SaveData, today: number): FightResult | null {
     save.pendingLevelUps += levelsGained;
     save.offer = offerFor(save);
   }
-  return { opponent, log, won, xpGained, levelsGained };
+  save.pendingFight = null;
+  return { opponent: fight.opponent, log, won, xpGained, levelsGained };
 }
 
 export function chooseUpgrade(save: SaveData, upgradeId: string): void {

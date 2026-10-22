@@ -11,17 +11,33 @@ import {
   fightsLeft,
   generateOpponent,
   mixSeed,
+  finishFight,
+  loadoutFor,
   newGame,
-  playFight,
+  prepareFight,
+  recordWarmup,
   rollOffer,
+  simulateFight,
+  startFight,
+  warmupBonus,
   runFight,
   useFight,
   xpToNext,
   type Appearance,
   type FightLog,
+  type SaveData,
 } from './index';
 
 const look: Appearance = { skinTone: 0, hairStyle: 0, hairColor: 0, outfitColor: 0 };
+
+/** Plays a whole daily fight like the UI does, answering every special with `quality`. */
+function playAuto(save: SaveData, day: number, quality = 50) {
+  if (!prepareFight(save, day)) return null;
+  startFight(save, 'balanced', save.character.weapons);
+  const specials: number[] = [];
+  while (simulateFight(save, specials).winner === null) specials.push(quality);
+  return finishFight(save, specials);
+}
 
 describe('Rng', () => {
   it('is deterministic for a seed', () => {
@@ -150,9 +166,9 @@ describe('game', () => {
     const save = newGame('Me', look, 'brawler', 'port', 77);
     let day = 1;
     while (save.pendingLevelUps === 0) {
-      if (!playFight(save, day)) day++;
+      if (!playAuto(save, day)) day++;
     }
-    expect(playFight(save, day)).toBeNull();
+    expect(prepareFight(save, day)).toBeNull();
     const offer = save.offer!;
     expect(offer).toHaveLength(3);
     chooseUpgrade(save, offer[0]!);
@@ -163,11 +179,70 @@ describe('game', () => {
   it('a save survives a JSON round trip and stays deterministic', () => {
     const save = newGame('Me', look, 'parkour', 'rooftops', 5);
     const copy = JSON.parse(JSON.stringify(save));
-    expect(playFight(save, 1)).toEqual(playFight(copy, 1));
+    expect(playAuto(save, 1)).toEqual(playAuto(copy, 1));
   });
 
   it('cannot choose an upgrade that is not offered', () => {
     const save = newGame('Me', look, 'parkour', 'rooftops', 5);
     expect(() => chooseUpgrade(save, 'gen_health')).toThrow();
+  });
+
+  it('a prepared fight is reused, so the opponent cannot be rerolled', () => {
+    const save = newGame('Me', look, 'tamer', 'metro', 9);
+    const first = prepareFight(save, 1);
+    expect(prepareFight(save, 1)).toBe(first);
+    expect(save.daily.used).toBe(1);
+  });
+
+  it('tactics and warm-up are locked once the fight starts', () => {
+    const save = newGame('Me', look, 'bouncer', 'port', 3);
+    prepareFight(save, 1);
+    recordWarmup(save, 80);
+    recordWarmup(save, 100);
+    startFight(save, 'defensive', []);
+    const locked = startFight(save, 'aggressive', ['bat']);
+    expect(locked).toEqual({ stance: 'defensive', weapons: [], warmup: 80 });
+  });
+});
+
+describe('skill', () => {
+  const a = generateOpponent(10, new Rng(11), 'brawler');
+  const b = generateOpponent(10, new Rng(12), 'bouncer');
+
+  it('stops at a special strike until the input is given, keeping the same prefix', () => {
+    const partial = runFight(a, b, 42, { a: { interactive: true } });
+    expect(partial.winner).toBeNull();
+    const last = partial.events.at(-1)!;
+    expect(last).toMatchObject({ t: 'special', actor: 0, index: 0, quality: null });
+
+    const next = runFight(a, b, 42, { a: { interactive: true, specials: [90] } });
+    expect(next.events.slice(0, partial.events.length - 1)).toEqual(partial.events.slice(0, -1));
+    expect(next.events[partial.events.length - 1]).toMatchObject({ t: 'special', quality: 90 });
+    // Specials cannot be dodged, but a shield can still block them.
+    expect(next.events[partial.events.length]).toMatchObject({ actor: 0, kind: 'special' });
+    expect(['hit', 'block']).toContain(next.events[partial.events.length]!.t);
+  });
+
+  it('a failed special plays a normal turn', () => {
+    const log = runFight(a, b, 42, { a: { interactive: true, specials: [0, 0] } });
+    expect(log.winner).not.toBeNull();
+    expect(log.events.some((e) => (e.t === 'hit' || e.t === 'block') && e.kind === 'special')).toBe(false);
+  });
+
+  it('non-interactive fights never ask for input', () => {
+    for (let seed = 0; seed < 50; seed++) expect(runFight(a, b, seed).winner).not.toBeNull();
+  });
+
+  it('loadout keeps only owned weapons, at most 3', () => {
+    const c = createCharacter('W', look, 'bouncer', 'port');
+    c.weapons.push('chain', 'umbrella', 'skateboard');
+    expect(loadoutFor(c, ['chain', 'traffic_sign', 'umbrella'])).toEqual(['chain', 'umbrella']);
+    expect(loadoutFor(c)).toHaveLength(3);
+  });
+
+  it('warm-up bonus is capped at 5%', () => {
+    expect(warmupBonus(0)).toBe(0);
+    expect(warmupBonus(100)).toBe(5);
+    expect(warmupBonus(500)).toBe(5);
   });
 });

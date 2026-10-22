@@ -315,3 +315,151 @@ p {
 .loss {
   color: var(--bad);
 }
+
+.arena,
+.screen.prefight {
+  position: relative;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  touch-action: none;
+  user-select: none;
+}
+
+.overlay.timing {
+  background: rgba(10, 8, 18, 0.55);
+  cursor: pointer;
+}
+
+.timing-label {
+  font-size: 10px;
+  color: var(--accent);
+  text-align: center;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.timing-bar {
+  position: relative;
+  width: 90%;
+  height: 22px;
+  background: #111;
+  border: 2px solid var(--text);
+}
+
+.timing-zone {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 0;
+  bottom: 0;
+  background: rgba(251, 146, 60, 0.35);
+}
+
+.timing-perfect {
+  position: absolute;
+  left: 46%;
+  right: 46%;
+  top: 0;
+  bottom: 0;
+  background: var(--accent);
+}
+
+.timing-marker {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 4px;
+  margin-left: -2px;
+  background: #fff;
+  box-shadow: 0 0 0 2px #000;
+}
+
+.overlay.warmup {
+  position: fixed;
+  background: var(--bg);
+  justify-content: flex-start;
+  padding-top: 32px;
+}
+
+.warmup-status {
+  font-size: 12px;
+}
+
+.warmup-field {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  flex: 1;
+  max-height: 70vh;
+  background: var(--panel);
+  border: 2px solid var(--border);
+}
+
+.warmup-target {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border: 4px solid #fff;
+  background: radial-gradient(circle, #ef4444 30%, #fff 31%, #fff 45%, #ef4444 46%);
+  padding: 0;
+  cursor: pointer;
+  animation: pop 0.95s linear forwards;
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.4);
+  }
+  15% {
+    transform: scale(1);
+  }
+  80% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+.versus-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.versus-row .preview {
+  min-height: 0;
+  flex-shrink: 0;
+}
+
+.vs {
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.foe {
+  gap: 6px;
+}
+
+.chip.toggle {
+  font-family: var(--font);
+  color: var(--text);
+  cursor: pointer;
+  padding: 8px 10px;
+}
+
+.chip.toggle.selected {
+  border-color: var(--accent);
+  background: #3a3060;
+}
