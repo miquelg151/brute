@@ -1,11 +1,11 @@
 // Pre-fight strategy: the choices a player makes after reading the opponent, and the
 // opponent traits that tell them which choice is good. Each option names the trait it
 // is strong against; `npm run balance` checks that this advice is actually true.
-import { CLASSES, ORIGINS, WEAPONS } from './catalog';
+import { CLASSES, ORIGINS, SPELLS, WEAPONS } from './catalog';
 import { maxHpFor } from './character';
 import { addStats, type Character } from './types';
 
-export type Trait = 'tough' | 'fragile' | 'many_hits' | 'heavy_hitter' | 'has_pets' | 'counters';
+export type Trait = 'tough' | 'fragile' | 'many_hits' | 'heavy_hitter' | 'has_pets' | 'counters' | 'magic_user';
 
 export interface TraitDef {
   id: Trait;
@@ -20,6 +20,7 @@ export const TRAITS: Record<Trait, TraitDef> = {
   heavy_hitter: { id: 'heavy_hitter', name: 'Heavy hitter', description: 'Few hits, but they hurt.' },
   has_pets: { id: 'has_pets', name: 'Has pets', description: 'Animals fight on their side.' },
   counters: { id: 'counters', name: 'Counters', description: 'Strikes back after dodging a melee hit.' },
+  magic_user: { id: 'magic_user', name: 'Uses magic', description: 'Spells ignore armor and shields, but can be dodged.' },
 };
 
 /** What a player can read about an opponent before the fight. */
@@ -35,6 +36,7 @@ export function traitsOf(c: Character): Trait[] {
   if (c.weapons.some((w) => WEAPONS[w]?.heavy) || stats.strength >= 8) traits.push('heavy_hitter');
   if (c.pets.length > 0) traits.push('has_pets');
   if (c.skills.includes('counter')) traits.push('counters');
+  if (c.skills.some((s) => SPELLS[s])) traits.push('magic_user');
   return traits;
 }
 
@@ -43,7 +45,7 @@ export interface Effect {
   text: string;
   good: boolean;
   /** Set when the effect changes a single number, so the UI can show it as icon + value. */
-  stat?: { name: 'damage' | 'armor' | 'dodge'; value: string };
+  stat?: { name: 'damage' | 'armor' | 'dodge' | 'stamina'; value: string };
 }
 
 export interface TacticOption<Id extends string> {
@@ -64,26 +66,29 @@ export interface StanceDef extends TacticOption<Stance> {
   armor: number;
   /** Percent added to dodge chance. A positive value also raises the dodge cap by as much. */
   dodge: number;
+  /** Percent multiplier on the stamina cost of actions. */
+  stamina: number;
 }
 
-const stance = (id: Stance, name: string, damage: number, armor: number, dodge: number, strongVs: Trait | null): StanceDef => {
+const stance = (id: Stance, name: string, damage: number, armor: number, dodge: number, stamina: number, strongVs: Trait | null): StanceDef => {
   const effects: Effect[] = [];
-  const add = (value: number, name: 'damage' | 'armor' | 'dodge', label: string, unit: string) => {
+  const add = (value: number, name: 'damage' | 'armor' | 'dodge' | 'stamina', label: string, unit: string, good: boolean) => {
     if (value === 0) return;
     const shown = `${value > 0 ? '+' : ''}${value}${unit}`;
-    effects.push({ text: `${label} ${shown}`, good: value > 0, stat: { name, value: shown } });
+    effects.push({ text: `${label} ${shown}`, good, stat: { name, value: shown } });
   };
-  add(damage, 'damage', 'Damage', '%');
-  add(armor, 'armor', 'Armor', '');
-  add(dodge, 'dodge', 'Dodge', '%');
-  return { id, name, damage, armor, dodge, effects, strongVs };
+  add(damage, 'damage', 'Damage', '%', damage > 0);
+  add(armor, 'armor', 'Armor', '', armor > 0);
+  add(dodge, 'dodge', 'Dodge', '%', dodge > 0);
+  add(stamina - 100, 'stamina', 'Stamina use', '%', stamina < 100);
+  return { id, name, damage, armor, dodge, stamina, effects, strongVs };
 };
 
 export const STANCES: Record<Stance, StanceDef> = {
-  balanced: stance('balanced', 'Balanced', 0, 0, 0, null),
-  aggressive: stance('aggressive', 'Aggressive', 18, -1, -8, 'tough'),
-  defensive: stance('defensive', 'Defensive', -15, 2, 0, 'many_hits'),
-  agile: stance('agile', 'Agile', -5, 0, 15, 'heavy_hitter'),
+  balanced: stance('balanced', 'Balanced', 0, 0, 0, 100, null),
+  aggressive: stance('aggressive', 'Aggressive', 20, 0, -5, 150, 'tough'),
+  defensive: stance('defensive', 'Defensive', -15, 2, 0, 70, 'many_hits'),
+  agile: stance('agile', 'Agile', -5, 0, 15, 110, 'magic_user'),
 };
 
 // --- Target -----------------------------------------------------------------

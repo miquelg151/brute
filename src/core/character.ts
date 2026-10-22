@@ -16,6 +16,7 @@ export function createCharacter(name: string, appearance: Appearance, classId: C
     weapons: cls.startWeapon ? [cls.startWeapon] : [],
     skills: [cls.startSkill],
     pets: cls.startPet ? [cls.startPet] : [],
+    gear: [],
   };
 }
 

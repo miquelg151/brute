@@ -6,7 +6,8 @@
 import {
   CLASS_IDS,
   Rng,
-  SPECIAL_TURNS,
+  DEFAULT_PLAN,
+  ROUNDS,
   STANCES,
   STANCE_IDS,
   TARGETS,
@@ -33,7 +34,8 @@ let problems = 0;
 // Each matchup builds fresh random characters per fight and swaps sides every
 // other fight so initiative ties do not bias the result.
 // Some rock-paper-scissors between classes is fine; each class overall should be even.
-const LEVELS = [1, 5, 10, 20];
+// LEVELS=10,20 npm run balance ... measures only those levels.
+const LEVELS = process.env.LEVELS ? process.env.LEVELS.split(",").map(Number) : [1, 5, 10, 20];
 const CLASS_MIN = 0.45;
 const CLASS_MAX = 0.55;
 const MATCHUP_MIN = 0.35;
@@ -96,8 +98,10 @@ function skillWinRate(classId: ClassId, quality: number, warmup: number): number
     const rng = new Rng(mixSeed(424242 + CLASS_IDS.indexOf(classId), i));
     const ca = generateOpponent(SKILL_LEVEL, rng, classId);
     const cb = generateOpponent(SKILL_LEVEL, rng, classId);
+    // A skilled player times every special; breaks keep the same plan.
+    const breaks = Array.from({ length: ROUNDS - 1 }, () => ({ ...DEFAULT_PLAN, weapons: ca.weapons, recover: false }));
     const log = runFight(ca, cb, rng.next(), {
-      a: { interactive: true, specials: SPECIAL_TURNS.map(() => quality), warmup },
+      a: { interactive: true, specials: Array.from({ length: ROUNDS }, () => quality), breaks, warmup },
     });
     if (log.winner === 0) wins++;
   }

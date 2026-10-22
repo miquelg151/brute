@@ -1,30 +1,43 @@
 import { createCharacter } from './character';
-import { loadoutFor, runFight, type FightLog } from './fight';
+import { gearFor, loadoutFor, runFight, type BreakChoice, type FightLog, type GearChoice } from './fight';
 import { generateOpponent } from './opponents';
 import { XP_LOSS, XP_WIN, addXp, applyUpgrade, rollOffer, useFight, type DailyFights } from './progression';
 import { Rng, mixSeed } from './rng';
 import { DEFAULT_PLAN, STANCE_IDS, TARGET_IDS, WEAPON_STYLE_IDS, type Plan } from './tactics';
 import type { Appearance, Character, ClassId } from './types';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** What the player decides before a fight. Locked once the fight starts. */
 export interface Tactics extends Plan {
   weapons: string[];
+  gear: GearChoice;
   /** Warm-up minigame score, 0-100 (0 if skipped). */
   warmup: number;
+}
+
+/** Player inputs made during the fight, saved as they happen so a reload resumes the same fight. */
+export interface FightInputs {
+  specials: number[];
+  breaks: BreakChoice[];
 }
 
 /** The fight the player is about to play. Stored so reloading never rerolls the opponent. */
 export interface PendingFight {
   opponent: Character;
-  /** The opponent's own plan, visible to the player before choosing theirs. */
+  /** The opponent's own plan for the first round. */
   opponentPlan: Plan;
+  /**
+   * Live fights are against a connected player who chooses at the same time, so their plan
+   * stays hidden. Asynchronous fights (the only kind for now) reveal it.
+   */
+  live: boolean;
   seed: number;
   /** Warm-up score, set once the minigame is played (it can only be played once). */
   warmup: number | null;
   /** Set when the fight starts; from then on the choices cannot change. */
   tactics: Tactics | null;
+  inputs: FightInputs;
 }
 
 /** Everything the game persists. Plain JSON, designed to be synced to a server later. */
@@ -62,7 +75,7 @@ export function newGame(name: string, appearance: Appearance, classId: ClassId, 
 }
 
 export function defaultTactics(c: Character): Tactics {
-  return { ...DEFAULT_PLAN, weapons: loadoutFor(c), warmup: 0 };
+  return { ...DEFAULT_PLAN, weapons: loadoutFor(c), gear: gearFor(c), warmup: 0 };
 }
 
 /** Offers are derived from the save seed and level, so reloading never rerolls them. */
@@ -86,7 +99,15 @@ export function prepareFight(save: SaveData, today: number): PendingFight | null
   const level = Math.max(1, save.character.level + rng.int(-1, 2));
   const opponent = generateOpponent(level, rng);
   const opponentPlan: Plan = { stance: rng.pick(STANCE_IDS), target: rng.pick(TARGET_IDS), weaponStyle: rng.pick(WEAPON_STYLE_IDS) };
-  save.pendingFight = { opponent, opponentPlan, seed: rng.next(), warmup: null, tactics: null };
+  save.pendingFight = {
+    opponent,
+    opponentPlan,
+    live: false,
+    seed: rng.next(),
+    warmup: null,
+    tactics: null,
+    inputs: { specials: [], breaks: [] },
+  };
   return save.pendingFight;
 }
 
@@ -97,7 +118,7 @@ export function recordWarmup(save: SaveData, score: number): void {
 }
 
 /** Locks the player's choices. Later calls keep the first choice. */
-export function startFight(save: SaveData, plan: Plan, weapons: string[]): Tactics {
+export function startFight(save: SaveData, plan: Plan, weapons: string[], gear?: GearChoice): Tactics {
   const fight = save.pendingFight;
   if (!fight) throw new Error('No pending fight');
   fight.tactics ??= {
@@ -105,25 +126,34 @@ export function startFight(save: SaveData, plan: Plan, weapons: string[]): Tacti
     target: plan.target,
     weaponStyle: plan.weaponStyle,
     weapons: loadoutFor(save.character, weapons),
+    gear: gearFor(save.character, gear),
     warmup: fight.warmup ?? 0,
   };
   return fight.tactics;
 }
 
-/** Simulates the started fight with the special-strike inputs given so far. */
-export function simulateFight(save: SaveData, specials: number[]): FightLog {
+export function recordSpecial(save: SaveData, quality: number): void {
+  save.pendingFight?.inputs.specials.push(Math.max(0, Math.min(100, Math.round(quality))));
+}
+
+export function recordBreak(save: SaveData, choice: BreakChoice): void {
+  save.pendingFight?.inputs.breaks.push({ ...choice, weapons: loadoutFor(save.character, choice.weapons) });
+}
+
+/** Simulates the started fight with the inputs recorded so far. Stops at the next missing input. */
+export function simulateFight(save: SaveData): FightLog {
   const fight = save.pendingFight;
   if (!fight?.tactics) throw new Error('Fight not started');
   return runFight(save.character, fight.opponent, fight.seed, {
-    a: { ...fight.tactics, interactive: true, specials },
+    a: { ...fight.tactics, interactive: true, specials: fight.inputs.specials, breaks: fight.inputs.breaks },
     b: { ...fight.opponentPlan },
   });
 }
 
 /** Resolves the started fight with all inputs, awards XP and clears it. */
-export function finishFight(save: SaveData, specials: number[]): FightResult {
+export function finishFight(save: SaveData): FightResult {
   const fight = save.pendingFight!;
-  const log = simulateFight(save, specials);
+  const log = simulateFight(save);
   if (log.winner === null) throw new Error('Fight still waiting for input');
 
   const won = log.winner === 0;

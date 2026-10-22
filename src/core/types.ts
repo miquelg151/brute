@@ -3,9 +3,11 @@ export interface Stats {
   strength: number;
   agility: number;
   speed: number;
+  /** Spell power. Only the Mystic starts with any. */
+  magic: number;
 }
 
-export const ZERO_STATS: Stats = { health: 0, strength: 0, agility: 0, speed: 0 };
+export const ZERO_STATS: Stats = { health: 0, strength: 0, agility: 0, speed: 0, magic: 0 };
 
 export function addStats(a: Stats, b: Partial<Stats>): Stats {
   return {
@@ -13,6 +15,7 @@ export function addStats(a: Stats, b: Partial<Stats>): Stats {
     strength: a.strength + (b.strength ?? 0),
     agility: a.agility + (b.agility ?? 0),
     speed: a.speed + (b.speed ?? 0),
+    magic: a.magic + (b.magic ?? 0),
   };
 }
 
@@ -31,7 +34,7 @@ export const APPEARANCE_OPTIONS: Record<keyof Appearance, number> = {
   outfitColor: 8,
 };
 
-export type ClassId = 'brawler' | 'parkour' | 'bouncer' | 'tamer';
+export type ClassId = 'brawler' | 'parkour' | 'bouncer' | 'tamer' | 'mystic';
 
 export interface Character {
   name: string;
@@ -46,4 +49,6 @@ export interface Character {
   weapons: string[];
   skills: string[];
   pets: string[];
+  /** Owned armor and accessories; one of each is worn in a fight. */
+  gear: string[];
 }

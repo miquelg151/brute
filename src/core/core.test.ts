@@ -17,9 +17,14 @@ import {
   newGame,
   prepareFight,
   recordWarmup,
+  recordBreak,
+  recordSpecial,
   rollOffer,
   traitsOf,
   simulateFight,
+  gearFor,
+  type BreakChoice,
+  type Character,
   startFight,
   warmupBonus,
   runFight,
@@ -32,13 +37,31 @@ import {
 
 const look: Appearance = { skinTone: 0, hairStyle: 0, hairColor: 0, outfitColor: 0 };
 
-/** Plays a whole daily fight like the UI does, answering every special with `quality`. */
+const keep = (weapons: string[], recover = false): BreakChoice => ({ ...DEFAULT_PLAN, weapons, recover });
+
+/** Plays a whole daily fight like the UI does: every special gets `quality`, every break keeps the plan. */
 function playAuto(save: SaveData, day: number, quality = 50) {
   if (!prepareFight(save, day)) return null;
   startFight(save, DEFAULT_PLAN, save.character.weapons);
+  for (let log = simulateFight(save); log.winner === null; log = simulateFight(save)) {
+    const last = log.events.at(-1)!;
+    if (last.t === 'special') recordSpecial(save, quality);
+    else recordBreak(save, keep(save.character.weapons));
+  }
+  return finishFight(save);
+}
+
+/** Runs an interactive fight for side a to the end, answering everything the same way. */
+function playThrough(a: Character, b: Character, seed: number, quality: number, recover = false) {
   const specials: number[] = [];
-  while (simulateFight(save, specials).winner === null) specials.push(quality);
-  return finishFight(save, specials);
+  const breaks: BreakChoice[] = [];
+  for (;;) {
+    const log = runFight(a, b, seed, { a: { interactive: true, specials, breaks } });
+    if (log.winner !== null) return { log, specials, breaks };
+    const last = log.events.at(-1)!;
+    if (last.t === 'special') specials.push(quality);
+    else breaks.push(keep(a.weapons, recover));
+  }
 }
 
 describe('Rng', () => {
@@ -203,7 +226,14 @@ describe('game', () => {
     recordWarmup(save, 100);
     startFight(save, { stance: 'defensive', target: 'pets', weaponStyle: 'keep' }, []);
     const locked = startFight(save, DEFAULT_PLAN, ['bat']);
-    expect(locked).toEqual({ stance: 'defensive', target: 'pets', weaponStyle: 'keep', weapons: [], warmup: 80 });
+    expect(locked).toEqual({
+      stance: 'defensive',
+      target: 'pets',
+      weaponStyle: 'keep',
+      weapons: [],
+      gear: { armor: null, accessory: null },
+      warmup: 80,
+    });
   });
 });
 
@@ -211,23 +241,34 @@ describe('skill', () => {
   const a = generateOpponent(10, new Rng(11), 'brawler');
   const b = generateOpponent(10, new Rng(12), 'bouncer');
 
-  it('stops at a special strike until the input is given, keeping the same prefix', () => {
-    const partial = runFight(a, b, 42, { a: { interactive: true } });
-    expect(partial.winner).toBeNull();
-    const last = partial.events.at(-1)!;
-    expect(last).toMatchObject({ t: 'special', actor: 0, index: 0, quality: null });
+  it('stops at each input and keeps the same events before it', () => {
+    const specials: number[] = [];
+    const breaks: BreakChoice[] = [];
+    let previous: FightLog | null = null;
+    for (let step = 0; step < 20; step++) {
+      const log = runFight(a, b, 42, { a: { interactive: true, specials, breaks } });
+      if (previous) expect(log.events.slice(0, previous.events.length - 1)).toEqual(previous.events.slice(0, -1));
+      if (log.winner !== null) return;
+      const last = log.events.at(-1)!;
+      expect(['special', 'break']).toContain(last.t);
+      if (last.t === 'special') specials.push(90);
+      else breaks.push(keep(a.weapons));
+      previous = log;
+    }
+    throw new Error('fight never ended');
+  });
 
-    const next = runFight(a, b, 42, { a: { interactive: true, specials: [90] } });
-    expect(next.events.slice(0, partial.events.length - 1)).toEqual(partial.events.slice(0, -1));
-    expect(next.events[partial.events.length - 1]).toMatchObject({ t: 'special', quality: 90 });
-    // Specials cannot be dodged, but a shield can still block them.
-    expect(next.events[partial.events.length]).toMatchObject({ actor: 0, kind: 'special' });
-    expect(['hit', 'block']).toContain(next.events[partial.events.length]!.t);
+  it('a special strike cannot be dodged', () => {
+    const { log } = playThrough(a, b, 42, 90);
+    const i = log.events.findIndex((e) => e.t === 'special' && e.quality === 90);
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(log.events[i + 1]).toMatchObject({ actor: 0, kind: 'special' });
+    // A shield can still block it.
+    expect(['hit', 'block']).toContain(log.events[i + 1]!.t);
   });
 
   it('a failed special plays a normal turn', () => {
-    const log = runFight(a, b, 42, { a: { interactive: true, specials: [0, 0] } });
-    expect(log.winner).not.toBeNull();
+    const { log } = playThrough(a, b, 42, 0);
     expect(log.events.some((e) => (e.t === 'hit' || e.t === 'block') && e.kind === 'special')).toBe(false);
   });
 
@@ -246,6 +287,101 @@ describe('skill', () => {
     expect(warmupBonus(0)).toBe(0);
     expect(warmupBonus(100)).toBe(5);
     expect(warmupBonus(500)).toBe(5);
+  });
+});
+
+describe('rounds', () => {
+  const a = generateOpponent(8, new Rng(31), 'bouncer');
+  const b = generateOpponent(8, new Rng(32), 'bouncer');
+
+  it('fights have at most 3 rounds with a break between them', () => {
+    for (let seed = 0; seed < 40; seed++) {
+      const log = runFight(a, b, seed);
+      const rounds = log.events.filter((e) => e.t === 'round').length;
+      const breaks = log.events.filter((e) => e.t === 'break').length;
+      expect(rounds).toBeGreaterThanOrEqual(1);
+      expect(rounds).toBeLessThanOrEqual(3);
+      expect(breaks).toBeLessThanOrEqual(rounds - 1 + (log.events.at(-1)?.t === 'death' ? 0 : 1));
+    }
+  });
+
+  it('at a break the automatic side has already chosen, the player has not', () => {
+    const log = runFight(a, b, 1, { a: { interactive: true, specials: [50, 50, 50] } });
+    const last = log.events.at(-1)!;
+    if (last.t !== 'break') return; // the fight ended in round 1
+    expect(last.choices[0]).toBeNull();
+    expect(last.choices[1]).not.toBeNull();
+  });
+
+  it('recovering at a break gives more stamina', () => {
+    const staminaAfterBreak = (recover: boolean) => {
+      const { log } = playThrough(a, b, 5, 50, recover);
+      const br = log.events.findIndex((e) => e.t === 'break');
+      if (br < 0) return null;
+      const res = log.events.slice(br).find((e) => e.t === 'res' && e.actor === 0);
+      return res && res.t === 'res' ? res.stamina : null;
+    };
+    const rested = staminaAfterBreak(true);
+    const normal = staminaAfterBreak(false);
+    if (rested !== null && normal !== null) expect(rested).toBeGreaterThanOrEqual(normal);
+  });
+
+  it('an aggressive stance burns more stamina', () => {
+    // Stamina left after the first action, which costs the same base amount in both fights.
+    const afterFirst = (stance: 'aggressive' | 'defensive') => {
+      const log = runFight(a, b, 9, { a: { stance } });
+      const res = log.events.find((e) => e.t === 'res' && e.actor === 0 && e.stamina < 100);
+      return res && res.t === 'res' ? res.stamina : 100;
+    };
+    expect(afterFirst('aggressive')).toBeLessThan(afterFirst('defensive'));
+  });
+});
+
+describe('magic and gear', () => {
+  const mystic = generateOpponent(6, new Rng(41), 'mystic');
+
+  it('mystics cast spells', () => {
+    const foe = generateOpponent(6, new Rng(42), 'brawler');
+    const casts = Array.from({ length: 20 }, (_, seed) => runFight(mystic, foe, seed)).flatMap((l) => l.events.filter((e) => e.t === 'cast'));
+    expect(casts.length).toBeGreaterThan(0);
+  });
+
+  it('magic ignores armor but not magic resistance', () => {
+    const spellDamage = (target: Character) => {
+      const log = runFight(mystic, target, 3);
+      return log.events.filter((e) => e.t === 'hit' && e.kind === 'spell' && e.actor === 0).map((e) => (e.t === 'hit' ? e.damage : 0));
+    };
+    const plain = createCharacter('P', look, 'brawler', 'port');
+    const armored = { ...plain, skills: [...plain.skills, 'iron_skin'] };
+    const charmed = { ...plain, gear: ['charm'] };
+    const base = spellDamage(plain);
+    expect(base.length).toBeGreaterThan(0);
+    // Armor changes how long the fight lasts, so compare the spells both fights share.
+    const withArmor = spellDamage(armored);
+    const shared = Math.min(base.length, withArmor.length);
+    expect(withArmor.slice(0, shared)).toEqual(base.slice(0, shared));
+    expect(spellDamage(charmed).reduce((x, y) => x + y, 0)).toBeLessThan(base.reduce((x, y) => x + y, 0));
+  });
+
+  it('spirits vanish at the end of a round', () => {
+    const caster = { ...mystic, skills: [...mystic.skills, 'spirit'] };
+    for (let seed = 0; seed < 40; seed++) {
+      const log = runFight(caster, generateOpponent(6, new Rng(seed), 'bouncer'), seed);
+      const spirit = log.roster.findIndex((u) => u.summoned);
+      let out = false;
+      for (const e of log.events) {
+        if (e.t === 'summon' && e.actor === spirit) out = true;
+        if ((e.t === 'unsummon' || e.t === 'death') && e.actor === spirit) out = false;
+        if (e.t === 'break') expect(out).toBe(false);
+      }
+    }
+  });
+
+  it('only owned gear can be worn, one piece per slot', () => {
+    const c = createCharacter('G', look, 'bouncer', 'port');
+    c.gear.push('leather_jacket', 'riot_vest', 'charm');
+    expect(gearFor(c)).toEqual({ armor: 'leather_jacket', accessory: 'charm' });
+    expect(gearFor(c, { armor: 'riot_vest', accessory: 'sneakers' })).toEqual({ armor: 'riot_vest', accessory: null });
   });
 });
 
