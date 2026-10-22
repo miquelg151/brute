@@ -1,6 +1,7 @@
 import { CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, type Appearance, type ClassId, type SaveData } from '../../core';
 import { h, pixelArt } from '../dom';
 import { CLASS_COLORS, HAIR_STYLE_NAMES } from '../palette';
+import { statRow } from '../icons';
 import { drawFighter } from '../sprites';
 
 const LOOK_ROWS: { key: keyof Appearance; label: string }[] = [
@@ -92,7 +93,7 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
       {},
       h('div', { class: 'choice-title', style: `color:${CLASS_COLORS[id]}` }, c.name),
       h('div', { class: 'choice-desc' }, c.description),
-      h('div', { class: 'choice-stats' }, `HP ${s.health}, STR ${s.strength}, AGI ${s.agility}, SPD ${s.speed}`),
+      h('div', { class: 'choice-stats' }, statRow(s.health, s.strength, s.agility, s.speed)),
       h('div', { class: 'choice-stats' }, `Starts with ${SKILLS[c.startSkill]?.name ?? ''}`),
     );
   };

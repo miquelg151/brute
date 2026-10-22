@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { finishFight, simulateFight, type SaveData } from '../../core';
 import { ARENA_H, ARENA_W, ReplayScene } from '../../fight/ReplayScene';
 import { h } from '../dom';
+import { iconValue } from '../icons';
 import { playSpecialStrike } from '../minigames';
 
 const SPEEDS = [1, 2, 4];
@@ -38,7 +39,7 @@ export function renderFight(root: HTMLElement, save: SaveData, onSaved: () => vo
       onSaved();
       summary.append(
         h('div', { class: `result ${result.won ? 'win' : 'loss'}` }, result.won ? `You beat ${opponent.name}` : `${opponent.name} won`),
-        h('div', { class: 'dim' }, `+${result.xpGained} XP${result.levelsGained > 0 ? '. You levelled up!' : ''}`),
+        h('div', { class: 'dim' }, iconValue('xp', 'Experience', `+${result.xpGained}`), result.levelsGained > 0 ? ' Level up!' : ''),
       );
       controls.classList.add('hidden');
       summary.classList.remove('hidden');

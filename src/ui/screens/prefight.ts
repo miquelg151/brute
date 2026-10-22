@@ -25,6 +25,7 @@ import { maxHpOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
 import { playWarmup } from '../minigames';
 import { CLASS_COLORS } from '../palette';
+import { TRAIT_ICONS, icon, iconValue, statRow } from '../icons';
 import { drawFighter } from '../sprites';
 
 interface PrefightActions {
@@ -53,11 +54,25 @@ function optionGroup<Id extends string>(
         'ul',
         { class: 'effects' },
         ...(def.effects.length
-          ? def.effects.map((e) => h('li', { class: e.good ? 'up' : 'down' }, h('span', { 'aria-hidden': 'true' }, e.good ? '▲ ' : '▼ '), e.text))
+          ? def.effects.map((e) =>
+              h(
+                'li',
+                { class: e.good ? 'up' : 'down' },
+                h('span', { 'aria-hidden': 'true' }, e.good ? '▲ ' : '▼ '),
+                e.stat ? iconValue(e.stat.name, e.text, e.stat.value) : e.text,
+              ),
+            )
           : [h('li', { class: 'flat' }, 'No bonus, no weakness')]),
       ),
       def.strongVs
-        ? h('div', { class: matches ? 'strong-vs match' : 'strong-vs' }, matches ? '✓ ' : '', `Strong against ${TRAITS[def.strongVs].name.toLowerCase()}`)
+        ? h(
+            'div',
+            { class: matches ? 'strong-vs match' : 'strong-vs' },
+            matches ? '✓ ' : '',
+            'Strong against ',
+            icon(TRAIT_ICONS[def.strongVs] ?? 'skill', TRAITS[def.strongVs].name, 2),
+            ` ${TRAITS[def.strongVs].name.toLowerCase()}`,
+          )
         : '',
     );
     btn.addEventListener('click', () => {
@@ -140,7 +155,7 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
     h('h1', {}, 'Next fight'),
     h(
       'div',
-      { class: 'poster' },
+      { class: 'poster taped' },
       side(pixelArt(drawFighter(me.appearance, me.classId), 4), me.name, h('div', { class: 'dim small' }, `Level ${me.level}`)),
       h('div', { class: 'vs' }, 'VS'),
       side(
@@ -157,23 +172,30 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
         'ul',
         { class: 'traits' },
         ...(foeTraits.length
-          ? foeTraits.map((t) => h('li', {}, h('span', { class: 'trait' }, TRAITS[t].name), ' ', h('span', { class: 'dim small' }, TRAITS[t].description)))
+          ? foeTraits.map((t) =>
+              h(
+                'li',
+                { class: 'trait-row' },
+                icon(TRAIT_ICONS[t] ?? 'skill', TRAITS[t].name, 2),
+                h('span', {}, h('span', { class: 'trait' }, TRAITS[t].name), ' ', h('span', { class: 'dim small' }, TRAITS[t].description)),
+              ),
+            )
           : [h('li', { class: 'dim' }, 'Nothing stands out.')]),
       ),
       h(
         'dl',
         { class: 'intel' },
-        h('dt', {}, 'Plan'),
+        h('dt', {}, icon('stance', 'Plan')),
         h('dd', {}, `${STANCES[foePlan.stance].name}, ${TARGETS[foePlan.target].name.toLowerCase()}, ${WEAPON_STYLES[foePlan.weaponStyle].name.toLowerCase()} weapons`),
-        h('dt', {}, 'Stats'),
-        h('dd', {}, `HP ${maxHpOf(foe)}, STR ${foeStats.strength}, AGI ${foeStats.agility}, SPD ${foeStats.speed}`),
-        h('dt', {}, 'Origin'),
+        h('dt', { class: 'sr-only' }, 'Stats'),
+        h('dd', { class: 'span-2' }, statRow(maxHpOf(foe), foeStats.strength, foeStats.agility, foeStats.speed)),
+        h('dt', {}, icon('origin', 'Origin')),
         h('dd', {}, ORIGINS[foe.originId]?.name ?? ''),
-        h('dt', {}, 'Skills'),
+        h('dt', {}, icon('skill', 'Skills')),
         h('dd', {}, names(foe.skills, (id) => SKILLS[id]?.name)),
-        h('dt', {}, 'Weapons'),
+        h('dt', {}, icon('weapon', 'Weapons')),
         h('dd', {}, names(foe.weapons, (id) => WEAPONS[id]?.name)),
-        h('dt', {}, 'Pets'),
+        h('dt', {}, icon('pet', 'Pets')),
         h('dd', {}, names(foe.pets, (id) => PETS[id]?.name)),
       ),
     ),

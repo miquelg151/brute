@@ -42,6 +42,8 @@ export function traitsOf(c: Character): Trait[] {
 export interface Effect {
   text: string;
   good: boolean;
+  /** Set when the effect changes a single number, so the UI can show it as icon + value. */
+  stat?: { name: 'damage' | 'armor' | 'dodge'; value: string };
 }
 
 export interface TacticOption<Id extends string> {
@@ -66,12 +68,14 @@ export interface StanceDef extends TacticOption<Stance> {
 
 const stance = (id: Stance, name: string, damage: number, armor: number, dodge: number, strongVs: Trait | null): StanceDef => {
   const effects: Effect[] = [];
-  const add = (value: number, label: string, unit: string) => {
-    if (value !== 0) effects.push({ text: `${label} ${value > 0 ? '+' : ''}${value}${unit}`, good: value > 0 });
+  const add = (value: number, name: 'damage' | 'armor' | 'dodge', label: string, unit: string) => {
+    if (value === 0) return;
+    const shown = `${value > 0 ? '+' : ''}${value}${unit}`;
+    effects.push({ text: `${label} ${shown}`, good: value > 0, stat: { name, value: shown } });
   };
-  add(damage, 'Damage', '%');
-  add(armor, 'Armor', '');
-  add(dodge, 'Dodge', '%');
+  add(damage, 'damage', 'Damage', '%');
+  add(armor, 'armor', 'Armor', '');
+  add(dodge, 'dodge', 'Dodge', '%');
   return { id, name, damage, armor, dodge, effects, strongVs };
 };
 

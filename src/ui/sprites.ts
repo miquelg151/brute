@@ -10,7 +10,7 @@ type Rect = (x: number, y: number, w: number, h: number, color: string) => void;
 
 const OUTLINE = '#141218';
 
-function sprite(w: number, h: number, draw: (px: Px, rect: Rect) => void): HTMLCanvasElement {
+export function sprite(w: number, h: number, draw: (px: Px, rect: Rect) => void): HTMLCanvasElement {
   const grid: (string | null)[][] = Array.from({ length: h }, () => Array<string | null>(w).fill(null));
   const px: Px = (x, y, color) => {
     if (x >= 0 && y >= 0 && x < w && y < h) grid[y]![x] = color;

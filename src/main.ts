@@ -1,5 +1,7 @@
 import '@fontsource/press-start-2p/400.css';
-import '@fontsource/dotgothic16/400.css';
+import '@fontsource/permanent-marker/400.css';
+import '@fontsource/atkinson-hyperlegible/400.css';
+import '@fontsource/atkinson-hyperlegible/700.css';
 import './style.css';
 import { chooseUpgrade, dayNumber, prepareFight, recordWarmup, startFight, type SaveData } from './core';
 import { loadArt } from './ui/art';

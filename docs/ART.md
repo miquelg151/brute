@@ -91,6 +91,10 @@ for each class too, or classes without one will have no clothes.
 }
 ```
 
+Interface icons (health, strength, skill, pet...) can be replaced the same way, with an
+`"icons": { "health": "icons/health.png" }` entry. The icon names and the placeholder
+designs are in `src/ui/icons.ts`; icons are about 7 × 7 pixels.
+
 You only need the entries you have art for. Ids (like `traffic_sign`) are the ones
 in `src/core/catalog.ts`.
 

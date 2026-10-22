@@ -1,6 +1,7 @@
 import { CLASSES, FIGHTS_PER_DAY, ORIGINS, SKILLS, fightsLeft, xpToNext, type SaveData } from '../../core';
 import { maxHpOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
+import { icon, iconHeading, iconValue } from '../icons';
 import { CLASS_COLORS } from '../palette';
 import { drawFighter } from '../sprites';
 import { petSlot, pips, slot, weaponSlot } from '../widgets';
@@ -31,8 +32,8 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
     }, 3000);
   });
 
-  const stat = (value: number, label: string) =>
-    h('div', { class: 'stat' }, h('span', { class: 'stat-value' }, String(value)), h('span', { class: 'stat-label' }, label));
+  const stat = (name: 'health' | 'strength' | 'agility' | 'speed', value: number, label: string) =>
+    h('div', { class: 'stat', title: label }, icon(name, label, 3), h('span', { class: 'stat-value' }, String(value)));
 
   root.append(
     h(
@@ -49,15 +50,22 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
           h('div', {}, `Level ${c.level} `, h('span', { style: `color:${CLASS_COLORS[c.classId]}` }, CLASSES[c.classId].name)),
           h('div', { class: 'dim small' }, `From ${ORIGINS[c.originId]?.name ?? ''}`),
           h('div', { class: 'bar', role: 'img', 'aria-label': `${c.xp} of ${need} XP` }, h('div', { class: 'bar-fill', style: `width:${(100 * c.xp) / need}%` })),
-          h('div', { class: 'dim small' }, `${c.xp} / ${need} XP to level ${c.level + 1}`),
+          h('div', { class: 'dim small' }, iconValue('xp', 'Experience', `${c.xp} / ${need}`)),
         ),
       ),
-      h('div', { class: 'stats' }, stat(maxHpOf(c), 'Health'), stat(stats.strength, 'Strength'), stat(stats.agility, 'Agility'), stat(stats.speed, 'Speed')),
-      h('h2', {}, 'Weapons'),
+      h(
+        'div',
+        { class: 'stats' },
+        stat('health', maxHpOf(c), 'Health'),
+        stat('strength', stats.strength, 'Strength'),
+        stat('agility', stats.agility, 'Agility'),
+        stat('speed', stats.speed, 'Speed'),
+      ),
+      iconHeading('weapon', 'Weapons'),
       h('div', { class: 'slots' }, ...(c.weapons.length ? c.weapons.map(weaponSlot) : [slot(null, 'Fists only')])),
-      h('h2', {}, 'Pets'),
+      iconHeading('pet', 'Pets'),
       h('div', { class: 'slots' }, ...(c.pets.length ? c.pets.map(petSlot) : [slot(null, 'None yet')])),
-      h('h2', {}, 'Skills'),
+      iconHeading('skill', 'Skills'),
       h(
         'ul',
         { class: 'skill-list' },
@@ -66,8 +74,7 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
       h(
         'div',
         { class: 'today' },
-        h('span', {}, left > 0 ? `${left} fights left today` : 'No fights left today'),
-        pips(left, FIGHTS_PER_DAY, `${left} of ${FIGHTS_PER_DAY} fights left`),
+        h('span', { class: 'icon-value' }, icon('fights', 'Fights left today', 3), pips(left, FIGHTS_PER_DAY, `${left} of ${FIGHTS_PER_DAY} fights left today`)),
       ),
       fightBtn,
       resetBtn,

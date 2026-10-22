@@ -18,6 +18,8 @@ export interface ArtManifest {
   weapons?: Record<string, string>;
   /** Fight background, 320x200. */
   background?: string;
+  /** Interface icons by name (health, strength, skill...). See src/ui/icons.ts. */
+  icons?: Record<string, string>;
 }
 
 const ART_ROOT = `${import.meta.env.BASE_URL}art/`;
@@ -33,6 +35,7 @@ function collectPaths(m: ArtManifest): string[] {
     ...Object.values(f.extra ?? {}),
     ...Object.values(m.pets ?? {}),
     ...Object.values(m.weapons ?? {}),
+    ...Object.values(m.icons ?? {}),
     m.background,
   ].filter((p): p is string => typeof p === 'string' && p.length > 0);
 }
