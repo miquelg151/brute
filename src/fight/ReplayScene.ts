@@ -5,9 +5,11 @@ import { drawFighter, drawPet, drawWeapon } from '../ui/sprites';
 
 export const ARENA_W = 320;
 export const ARENA_H = 200;
+/** The canvas renders at this multiple of the pixel-art size, so text stays sharp. */
+export const ARENA_ZOOM = 3;
 const GROUND_Y = 165;
 const SCALE = 2;
-const FONT = '"Press Start 2P", monospace';
+const FONT = '"Shantell Sans Variable", sans-serif';
 
 interface UnitView {
   sprite: Phaser.GameObjects.Image;
@@ -55,6 +57,7 @@ export class ReplayScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.cameras.main.setZoom(ARENA_ZOOM).centerOn(ARENA_W / 2, ARENA_H / 2);
     this.drawBackground();
     this.createUnits();
     void this.play();
@@ -125,7 +128,7 @@ export class ReplayScene extends Phaser.Scene {
 
       if (info.isMain) {
         this.add
-          .text(info.team === 0 ? 8 : ARENA_W - 8, 6, info.name, { fontFamily: FONT, fontSize: '8px', color: '#ffffff' })
+          .text(info.team === 0 ? 8 : ARENA_W - 8, 6, info.name, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color: '#ffffff', resolution: ARENA_ZOOM })
           .setOrigin(info.team === 0 ? 0 : 1, 0)
           .setDepth(1000);
       }
@@ -146,7 +149,7 @@ export class ReplayScene extends Phaser.Scene {
   }
 
   private floatText(x: number, y: number, text: string, color: string): void {
-    const t = this.add.text(x, y, text, { fontFamily: FONT, fontSize: '8px', color, stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setDepth(2000);
+    const t = this.add.text(x, y, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color, stroke: '#000000', strokeThickness: 3, resolution: ARENA_ZOOM }).setOrigin(0.5).setDepth(2000);
     this.tweens.add({ targets: t, y: y - 18, alpha: 0, duration: 700, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
   }
 
@@ -312,7 +315,7 @@ export class ReplayScene extends Phaser.Scene {
     const won = this.log.winner === 0;
     this.add.rectangle(ARENA_W / 2, 80, ARENA_W, 34, 0x000000, 0.7).setDepth(3000);
     this.add
-      .text(ARENA_W / 2, 80, won ? 'VICTORY' : 'DEFEAT', { fontFamily: FONT, fontSize: '16px', color: won ? '#facc15' : '#f87171' })
+      .text(ARENA_W / 2, 80, won ? 'VICTORY' : 'DEFEAT', { fontFamily: FONT, fontStyle: 'bold', fontSize: '22px', color: won ? '#ffd23f' : '#ff6b6b', resolution: ARENA_ZOOM })
       .setOrigin(0.5)
       .setDepth(3001);
   }

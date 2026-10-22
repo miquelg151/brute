@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { finishFight, simulateFight, type SaveData } from '../../core';
-import { ARENA_H, ARENA_W, ReplayScene } from '../../fight/ReplayScene';
+import { ARENA_H, ARENA_W, ARENA_ZOOM, ReplayScene } from '../../fight/ReplayScene';
 import { h } from '../dom';
 import { iconValue } from '../icons';
 import { playSpecialStrike } from '../minigames';
@@ -49,8 +49,8 @@ export function renderFight(root: HTMLElement, save: SaveData, onSaved: () => vo
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: arena,
-    width: ARENA_W,
-    height: ARENA_H,
+    width: ARENA_W * ARENA_ZOOM,
+    height: ARENA_H * ARENA_ZOOM,
     pixelArt: true,
     backgroundColor: '#0b0c10',
     banner: false,

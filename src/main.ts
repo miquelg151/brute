@@ -1,7 +1,4 @@
-import '@fontsource/press-start-2p/400.css';
-import '@fontsource/permanent-marker/400.css';
-import '@fontsource/atkinson-hyperlegible/400.css';
-import '@fontsource/atkinson-hyperlegible/700.css';
+import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
 import { chooseUpgrade, dayNumber, prepareFight, recordWarmup, startFight, type SaveData } from './core';
 import { loadArt } from './ui/art';
@@ -75,9 +72,9 @@ function show(): void {
   });
 }
 
-// Phaser draws text with the pixel font, so wait for it (briefly) and for custom art before the first render.
+// Phaser draws text with the game font, so wait for it (briefly) and for custom art before the first render.
 const fontTimeout = new Promise((resolve) => setTimeout(resolve, 1500));
-const fontsReady = Promise.race([document.fonts.load('8px "Press Start 2P"'), fontTimeout]);
+const fontsReady = Promise.race([document.fonts.load('16px "Shantell Sans Variable"'), fontTimeout]);
 void Promise.all([fontsReady, loadArt()]).finally(() => {
   if (new URLSearchParams(location.search).has('gallery')) renderGallery(root);
   else show();
