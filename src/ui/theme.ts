@@ -102,6 +102,10 @@ const CSS_COLORS: Record<string, string> = {
   yellow: PAL.yellow,
   pink: PAL.pink,
   teal: PAL.teal,
+  orange: PAL.orange,
+  lime: PAL.lime,
+  cyan: PAL.cyan,
+  purple: PAL.purple,
   good: PAL.forest,
   bad: PAL.crimson,
   outline: PAL.black, // hard shadows and outlines

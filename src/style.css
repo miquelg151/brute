@@ -4,12 +4,8 @@
    palette in src/ui/theme.ts, so the interface, icons, sprites and arena always match. */
 :root {
   /* One hand-drawn family for everything; headings just use a heavier weight. */
-  /* The font is chosen in src/ui/fonts.ts; these are only the fallback. */
   --font: 'Shantell Sans Variable', 'Comic Sans MS', system-ui, sans-serif;
   --heavy: 780;
-  /* Titles, big numbers and the main button can use a louder cut of the same family. */
-  --font-display: var(--font);
-  --display-weight: var(--heavy);
 
   /* Text sizes. Only use these. */
   --t-xs: 13px; /* tags, small labels */
@@ -1092,36 +1088,136 @@ a {
   margin-top: 4px;
 }
 
-/* Titles, big numbers and the main button use the display cut of the font. */
-h1,
-h2,
-.btn-big,
-.vs,
-.result,
-.stat-value,
-.timing-label,
-.warmup-status {
-  font-family: var(--font-display);
-  font-weight: var(--display-weight);
+/* --- Title styles -----------------------------------------------------------
+   Colour, outline and effect of screen titles, headings on the wall, the big VS and
+   the main button text. The style is picked in src/ui/textStyle.ts: it sets
+   data-text="..." on <html> (or on one section of the ?styles page). Each style only
+   changes the variables below; the rules after them use the variables. */
+:root,
+[data-text] {
+  --title-color: var(--wall-text); /* screen titles (h1) */
+  --title-fill: none; /* a gradient here paints the letters */
+  --title-stroke: 0px; /* outline width */
+  --title-stroke-color: transparent;
+  --title-shadow: none;
+  --title-glow: none; /* drop-shadow() around the letters and their outline */
+  --heading-color: var(--wall-text); /* section headings (h2) */
+  --heading-fill: none;
+  --heading-stroke: 0px;
+  --heading-stroke-color: transparent;
+  --heading-shadow: none;
+  --heading-glow: none;
+  --vs-color: var(--pink);
+  --vs-fill: none;
+  --vs-stroke: 0px;
+  --vs-shadow: none;
+  --vs-glow: none;
+  --button-color: var(--ink); /* text of the big main button */
+  --button-stroke: 0px;
+  --button-shadow: none;
+  --title-axes: 'INFM' 40, 'BNCE' 20; /* Shantell's informality and bounce */
 }
 
-/* Font comparison page (?fonts) */
-.font-sample {
+[data-text='sticker'] {
+  --title-color: var(--paper-lit);
+  --title-stroke: 8px;
+  --title-stroke-color: var(--outline);
+  --title-glow: drop-shadow(3px 3px 0 var(--pink));
+  --heading-color: var(--yellow);
+  --heading-stroke: 6px;
+  --heading-stroke-color: var(--outline);
+  --heading-glow: drop-shadow(2px 2px 0 var(--outline));
+  --vs-color: var(--pink);
+  --vs-stroke: 8px;
+  --vs-glow: drop-shadow(3px 3px 0 var(--yellow));
+  --button-color: var(--paper-lit);
+  --button-stroke: 6px;
+  --title-axes: 'INFM' 60, 'BNCE' 45;
+}
+
+[data-text='arcade'] {
+  --title-color: var(--yellow);
+  --title-shadow: 1px 1px 0 var(--pink), 2px 2px 0 var(--pink), 3px 3px 0 var(--pink), 4px 4px 0 var(--pink), 5px 5px 0 var(--outline), 6px 6px 0 var(--outline);
+  --heading-color: var(--teal);
+  --heading-shadow: 1px 1px 0 var(--outline), 2px 2px 0 var(--outline), 3px 3px 0 var(--outline);
+  --vs-color: var(--yellow);
+  --vs-shadow: 1px 1px 0 var(--pink), 2px 2px 0 var(--pink), 3px 3px 0 var(--pink), 4px 4px 0 var(--outline), 5px 5px 0 var(--outline);
+  --button-shadow: 2px 2px 0 var(--paper-lit);
+  --title-axes: 'INFM' 30, 'BNCE' 30;
+}
+
+[data-text='spray'] {
+  --title-color: transparent;
+  --title-fill: linear-gradient(100deg, var(--yellow) 10%, var(--orange) 45%, var(--pink) 85%);
+  --title-glow: drop-shadow(2px 3px 0 var(--outline));
+  --heading-color: transparent;
+  --heading-fill: linear-gradient(100deg, var(--teal), var(--lime));
+  --heading-glow: drop-shadow(2px 2px 0 var(--outline));
+  --vs-color: transparent;
+  --vs-fill: linear-gradient(160deg, var(--yellow), var(--pink));
+  --vs-glow: drop-shadow(3px 3px 0 var(--outline));
+  --title-axes: 'INFM' 70, 'BNCE' 50;
+}
+
+[data-text='neon'] {
+  --title-color: var(--paper-lit);
+  --title-shadow: 0 0 2px var(--paper-lit), 0 0 8px var(--pink), 0 0 18px var(--pink), 0 0 32px var(--pink);
+  --heading-color: var(--cyan);
+  --heading-shadow: 0 0 6px var(--teal), 0 0 14px var(--teal);
+  --vs-color: var(--paper-lit);
+  --vs-shadow: 0 0 3px var(--paper-lit), 0 0 10px var(--cyan), 0 0 24px var(--cyan);
+  --title-axes: 'INFM' 20, 'BNCE' 0;
+}
+
+h1,
+h2:not(.card h2),
+.vs {
+  /* Shrink to the text, so a gradient fill spans the word and not the whole row. */
+  width: fit-content;
+  max-width: 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  /* The outline is drawn behind the letters, so it only grows outwards. */
+  paint-order: stroke fill;
+  font-variation-settings: var(--title-axes);
+}
+
+h1 {
+  color: var(--title-color);
+  background-image: var(--title-fill);
+  -webkit-text-stroke: var(--title-stroke) var(--title-stroke-color);
+  text-shadow: var(--title-shadow);
+  filter: var(--title-glow);
+}
+
+h2:not(.card h2) {
+  color: var(--heading-color);
+  background-image: var(--heading-fill);
+  -webkit-text-stroke: var(--heading-stroke) var(--heading-stroke-color);
+  text-shadow: var(--heading-shadow);
+  filter: var(--heading-glow);
+}
+
+.vs {
+  color: var(--vs-color);
+  background-image: var(--vs-fill);
+  -webkit-text-stroke: var(--vs-stroke) var(--outline);
+  text-shadow: var(--vs-shadow);
+  filter: var(--vs-glow);
+}
+
+.btn-big {
+  color: var(--button-color);
+  -webkit-text-stroke: var(--button-stroke) var(--outline);
+  paint-order: stroke fill;
+  text-shadow: var(--button-shadow);
+}
+
+/* Title style comparison page (?styles) */
+.style-sample {
   display: flex;
   flex-direction: column;
   gap: var(--step);
   padding-bottom: calc(var(--step) * 3);
   border-bottom: 2px dashed color-mix(in srgb, var(--wall-text) 25%, transparent);
-  font-family: var(--font);
-}
-
-.font-sample .stats {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.font-sample-actions {
-  display: flex;
-  gap: var(--step);
-  align-items: center;
-  flex-wrap: wrap;
 }

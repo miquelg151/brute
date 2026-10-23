@@ -10,8 +10,7 @@ export const ARENA_H = 200;
 export const ARENA_ZOOM = 3;
 const GROUND_Y = 165;
 const SCALE = 2;
-/** The game font (chosen in src/ui/fonts.ts), read when the arena is created. */
-let FONT = 'sans-serif';
+const FONT = '"Shantell Sans Variable", sans-serif';
 const BAR_W = 140;
 
 export type BreakEvent = Extract<FightEvent, { t: 'break' }>;
@@ -81,7 +80,6 @@ export class ReplayScene extends Phaser.Scene {
   }
 
   create(): void {
-    FONT = getComputedStyle(document.documentElement).getPropertyValue('--font').trim() || FONT;
     this.cameras.main.setZoom(ARENA_ZOOM).centerOn(ARENA_W / 2, ARENA_H / 2);
     this.drawBackground();
     this.createUnits();
