@@ -4,8 +4,12 @@
    palette in src/ui/theme.ts, so the interface, icons, sprites and arena always match. */
 :root {
   /* One hand-drawn family for everything; headings just use a heavier weight. */
+  /* The font is chosen in src/ui/fonts.ts; these are only the fallback. */
   --font: 'Shantell Sans Variable', 'Comic Sans MS', system-ui, sans-serif;
   --heavy: 780;
+  /* Titles, big numbers and the main button can use a louder cut of the same family. */
+  --font-display: var(--font);
+  --display-weight: var(--heavy);
 
   /* Text sizes. Only use these. */
   --t-xs: 13px; /* tags, small labels */
@@ -1086,4 +1090,38 @@ a {
 .stats-2 {
   grid-template-columns: repeat(2, 1fr);
   margin-top: 4px;
+}
+
+/* Titles, big numbers and the main button use the display cut of the font. */
+h1,
+h2,
+.btn-big,
+.vs,
+.result,
+.stat-value,
+.timing-label,
+.warmup-status {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+}
+
+/* Font comparison page (?fonts) */
+.font-sample {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step);
+  padding-bottom: calc(var(--step) * 3);
+  border-bottom: 2px dashed color-mix(in srgb, var(--wall-text) 25%, transparent);
+  font-family: var(--font);
+}
+
+.font-sample .stats {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.font-sample-actions {
+  display: flex;
+  gap: var(--step);
+  align-items: center;
+  flex-wrap: wrap;
 }

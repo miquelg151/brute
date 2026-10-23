@@ -2,9 +2,11 @@ import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
 import { chooseUpgrade, dayNumber, prepareFight, recordWarmup, startFight, type SaveData } from './core';
 import { loadArt } from './ui/art';
+import { applyFont, fontReady } from './ui/fonts';
 import { applyTheme } from './ui/theme';
 import { renderCreate } from './ui/screens/create';
 import { renderFight } from './ui/screens/fight';
+import { renderFonts } from './ui/screens/fonts';
 import { renderGallery } from './ui/screens/gallery';
 import { renderHome } from './ui/screens/home';
 import { renderLevelUp } from './ui/screens/levelup';
@@ -12,6 +14,7 @@ import { renderPrefight } from './ui/screens/prefight';
 import { clearSave, loadSave, storeSave } from './ui/storage';
 
 applyTheme();
+const font = applyFont();
 
 const root = document.getElementById('app')!;
 let save: SaveData | null = loadSave();
@@ -76,9 +79,9 @@ function show(): void {
 }
 
 // Phaser draws text with the game font, so wait for it (briefly) and for custom art before the first render.
-const fontTimeout = new Promise((resolve) => setTimeout(resolve, 1500));
-const fontsReady = Promise.race([document.fonts.load('16px "Shantell Sans Variable"'), fontTimeout]);
-void Promise.all([fontsReady, loadArt()]).finally(() => {
-  if (new URLSearchParams(location.search).has('gallery')) renderGallery(root);
+void Promise.all([fontReady(font), loadArt()]).finally(() => {
+  const params = new URLSearchParams(location.search);
+  if (params.has('gallery')) renderGallery(root);
+  else if (params.has('fonts')) renderFonts(root);
   else show();
 });
