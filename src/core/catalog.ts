@@ -101,7 +101,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
 export const SKILLS: Record<string, SkillDef> = {
   combo: { id: 'combo', name: 'Combo', description: 'Each hit has a 30% chance to chain another (max 2 extra).' },
   counter: { id: 'counter', name: 'Counter', description: 'After dodging a melee attack, 50% chance to strike back.' },
-  shield: { id: 'shield', name: 'Shield', description: '30% chance to block a hit, taking only a quarter of the damage. Useless against magic.' },
+  shield: { id: 'shield', name: 'Shield', description: '25% chance to block a hit, taking only a quarter of the damage. Useless against magic.' },
   pack_leader: { id: 'pack_leader', name: 'Pack Leader', description: 'Your pets get +25% health and +35% damage.' },
   iron_fists: { id: 'iron_fists', name: 'Iron Fists', description: '+4 damage when fighting unarmed.' },
   fury: { id: 'fury', name: 'Fury', description: '+30% damage while below 30% health.' },
@@ -204,7 +204,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     description: 'Street magic: neon runes and spirits. Weak punches, strong spells.',
     baseStats: { health: 5, strength: 2, agility: 5, speed: 4, magic: 6 },
     startSkill: 'spark',
-    mana: 80,
+    /** Plus 1 per level. */
+    mana: 60,
     magicResist: 10,
   },
 };
@@ -247,7 +248,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('gear', 'general', 'sneakers'),
   ref('gear', 'general', 'charm'),
   // Brawler
-  stat('brawler_strength', 'brawler', '+1 Strength, +2 Health', { strength: 1, health: 2 }),
+  stat('brawler_strength', 'brawler', '+1 Strength, +1 Health', { strength: 1, health: 1 }),
   stat('brawler_health', 'brawler', '+3 Health', { health: 3 }),
   ref('skill', 'brawler', 'iron_fists'),
   ref('skill', 'brawler', 'fury'),

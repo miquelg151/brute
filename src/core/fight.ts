@@ -117,12 +117,16 @@ const RECOVER_GAUGE = -40;
 const MAGIC_RESIST_CAP = 60;
 const GAUGE_FULL = 100;
 const DODGE_CAP = 40;
-/** Speed above this counts half, so very fast fighters don't get endless turns. */
-const SPEED_SOFT_CAP = 8;
+/** Chance (%) that the Shield skill blocks a hit. */
+const SHIELD_BLOCK = 25;
+/** Casters' class mana grows by this much per level (less at the start, more later). */
+const MANA_PER_LEVEL = 1;
+/** A fighter's speed above this counts half, so very fast fighters don't get endless turns. Pets are not capped. */
+const SPEED_SOFT_CAP = 7;
 
 /** How much a unit's turn gauge fills each tick. */
-function gaugeGain(speed: number): number {
-  return 10 + 2 * speed - Math.max(0, speed - SPEED_SOFT_CAP);
+function gaugeGain(speed: number, isMain: boolean): number {
+  return 10 + 2 * speed - (isMain ? Math.max(0, speed - SPEED_SOFT_CAP) : 0);
 }
 
 interface Unit {
@@ -205,7 +209,8 @@ export function spellsOf(c: Character): string[] {
 /** Max mana: class mana plus gear, or a small pool for non-casters who learned a spell. */
 export function maxManaFor(c: Character, gear: GearDef[]): number {
   const fromGear = gear.reduce((sum, g) => sum + (g.mana ?? 0), 0);
-  const base = CLASSES[c.classId].mana || (spellsOf(c).length > 0 ? LEARNED_MANA : 0);
+  const classMana = CLASSES[c.classId].mana;
+  const base = classMana ? classMana + MANA_PER_LEVEL * c.level : spellsOf(c).length > 0 ? LEARNED_MANA : 0;
   return base > 0 ? base + fromGear : 0;
 }
 
@@ -480,10 +485,13 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       return true;
     }
     const roll = rng.int(80, 121);
-    // Pets and spirits deal many small hits, so armor only counts half against them.
-    const armor = att.isMain ? def.armor : Math.floor(def.armor / 2);
+    // Pets, spirits and quick extra hits (double strikes, counters) are many small hits,
+    // so armor only counts half against them.
+    const quickHit = kind === 'double' || kind === 'counter';
+    const armor = att.isMain && !quickHit ? def.armor : Math.floor(def.armor / 2);
     let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality) * roll) / 100) - armor);
-    const blocked = def.skills.has('shield') && rng.chance(30);
+    if (!def.isMain) damage = Math.max(1, Math.floor((damage * TARGETS[att.plan.target].petDamagePct) / 100));
+    const blocked = def.skills.has('shield') && rng.chance(SHIELD_BLOCK);
     if (blocked) damage = Math.max(1, Math.floor(damage / 4));
     const survived = land(att, def, kind, damage, blocked);
     if (survived && att.skills.has('disarm') && def.weapon && rng.chance(15)) {
@@ -644,7 +652,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     events.push({ t: 'round', round });
     for (const u of units) u.roundTurns = 0;
     for (let tick = 0; tick < ROUND_TICKS; tick++) {
-      for (const u of units) if (alive(u)) u.gauge += gaugeGain(u.speed);
+      for (const u of units) if (alive(u)) u.gauge += gaugeGain(u.speed, u.isMain);
       const ready = units.filter((u) => alive(u) && u.gauge >= GAUGE_FULL).sort((x, y) => y.gauge - x.gauge || x.tieBreak - y.tieBreak);
       for (const u of ready) {
         if (winner !== null || waiting) break;

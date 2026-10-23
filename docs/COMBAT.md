@@ -8,8 +8,8 @@ timing of special strikes and the choices made at each break.
 
 - A fight has **3 rounds** of `ROUND_TICKS` ticks each (about 10–15 seconds at x1).
 - On every tick each unit's initiative gauge grows by `10 + 2 × speed`; at 100 it acts.
-  Speed above 8 counts half (`10 + 2 × speed − (speed − 8)`), so very fast fighters
-  don't get endless turns at high levels.
+  A fighter's speed above 7 counts half (`10 + 2 × speed − (speed − 7)`), so very fast
+  fighters don't get endless turns at high levels. Pets are not capped.
 - A fight ends when a main fighter is knocked out. If both are standing after round 3,
   the higher health percentage wins (an exact tie goes to the defender).
 - Summoned spirits vanish at the end of each round.
@@ -40,6 +40,8 @@ connected players, both choose at the same time and neither sees the other's pla
 ## Mana and magic
 
 - Only fighters who know spells have mana. It regenerates slowly and at breaks.
+- The Mystic's mana grows with level (60 + 1 per level); other fighters who learn a
+  spell get a fixed 40.
 - Spells cost mana, not stamina.
 - Magic damage **ignores armor and shields** and is reduced by **magic resistance**
   (percent, capped at 60%). It can be dodged, but only at 60% of the usual chance.
@@ -49,3 +51,12 @@ connected players, both choose at the same time and neither sees the other's pla
 Each fighter wears one **armor** and one **accessory**, chosen before the fight from the
 ones it owns. Equipment is earned through level-up upgrades, like weapons and pets.
 Every piece has an upside and often a downside (a riot vest is great armor but slow).
+
+## Small rules worth knowing
+
+- Armor is subtracted from every physical hit. It only counts **half** against pets,
+  spirits and quick extra hits (double strikes and counters), because those are many
+  small hits.
+- **Shield** blocks 25% of physical hits (the hit does a quarter of its damage).
+- **Pets first** makes your fighter and your pets attack enemy pets, with +20% damage
+  against them.

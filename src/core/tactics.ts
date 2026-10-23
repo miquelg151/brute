@@ -98,15 +98,18 @@ export type TargetMode = 'mixed' | 'fighter' | 'pets';
 export interface TargetDef extends TacticOption<TargetMode> {
   /** Chance to aim at the enemy fighter while their pets are alive. */
   fighterChance: number;
+  /** Damage against enemy pets and spirits, in percent. */
+  petDamagePct: number;
 }
 
 /** Who your fighter and your pets attack while the enemy still has pets. */
 export const TARGETS: Record<TargetMode, TargetDef> = {
-  mixed: { id: 'mixed', name: 'Mixed', fighterChance: 65, effects: [], strongVs: null },
+  mixed: { id: 'mixed', name: 'Mixed', fighterChance: 65, petDamagePct: 100, effects: [], strongVs: null },
   fighter: {
     id: 'fighter',
     name: 'Fighter first',
     fighterChance: 95,
+    petDamagePct: 100,
     effects: [
       { text: 'Focus the fighter', good: true },
       { text: 'Pets keep biting', good: false },
@@ -117,8 +120,10 @@ export const TARGETS: Record<TargetMode, TargetDef> = {
     id: 'pets',
     name: 'Pets first',
     fighterChance: 0,
+    // Focusing them also hits them harder.
+    petDamagePct: 120,
     effects: [
-      { text: 'Pets go down early', good: true },
+      { text: 'Pets go down early, +20% damage to them', good: true },
       { text: 'Fighter left for last', good: false },
     ],
     strongVs: 'has_pets',
