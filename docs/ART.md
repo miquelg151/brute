@@ -114,6 +114,8 @@ in `src/core/catalog.ts`.
 | Which palette colour each interface part uses (`--paper`, `--ink`, `--yellow`...) | `CSS_COLORS` in `src/ui/theme.ts` |
 | How big pixels are on screen (small / normal / big) | `PIXEL` in `src/ui/theme.ts` |
 | Font, text sizes, spacing, animation speeds | The variables at the top of `src/style.css` (`--t-m`, `--step`, `--fast`...) |
+| Sticker lettering (letter colour, outline, pink shadow) | `--sticker-...` variables in `src/style.css` (search "Sticker lettering") |
+| Paper outline around fighters | `--sticker-edge` in `src/style.css` |
 | Which skin, hair, outfit and class colours exist | `src/ui/palette.ts` |
 | Placeholder fight background (skyline, street) | `drawBackground` in `src/fight/ReplayScene.ts` |
 

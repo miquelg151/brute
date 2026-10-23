@@ -48,7 +48,7 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
           'div',
           { class: 'hero-info' },
           h('h1', {}, c.name),
-          h('div', {}, `Level ${c.level} `, h('span', { style: `color:${CLASS_COLORS[c.classId]}` }, CLASSES[c.classId].name)),
+          h('div', {}, `Level ${c.level} `, h('span', { class: 'sticker-sm', style: `color:${CLASS_COLORS[c.classId]}` }, CLASSES[c.classId].name)),
           h('div', { class: 'dim small' }, `From ${ORIGINS[c.originId]?.name ?? ''}`),
           h('div', { class: 'bar', role: 'img', 'aria-label': `${c.xp} of ${need} XP` }, h('div', { class: 'bar-fill', style: `width:${(100 * c.xp) / need}%` })),
           h('div', { class: 'dim small' }, iconValue('xp', 'Experience', `${c.xp} / ${need}`)),
