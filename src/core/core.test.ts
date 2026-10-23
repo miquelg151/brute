@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CARDS,
   CLASS_IDS,
   DEFAULT_PLAN,
   FIGHTS_PER_DAY,
@@ -9,6 +10,8 @@ import {
   eligibleUpgrades,
   addXp,
   applyUpgrade,
+  botCardLevel,
+  cardLevel,
   chooseUpgrade,
   createCharacter,
   fightsLeft,
@@ -22,7 +25,11 @@ import {
   recordBreak,
   recordSpecial,
   rollOffer,
+  scaled,
+  scaledCount,
+  startingCards,
   traitsOf,
+  usesForLevel,
   simulateFight,
   gearFor,
   type BreakChoice,
@@ -425,5 +432,41 @@ describe('tactics', () => {
     expect(traitsOf(createCharacter('T', look, 'tamer', 'port'))).toEqual(expect.arrayContaining(['has_pets', 'many_hits']));
     expect(traitsOf(createCharacter('B', look, 'bouncer', 'port'))).toContain('tough');
     expect(traitsOf(createCharacter('P', look, 'parkour', 'port'))).toContain('counters');
+  });
+});
+
+describe('cards', () => {
+  it('levels come from uses', () => {
+    expect([0, 2, 3, 7, 8, 14, 15, 24, 25, 99].map(cardLevel)).toEqual([1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+    expect(usesForLevel(2)).toBe(3);
+    expect(usesForLevel(5)).toBe(25);
+  });
+
+  it('scaled numbers grow 10% per level, counts by one at level 4', () => {
+    expect(scaled(30, 1)).toBe(30);
+    expect(scaled(30, 3)).toBe(36);
+    expect(scaled(30, 5)).toBe(42);
+    expect(scaledCount(2, 3)).toBe(2);
+    expect(scaledCount(2, 4)).toBe(3);
+  });
+
+  it('every class starts with the special strike and its own card', () => {
+    expect(startingCards('brawler')).toEqual(['special', 'rage']);
+    expect(startingCards('parkour')).toEqual(['special', 'roll']);
+    expect(startingCards('bouncer')).toEqual(['special', 'wall']);
+    expect(startingCards('tamer')).toEqual(['special', 'sic_em']);
+    expect(startingCards('mystic')).toEqual(['special', 'overcharge']);
+  });
+
+  it('every card costs 2-6 energy and describes every level', () => {
+    for (const card of Object.values(CARDS)) {
+      expect(card.cost).toBeGreaterThanOrEqual(2);
+      expect(card.cost).toBeLessThanOrEqual(6);
+      for (let level = 1; level <= 5; level++) expect(card.describe(level).length).toBeGreaterThan(5);
+    }
+  });
+
+  it('bot card levels follow the fighter level', () => {
+    expect([1, 4, 5, 10, 19, 20, 40].map(botCardLevel)).toEqual([1, 1, 2, 3, 4, 5, 5]);
   });
 });
