@@ -1,13 +1,13 @@
 // Balance report. Run with `npm run balance` (all sections) or pick one:
 //   npm run balance -- 2000 classes   class vs class win rates at several levels
-//   npm run balance -- 2000 skill     how much player skill (specials, warm-up) matters
+//   npm run balance -- 2000 skill     how much playing cards well matters
 //   npm run balance -- 2000 advice    whether each strategy option's advice is true
+//   npm run balance -- 2000 cards     how much each card helps the fighter who brings it
 // The number is fights per measurement. Exits with code 1 if anything is out of range.
 import {
+  CARDS,
   CLASS_IDS,
   Rng,
-  DEFAULT_PLAN,
-  ROUNDS,
   STANCES,
   STANCE_IDS,
   TARGETS,
@@ -15,9 +15,11 @@ import {
   TRAITS,
   WEAPON_STYLES,
   WEAPON_STYLE_IDS,
+  botCardLevel,
   generateOpponent,
   mixSeed,
   runFight,
+  startingCards,
   traitsOf,
   type ClassId,
   type Plan,
@@ -35,7 +37,7 @@ let problems = 0;
 // other fight so initiative ties do not bias the result.
 // Some rock-paper-scissors between classes is fine; each class overall should be even.
 // LEVELS=10,20 npm run balance ... measures only those levels.
-const LEVELS = process.env.LEVELS ? process.env.LEVELS.split(",").map(Number) : [1, 5, 10, 20];
+const LEVELS = process.env.LEVELS ? process.env.LEVELS.split(',').map(Number) : [1, 5, 10, 20];
 const CLASS_MIN = 0.45;
 const CLASS_MAX = 0.55;
 const MATCHUP_MIN = 0.35;
@@ -78,31 +80,27 @@ if (section('classes')) {
       console.log(a.padEnd(11) + row.join('') + `   avg ${pct(overall)}${classFlag}`);
     }
   }
-  console.log(`Targets: matchups ${MATCHUP_MIN * 100}-${MATCHUP_MAX * 100}%, class averages ${CLASS_MIN * 100}-${CLASS_MAX * 100}%`);
+  console.log(`Targets: matchups ${Math.round(MATCHUP_MIN * 100)}-${Math.round(MATCHUP_MAX * 100)}%, class averages ${Math.round(CLASS_MIN * 100)}-${Math.round(CLASS_MAX * 100)}%`);
 }
 
 // --- Player skill -----------------------------------------------------------
-// Mirror matches (same class, same level): team A plays with skill, team B does not.
-// Temporary (Task 7 rewrites this): player cards are not in the sim yet, so every profile plays no cards.
 const SKILL_MAX = 0.65;
 const SKILL_LEVEL = 10;
-const profiles: { name: string; quality: number; warmup: number }[] = [
-  { name: 'bad player', quality: 10, warmup: 20 },
-  { name: 'average player', quality: 60, warmup: 50 },
-  { name: 'perfect player', quality: 100, warmup: 100 },
+// Mirror matches: team A plays its cards (with the given special-strike timing), team B
+// brings no cards at all. Answers: how much does playing cards well matter?
+const profiles: { name: string; quality: number }[] = [
+  { name: 'bad player', quality: 10 },
+  { name: 'average player', quality: 60 },
+  { name: 'perfect player', quality: 100 },
 ];
 
-function skillWinRate(classId: ClassId): number {
+function skillWinRate(classId: ClassId, quality: number): number {
   let wins = 0;
   for (let i = 0; i < FIGHTS; i++) {
     const rng = new Rng(mixSeed(424242 + CLASS_IDS.indexOf(classId), i));
     const ca = generateOpponent(SKILL_LEVEL, rng, classId);
     const cb = generateOpponent(SKILL_LEVEL, rng, classId);
-    // A skilled player times every special; breaks keep the same plan.
-    const breaks = Array.from({ length: ROUNDS - 1 }, () => ({ ...DEFAULT_PLAN, weapons: ca.weapons, recover: false }));
-    const log = runFight(ca, cb, rng.next(), {
-      a: { interactive: true, breaks },
-    });
+    const log = runFight(ca, cb, rng.next(), { a: { specialQuality: quality }, b: { deck: {} } });
     if (log.winner === 0) wins++;
   }
   return wins / FIGHTS;
@@ -112,8 +110,8 @@ if (section('skill')) {
   console.log(`\nPlayer skill at level ${SKILL_LEVEL} (mirror match win rate vs a passive copy, max ${SKILL_MAX * 100}%)`);
   console.log('           ' + profiles.map((p) => p.name.padStart(16)).join(''));
   for (const classId of CLASS_IDS) {
-    const cells = profiles.map(() => {
-      const rate = skillWinRate(classId);
+    const cells = profiles.map((p) => {
+      const rate = skillWinRate(classId, p.quality);
       const flag = rate > SKILL_MAX ? '!' : ' ';
       if (flag === '!') problems++;
       return `${pct(rate)}${flag}`.padStart(16);
@@ -163,6 +161,48 @@ if (section('advice')) {
     }
   }
   console.log(`Advice needs at least +${ADVICE_MIN_EDGE * 100} points over the default against its trait`);
+}
+
+// --- Cards ------------------------------------------------------------------
+// Each card's value: fighters who bring it (on top of their starting cards) against the
+// same fighters without it. A card should help a bit, not decide fights alone.
+const CARD_MIN = 0.5;
+const CARD_MAX = 0.62;
+
+if (section('cards')) {
+  console.log(`\nCards at level ${SKILL_LEVEL}: win rate with the card vs the same fighter without it, and how often it gets played`);
+  for (const card of Object.values(CARDS)) {
+    const classes = card.pool === 'general' ? CLASS_IDS : [card.pool];
+    let wins = 0;
+    let played = 0;
+    let total = 0;
+    for (const classId of classes) {
+      for (let i = 0; i < FIGHTS / classes.length; i++) {
+        const rng = new Rng(mixSeed(9090 + CLASS_IDS.indexOf(classId), i));
+        const ca = generateOpponent(SKILL_LEVEL, rng, classId);
+        const cb = generateOpponent(SKILL_LEVEL, rng, classId);
+        const level = botCardLevel(SKILL_LEVEL);
+        const base = Object.fromEntries(startingCards(classId).filter((id) => id !== card.id).map((id) => [id, level]));
+        // Swap sides every other fight: bots on side B see side A's card in the same tick
+        // and can answer it at once, so always giving the card to side A would undersell it.
+        const withCard = { deck: { ...base, [card.id]: level } };
+        const without = { deck: base };
+        const aFirst = i % 2 === 0;
+        const log = aFirst
+          ? runFight(ca, cb, rng.next(), { a: withCard, b: without })
+          : runFight(cb, ca, rng.next(), { a: without, b: withCard });
+        if (log.winner === (aFirst ? 0 : 1)) wins++;
+        const holder = aFirst ? 0 : 1;
+        if (log.events.some((e) => e.t === 'card' && e.card === card.id && log.roster[e.actor]?.team === holder)) played++;
+        total++;
+      }
+    }
+    const rate = wins / Math.max(1, total);
+    const flag = rate < CARD_MIN || rate > CARD_MAX ? '!' : ' ';
+    if (flag === '!') problems++;
+    console.log(`${card.name.padEnd(16)} ${pct(rate)}${flag}  played in ${pct(played / Math.max(1, total))} of fights`);
+  }
+  console.log(`Targets: ${CARD_MIN * 100}-${CARD_MAX * 100}%`);
 }
 
 // --- Option matrix (design aid, never fails) ---------------------------------
