@@ -11,6 +11,8 @@ export const ARENA_ZOOM = 3;
 const GROUND_Y = 165;
 const SCALE = 2;
 const FONT = '"Shantell Sans Variable", sans-serif';
+/** Arena text looks like the "sticker" title style: dark outline, offset shadow. */
+const STICKER = { fontFamily: FONT, fontStyle: 'bold', stroke: PAL.black, resolution: ARENA_ZOOM };
 const BAR_W = 140;
 
 export type BreakEvent = Extract<FightEvent, { t: 'break' }>;
@@ -156,7 +158,7 @@ export class ReplayScene extends Phaser.Scene {
 
       if (info.isMain) {
         this.add
-          .text(info.team === 0 ? 8 : ARENA_W - 8, 3, info.name, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color: PAL.white, resolution: ARENA_ZOOM })
+          .text(info.team === 0 ? 8 : ARENA_W - 8, 3, info.name, { ...STICKER, fontSize: '10px', color: PAL.white, strokeThickness: 3 })
           .setOrigin(info.team === 0 ? 0 : 1, 0)
           .setDepth(1000);
       }
@@ -212,20 +214,23 @@ export class ReplayScene extends Phaser.Scene {
 
   private floatText(x: number, y: number, text: string, color: string): void {
     const t = this.add
-      .text(x, y, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color, stroke: PAL.black, strokeThickness: 3, resolution: ARENA_ZOOM })
+      .text(x, y, text, { ...STICKER, fontSize: '10px', color, strokeThickness: 4 })
+      .setShadow(1, 1, PAL.black, 0, true, true)
       .setOrigin(0.5)
       .setDepth(2000);
     this.tweens.add({ targets: t, y: y - 18, alpha: 0, duration: 750, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
   }
 
   private async banner(text: string, color: string, ms: number): Promise<void> {
-    const box = this.add.rectangle(ARENA_W / 2, 90, ARENA_W, 30, num(PAL.black), 0.65).setDepth(3000);
     const label = this.add
-      .text(ARENA_W / 2, 90, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '18px', color, resolution: ARENA_ZOOM })
+      .text(ARENA_W / 2, 90, text, { ...STICKER, fontSize: '22px', color, strokeThickness: 6 })
+      .setShadow(2, 2, PAL.pink, 0, true, true)
       .setOrigin(0.5)
+      .setAngle(-3)
       .setDepth(3001);
+    // Slapped on like a sticker.
+    this.tweens.add({ targets: label, scale: { from: 1.5, to: 1 }, duration: 220, ease: 'Back.easeOut' });
     await this.wait(ms);
-    box.destroy();
     label.destroy();
   }
 
@@ -255,6 +260,8 @@ export class ReplayScene extends Phaser.Scene {
     }
     await this.wait(400);
     const won = this.log.winner === 0;
+    // Back to normal speed, so the result banner stays up even after Skip.
+    this.setSpeed(1);
     void this.banner(won ? 'VICTORY' : 'DEFEAT', won ? PAL.yellow : PAL.coral, 60_000);
     this.hooks.onFinished(this.log);
   }

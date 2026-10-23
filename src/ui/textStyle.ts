@@ -20,7 +20,7 @@ export const TEXT_STYLES: TextStyle[] = [
   { id: 'neon', name: 'Neon', note: 'Glowing pink and cyan signs, like a shop at night.' },
 ];
 
-export const DEFAULT_TEXT_STYLE = 'plain';
+export const DEFAULT_TEXT_STYLE = 'sticker';
 const STORAGE_KEY = 'brute-text-style';
 
 const byId = (id: string | null | undefined) => TEXT_STYLES.find((s) => s.id === id);

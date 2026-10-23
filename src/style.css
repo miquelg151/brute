@@ -228,15 +228,22 @@ a {
   text-underline-offset: 4px;
 }
 
-/* Fighter standing under a streetlight */
+/* A fighter shown as a die-cut sticker: a paper outline around the pixel art,
+   standing on a flat oval shadow. */
 .spot {
+  --sticker-edge: 3px; /* width of the paper outline */
   display: flex;
   justify-content: center;
   align-items: flex-end;
   flex-shrink: 0;
-  padding: var(--step) calc(var(--step) * 2) 0;
-  background: radial-gradient(ellipse 55% 16% at 50% 95%, rgba(0, 0, 0, 0.35), transparent 70%),
-    radial-gradient(ellipse 70% 85% at 50% 15%, color-mix(in srgb, var(--yellow) 16%, transparent), transparent 70%);
+  padding: var(--step) calc(var(--step) * 2) 4px;
+  background: radial-gradient(ellipse 30% 6% at 50% calc(100% - 6px), rgba(0, 0, 0, 0.4) 96%, transparent 100%);
+}
+
+.spot canvas {
+  filter: drop-shadow(var(--sticker-edge) 0 0 var(--paper-lit)) drop-shadow(calc(var(--sticker-edge) * -1) 0 0 var(--paper-lit))
+    drop-shadow(0 var(--sticker-edge) 0 var(--paper-lit)) drop-shadow(0 calc(var(--sticker-edge) * -1) 0 var(--paper-lit))
+    drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.3));
 }
 
 .spot-big {
@@ -530,8 +537,7 @@ a {
 }
 
 .poster .spot {
-  background: radial-gradient(ellipse 60% 14% at 50% 96%, rgba(0, 0, 0, 0.45), transparent 70%),
-    radial-gradient(ellipse 70% 85% at 50% 15%, color-mix(in srgb, var(--yellow) 22%, transparent), transparent 70%);
+  --sticker-edge: 2px;
 }
 
 .poster-name {
