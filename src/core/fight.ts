@@ -122,7 +122,7 @@ const SHIELD_BLOCK = 25;
 /** Casters' class mana grows by this much per level (less at the start, more later). */
 const MANA_PER_LEVEL = 1;
 /** A fighter's speed above this counts half, so very fast fighters don't get endless turns. Pets are not capped. */
-const SPEED_SOFT_CAP = 7;
+const SPEED_SOFT_CAP = 6;
 
 /** How much a unit's turn gauge fills each tick. */
 function gaugeGain(speed: number, isMain: boolean): number {

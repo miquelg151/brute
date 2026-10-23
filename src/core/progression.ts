@@ -43,19 +43,30 @@ export function eligibleUpgrades(c: Character, pool: UpgradePool): UpgradeDef[] 
   return UPGRADES.filter((u) => u.pool === pool && !owns(c, u));
 }
 
-/** Rolls distinct upgrade choices for a level-up, biased towards the character's class. */
+/**
+ * Rolls distinct upgrade choices for a level-up, biased towards the character's class.
+ * While any weapon, skill, pet or gear is still left to get, at least one choice is one
+ * of those (stat boosts never run out, so otherwise they crowd out everything else).
+ */
 export function rollOffer(c: Character, rng: Rng, size = OFFER_SIZE): string[] {
   const offer: string[] = [];
-  for (let i = 0; i < size; i++) {
+  const pickFrom = (filter: (u: UpgradeDef) => boolean): string | null => {
     const first: UpgradePool = rng.chance(CLASS_POOL_CHANCE) ? c.classId : 'general';
     const second: UpgradePool = first === 'general' ? c.classId : 'general';
     for (const pool of [first, second]) {
-      const candidates = eligibleUpgrades(c, pool).filter((u) => !offer.includes(u.id));
-      if (candidates.length > 0) {
-        offer.push(rng.pick(candidates).id);
-        break;
-      }
+      const candidates = eligibleUpgrades(c, pool).filter((u) => !offer.includes(u.id) && filter(u));
+      if (candidates.length > 0) return rng.pick(candidates).id;
     }
+    return null;
+  };
+  for (let i = 0; i < size; i++) {
+    const id = pickFrom(() => true);
+    if (id) offer.push(id);
+  }
+  const isStat = (id: string) => UPGRADES_BY_ID[id]!.kind === 'stat';
+  if (offer.length > 0 && offer.every(isStat)) {
+    const other = pickFrom((u) => u.kind !== 'stat');
+    if (other) offer[rng.int(0, offer.length)] = other;
   }
   return offer;
 }

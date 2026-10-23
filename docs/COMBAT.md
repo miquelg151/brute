@@ -8,7 +8,7 @@ timing of special strikes and the choices made at each break.
 
 - A fight has **3 rounds** of `ROUND_TICKS` ticks each (about 10–15 seconds at x1).
 - On every tick each unit's initiative gauge grows by `10 + 2 × speed`; at 100 it acts.
-  A fighter's speed above 7 counts half (`10 + 2 × speed − (speed − 7)`), so very fast
+  A fighter's speed above 6 counts half (`10 + 2 × speed − (speed − 6)`), so very fast
   fighters don't get endless turns at high levels. Pets are not capped.
 - A fight ends when a main fighter is knocked out. If both are standing after round 3,
   the higher health percentage wins (an exact tie goes to the defender).
@@ -60,3 +60,5 @@ Every piece has an upside and often a downside (a riot vest is great armor but s
 - **Shield** blocks 25% of physical hits (the hit does a quarter of its damage).
 - **Pets first** makes your fighter and your pets attack enemy pets, with +20% damage
   against them.
+- At each level-up, at least one of the three choices is a weapon, skill, pet or gear
+  piece, as long as there is any left to get.

@@ -4,7 +4,9 @@ import {
   DEFAULT_PLAN,
   FIGHTS_PER_DAY,
   Rng,
+  UPGRADES,
   UPGRADES_BY_ID,
+  eligibleUpgrades,
   addXp,
   applyUpgrade,
   chooseUpgrade,
@@ -170,6 +172,21 @@ describe('progression', () => {
     const share = classSlots / total;
     expect(share).toBeGreaterThan(0.5);
     expect(share).toBeLessThan(0.7);
+  });
+
+  it('offers include a weapon, skill, pet or gear while any are left', () => {
+    const rng = new Rng(5);
+    for (const classId of CLASS_IDS) {
+      for (const level of [5, 20, 40]) {
+        const c = generateOpponent(level, rng, classId);
+        const left = UPGRADES.some((u) => u.kind !== 'stat' && (u.pool === classId || u.pool === 'general') && eligibleUpgrades(c, u.pool).includes(u));
+        for (let i = 0; i < 30; i++) {
+          const offer = rollOffer(c, rng);
+          const hasOther = offer.some((id) => UPGRADES_BY_ID[id]!.kind !== 'stat');
+          expect(hasOther).toBe(left);
+        }
+      }
+    }
   });
 
   it('applyUpgrade rejects duplicates', () => {
