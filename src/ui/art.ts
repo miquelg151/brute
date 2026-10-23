@@ -27,6 +27,8 @@ export interface ArtManifest {
 }
 
 const ART_ROOT = `${import.meta.env.BASE_URL}art/`;
+/** Added to every art URL, so a new version of the game never shows old cached pictures. */
+const VERSION = `?v=${__BUILD_ID__}`;
 const images = new Map<string, HTMLImageElement>();
 let manifest: ArtManifest = {};
 
@@ -67,7 +69,7 @@ export async function loadArt(): Promise<void> {
             console.warn(`[art] Could not load art/${path}, using the placeholder`);
             resolve();
           };
-          img.src = ART_ROOT + path;
+          img.src = ART_ROOT + path + VERSION;
         }),
     ),
   );
