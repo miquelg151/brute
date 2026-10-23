@@ -4,16 +4,24 @@ import { artImage, artManifest } from '../ui/art';
 import { drawFighter, drawPet, drawWeapon } from '../ui/sprites';
 import { PAL, num } from '../ui/theme';
 
-export const ARENA_W = 320;
-export const ARENA_H = 200;
+/** Size of the arena in art pixels. Narrow and tall, so fighters look big on a phone. */
+export const ARENA_W = 240;
+export const ARENA_H = 210;
 /** The canvas renders at this multiple of the pixel-art size, so text stays sharp. */
 export const ARENA_ZOOM = 3;
-const GROUND_Y = 165;
-const SCALE = 2;
+/** Where the street starts (fighters stand on it). */
+const GROUND_Y = 175;
+/** Sprites are drawn this many times bigger than their PNG (3 matches the rest of the game). */
+const SCALE = 3;
+/** Main fighters stand this far from each side. */
+const MAIN_X = 82;
 const FONT = '"Shantell Sans Variable", sans-serif';
 /** Arena text looks like the "sticker" title style: dark outline, offset shadow. */
 const STICKER = { fontFamily: FONT, fontStyle: 'bold', stroke: PAL.black, resolution: ARENA_ZOOM };
-const BAR_W = 140;
+/** Freeze on every landed hit, so it feels heavy (ms). */
+const HIT_STOP = 60;
+/** Hits taking at least this share of max health shake the screen. */
+const BIG_HIT = 0.12;
 
 export type BreakEvent = Extract<FightEvent, { t: 'break' }>;
 
@@ -34,6 +42,7 @@ interface UnitView {
   homeY: number;
   /** 1 faces right (team 0), -1 faces left (team 1). */
   dir: 1 | -1;
+  team: 0 | 1;
   name: string;
   isMain: boolean;
   hp: number;
@@ -57,6 +66,10 @@ export interface ReplayHooks {
   /** Re-runs the deterministic simulation with the inputs recorded so far. */
   resimulate: () => FightLog;
   onFinished: (log: FightLog) => void;
+  /** A main fighter's health, stamina or mana changed (shown outside the canvas). */
+  onFighter: (team: 0 | 1, state: FighterState) => void;
+  /** A new round started. */
+  onRound: (round: number) => void;
 }
 
 /**
@@ -101,7 +114,7 @@ export class ReplayScene extends Phaser.Scene {
     const rng = new Rng(this.log.seed);
     for (let x = -10; x < ARENA_W; ) {
       const w = rng.int(24, 48);
-      const top = rng.int(48, 110);
+      const top = rng.int(40, 120);
       g.fillStyle(num(PAL.night)).fillRect(x, top, w, GROUND_Y - top);
       g.fillStyle(num(PAL.amber));
       for (let wy = top + 6; wy < GROUND_Y - 14; wy += 9) {
@@ -126,11 +139,11 @@ export class ReplayScene extends Phaser.Scene {
       let x: number;
       let y: number;
       if (info.isMain) {
-        x = info.team === 0 ? 105 : ARENA_W - 105;
+        x = info.team === 0 ? MAIN_X : ARENA_W - MAIN_X;
         y = GROUND_Y + 2;
       } else {
         const k = sideCount[info.team]++;
-        x = info.team === 0 ? 65 - k * 26 : ARENA_W - 65 + k * 26;
+        x = info.team === 0 ? MAIN_X - 34 - k * 22 : ARENA_W - MAIN_X + 34 + k * 22;
         y = GROUND_Y + 12 + (k % 2) * 6;
       }
       const sprite = this.add.image(x, y, key).setOrigin(0.5, 1).setScale(SCALE).setFlipX(dir === -1).setDepth(y);
@@ -141,6 +154,7 @@ export class ReplayScene extends Phaser.Scene {
         homeX: x,
         homeY: y,
         dir,
+        team: info.team === 0 ? 0 : 1,
         name: info.name,
         isMain: info.isMain,
         hp: info.summoned ? 0 : info.maxHp,
@@ -155,44 +169,31 @@ export class ReplayScene extends Phaser.Scene {
       };
       this.views.push(view);
       this.drawBars(view);
-
-      if (info.isMain) {
-        this.add
-          .text(info.team === 0 ? 8 : ARENA_W - 8, 3, info.name, { ...STICKER, fontSize: '10px', color: PAL.white, strokeThickness: 3 })
-          .setOrigin(info.team === 0 ? 0 : 1, 0)
-          .setDepth(1000);
-      }
     });
   }
 
-  /** Health for everyone; stamina and mana under it for main fighters. */
+  /** Pets get a small health bar over their head; main fighters are shown outside the canvas. */
   private drawBars(v: UnitView): void {
-    const g = v.bar.clear();
-    if (!v.isMain) {
-      if (v.hp <= 0) return;
-      const bx = v.homeX - 10;
-      const by = v.homeY - v.sprite.displayHeight - 6;
-      g.fillStyle(num(PAL.black)).fillRect(bx - 1, by - 1, 22, 4);
-      g.fillStyle(num(PAL.green)).fillRect(bx, by, Math.round((20 * v.hp) / v.maxHp), 2);
+    if (v.isMain) {
+      this.hooks.onFighter(v.team, this.stateOf(v));
       return;
     }
-    const left = v.dir === 1;
-    const bx = left ? 8 : ARENA_W - 8 - BAR_W;
-    const meter = (y: number, h: number, value: number, max: number, color: number, back: number) => {
-      const w = max > 0 ? Math.round((BAR_W * Math.max(0, value)) / max) : 0;
-      g.fillStyle(num(PAL.black)).fillRect(bx - 1, y - 1, BAR_W + 2, h + 2);
-      g.fillStyle(back).fillRect(bx, y, BAR_W, h);
-      g.fillStyle(color).fillRect(left ? bx : bx + BAR_W - w, y, w, h);
-    };
-    meter(17, 6, v.hp, v.maxHp, num(PAL.green), num(PAL.maroon));
-    meter(25, 2, v.stamina, v.maxStamina, v.stamina < 25 ? num(PAL.orange) : num(PAL.lime), num(PAL.night));
-    if (v.maxMana > 0) meter(29, 2, v.mana, v.maxMana, num(PAL.blue), num(PAL.navy));
+    const g = v.bar.clear();
+    if (v.hp <= 0) return;
+    const bx = v.homeX - 10;
+    const by = v.homeY - v.sprite.displayHeight - 6;
+    g.fillStyle(num(PAL.black)).fillRect(bx - 1, by - 1, 22, 4);
+    g.fillStyle(num(PAL.green)).fillRect(bx, by, Math.round((20 * v.hp) / v.maxHp), 2);
+  }
+
+  private stateOf(v: UnitView): FighterState {
+    return { name: v.name, hp: v.hp, maxHp: v.maxHp, stamina: v.stamina, maxStamina: v.maxStamina, mana: v.mana, maxMana: v.maxMana };
   }
 
   private drawWard(v: UnitView, amount: number): void {
     v.ring.clear();
     if (amount <= 0) return;
-    v.ring.lineStyle(1.5, num(PAL.cyan), 0.9).strokeEllipse(v.homeX, v.homeY - v.sprite.displayHeight / 2, 34, v.sprite.displayHeight + 10);
+    v.ring.lineStyle(1.5, num(PAL.cyan), 0.9).strokeEllipse(v.homeX, v.homeY - v.sprite.displayHeight / 2, 17 * SCALE, v.sprite.displayHeight + 10);
   }
 
   private view(idx: number): UnitView {
@@ -200,8 +201,7 @@ export class ReplayScene extends Phaser.Scene {
   }
 
   private snapshot(team: 0 | 1): FighterState {
-    const v = this.views.find((u, i) => u.isMain && this.log.roster[i]!.team === team)!;
-    return { name: v.name, hp: v.hp, maxHp: v.maxHp, stamina: v.stamina, maxStamina: v.maxStamina, mana: v.mana, maxMana: v.maxMana };
+    return this.stateOf(this.views.find((u) => u.isMain && u.team === team)!);
   }
 
   private wait(ms: number): Promise<void> {
@@ -212,9 +212,9 @@ export class ReplayScene extends Phaser.Scene {
     return new Promise((resolve) => this.tweens.add({ ...config, onComplete: () => resolve() }));
   }
 
-  private floatText(x: number, y: number, text: string, color: string): void {
+  private floatText(x: number, y: number, text: string, color: string, size = 10): void {
     const t = this.add
-      .text(x, y, text, { ...STICKER, fontSize: '10px', color, strokeThickness: 4 })
+      .text(x, y, text, { ...STICKER, fontSize: `${size}px`, color, strokeThickness: 4 })
       .setShadow(1, 1, PAL.black, 0, true, true)
       .setOrigin(0.5)
       .setDepth(2000);
@@ -223,7 +223,7 @@ export class ReplayScene extends Phaser.Scene {
 
   private async banner(text: string, color: string, ms: number): Promise<void> {
     const label = this.add
-      .text(ARENA_W / 2, 90, text, { ...STICKER, fontSize: '22px', color, strokeThickness: 6 })
+      .text(ARENA_W / 2, ARENA_H * 0.4, text, { ...STICKER, fontSize: '22px', color, strokeThickness: 6 })
       .setShadow(2, 2, PAL.pink, 0, true, true)
       .setOrigin(0.5)
       .setAngle(-3)
@@ -234,13 +234,21 @@ export class ReplayScene extends Phaser.Scene {
     label.destroy();
   }
 
+  /** A few puffs of dust at someone's feet. */
+  private dust(x: number, y: number): void {
+    for (const side of [-1, 1]) {
+      const puff = this.add.circle(x + side * 4, y - 1, 2.5, num(PAL.mist), 0.8).setDepth(y + 1);
+      this.tweens.add({ targets: puff, x: x + side * 14, y: y - 5, scale: 1.8, alpha: 0, duration: 320, ease: 'Quad.easeOut', onComplete: () => puff.destroy() });
+    }
+  }
+
   private headY(v: UnitView): number {
     return v.sprite.y - v.sprite.displayHeight - 4;
   }
 
   private placeWeapon(v: UnitView): void {
     if (!v.weapon) return;
-    v.weapon.setPosition(v.sprite.x + v.dir * 12, v.sprite.y - 22).setDepth(v.sprite.depth + 1);
+    v.weapon.setPosition(v.sprite.x + v.dir * 6 * SCALE, v.sprite.y - 11 * SCALE).setDepth(v.sprite.depth + 1);
   }
 
   private async play(): Promise<void> {
@@ -269,6 +277,7 @@ export class ReplayScene extends Phaser.Scene {
   private handle(e: FightEvent): Promise<void> {
     switch (e.t) {
       case 'round':
+        this.hooks.onRound(e.round);
         return this.banner(`Round ${e.round}`, PAL.paper, 700);
       case 'break':
         return this.wait(200);
@@ -339,7 +348,7 @@ export class ReplayScene extends Phaser.Scene {
   /** Moves the attacker next to the target, runs `impact`, then walks back. */
   private async melee(att: UnitView, def: UnitView, fast: boolean, impact: () => Promise<void>): Promise<void> {
     const duration = fast ? 90 : 150;
-    const targetX = def.sprite.x - att.dir * (att.isMain ? 26 : 18);
+    const targetX = def.sprite.x - att.dir * (att.isMain ? 13 : 9) * SCALE;
     await this.tween({ targets: att.sprite, x: targetX, duration, ease: 'Quad.easeIn', onUpdate: () => this.placeWeapon(att) });
     if (att.weapon) {
       const swing = this.tween({ targets: att.weapon, angle: 60 * att.dir, duration: 80, yoyo: true });
@@ -355,15 +364,15 @@ export class ReplayScene extends Phaser.Scene {
     const projectile = att.weapon;
     att.weapon = null;
     if (!projectile) return impact();
-    await this.tween({ targets: projectile, x: def.sprite.x, y: def.sprite.y - 20, angle: 720 * att.dir, duration: 280 });
+    await this.tween({ targets: projectile, x: def.sprite.x, y: def.sprite.y - 10 * SCALE, angle: 720 * att.dir, duration: 280 });
     projectile.destroy();
     await impact();
   }
 
   /** A glowing orb from the caster to the target (or past it, on a dodge). */
   private async orb(att: UnitView, def: UnitView, past: boolean, impact: () => Promise<void>): Promise<void> {
-    const orb = this.add.circle(att.sprite.x + att.dir * 10, att.sprite.y - 26, 4, num(PAL.purple)).setStrokeStyle(1, num(PAL.lilac)).setDepth(1500);
-    await this.tween({ targets: orb, x: def.sprite.x + (past ? def.dir * -30 : 0), y: def.sprite.y - 22, duration: 260, ease: 'Sine.easeIn' });
+    const orb = this.add.circle(att.sprite.x + att.dir * 5 * SCALE, att.sprite.y - 13 * SCALE, 4, num(PAL.purple)).setStrokeStyle(1, num(PAL.lilac)).setDepth(1500);
+    await this.tween({ targets: orb, x: def.sprite.x + (past ? def.dir * -30 : 0), y: def.sprite.y - 11 * SCALE, duration: 260, ease: 'Sine.easeIn' });
     orb.destroy();
     await impact();
   }
@@ -371,9 +380,14 @@ export class ReplayScene extends Phaser.Scene {
   private async impactHit(def: UnitView, damage: number, hp: number, blocked: boolean, magic: boolean): Promise<void> {
     def.sprite.setTintFill(blocked ? num(PAL.sky) : magic ? num(PAL.lilac) : num(PAL.white));
     const color = blocked ? PAL.sky : magic ? PAL.lilac : PAL.coral;
-    if (damage > 0) this.floatText(def.sprite.x, this.headY(def), blocked ? `BLOCK ${damage}` : `-${damage}`, color);
+    if (damage > 0) this.floatText(def.sprite.x, this.headY(def), blocked ? `BLOCK ${damage}` : `-${damage}`, color, blocked ? 10 : 13);
     def.hp = hp;
     this.drawBars(def);
+    // Hit-stop: everything freezes for a moment on a landed hit; big hits also shake the screen.
+    if (damage > 0 && !blocked) {
+      if (damage >= def.maxHp * BIG_HIT) this.cameras.main.shake(140, 0.012);
+      await this.wait(HIT_STOP);
+    }
     await this.tween({ targets: def.sprite, x: def.sprite.x - def.dir * 4, duration: 50, yoyo: true });
     def.sprite.clearTint();
   }
@@ -394,7 +408,9 @@ export class ReplayScene extends Phaser.Scene {
     const def = this.view(target);
     const hop = async () => {
       this.floatText(def.sprite.x, this.headY(def), 'DODGE', PAL.white);
+      this.dust(def.homeX, def.homeY);
       await this.tween({ targets: def.sprite, x: def.homeX - def.dir * 14, y: def.homeY - 8, duration: 100, yoyo: true, onUpdate: () => this.placeWeapon(def) });
+      this.dust(def.homeX, def.homeY);
     };
     if (kind === 'spell') await this.orb(att, def, true, hop);
     else if (kind === 'throw') await this.throwAt(att, def, hop);
@@ -482,8 +498,11 @@ export class ReplayScene extends Phaser.Scene {
     v.weapon = null;
     v.sprite.setTint(num(PAL.smoke));
     if (v.isMain) {
+      // Knock-out: a hard shake and a slow, bouncy fall.
+      this.cameras.main.shake(220, 0.018);
       v.sprite.setOrigin(0.5, 0.9);
-      await this.tween({ targets: v.sprite, angle: -90 * v.dir, duration: 400, ease: 'Bounce.easeOut' });
+      await this.tween({ targets: v.sprite, angle: -90 * v.dir, duration: 700, ease: 'Bounce.easeOut' });
+      this.dust(v.sprite.x, v.homeY);
     } else {
       await this.tween({ targets: v.sprite, alpha: 0, y: v.sprite.y + 4, duration: 350 });
     }

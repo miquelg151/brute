@@ -22,8 +22,9 @@ export function playSpecialStrike(host: HTMLElement): Promise<number> {
   return new Promise((resolve) => {
     const marker = h('div', { class: 'timing-marker' });
     const bar = h('div', { class: 'timing-bar' }, h('div', { class: 'timing-zone' }), h('div', { class: 'timing-perfect' }), marker);
-    const label = h('div', { class: 'timing-label' }, 'SPECIAL STRIKE! Tap in the middle');
-    const overlay = h('div', { class: 'overlay timing' }, label, bar);
+    const label = h('div', { class: 'timing-label' }, 'SPECIAL STRIKE!');
+    const hint = h('div', { class: 'timing-hint' }, 'Tap anywhere when the marker is in the middle');
+    const overlay = h('div', { class: 'overlay timing' }, label, bar, hint);
     host.append(overlay);
 
     const start = performance.now();

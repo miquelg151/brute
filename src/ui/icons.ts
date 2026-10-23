@@ -124,6 +124,14 @@ const ICONS = {
     rows: ['W...', 'WW..', 'WWW.', 'WWWW', 'WWW.', 'WW..', 'W...'],
     colors: { W: PAL.pink },
   },
+  fast: {
+    rows: ['W..W...', 'WW.WW..', 'WWWWWWW', 'WW.WW..', 'W..W...'],
+    colors: { W: PAL.pink },
+  },
+  skip: {
+    rows: ['W...WW', 'WW..WW', 'WWW.WW', 'WW..WW', 'W...WW'],
+    colors: { W: PAL.pink },
+  },
   dice: {
     rows: ['WWWWWWW', 'WKWWWKW', 'WWWWWWW', 'WWWKWWW', 'WWWWWWW', 'WKWWWKW', 'WWWWWWW'],
     colors: { W: PAL.white, K: PAL.ink },

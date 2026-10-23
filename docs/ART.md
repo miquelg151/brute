@@ -42,7 +42,7 @@ and the rest of the art. Skin, hair and outfit colours are picked from the same 
 | Fighter layers | 16 × 24 suggested | All layers of a fighter must be the same size. Feet on the bottom row. |
 | Pets | about 12 × 8 | Feet on the bottom row. |
 | Weapons | about 10 × 3 | Drawn lying flat, handle on the left. |
-| Fight background | 320 × 200 exactly | The street (where fighters stand) starts at y = 165. |
+| Fight background | 240 × 210 exactly | The street (where fighters stand) starts at y = 175. In the arena every sprite is shown 3 times bigger. |
 
 ## Fighters are drawn in layers
 

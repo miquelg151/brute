@@ -106,6 +106,7 @@ const CSS_COLORS: Record<string, string> = {
   lime: PAL.lime,
   cyan: PAL.cyan,
   purple: PAL.purple,
+  blue: PAL.blue,
   'green-lit': PAL.green, // "you won" sticker
   'coral-lit': PAL.coral, // "you lost" sticker
   good: PAL.forest,

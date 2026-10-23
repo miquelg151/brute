@@ -669,36 +669,225 @@ a {
   background: linear-gradient(transparent 55%, color-mix(in srgb, var(--yellow) 70%, transparent) 55%);
 }
 
-/* Fight */
+/* Fight: one screen-high column with the health bars, the arena (its size comes from
+   ARENA_W / ARENA_H in ReplayScene.ts) and, under it, a zone used for tapping. */
+.screen.fight {
+  min-height: calc(100dvh - var(--step) * 7 - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+
 .arena {
   position: relative;
   width: 100%;
-  aspect-ratio: 320 / 200;
   border: 3px solid var(--ink);
   border-radius: 6px 3px 7px 4px;
   background: var(--arena);
   overflow: hidden;
   box-shadow: 0 0 0 4px var(--paper);
-  margin: 4px 0 var(--step);
+  margin: 4px 0;
 }
 
 .arena canvas {
   image-rendering: pixelated;
 }
 
-.versus {
-  color: var(--wall-dim);
+/* Health bars above the arena */
+.hud {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--step);
+  align-items: start;
+}
+
+.hud-side {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.hud-side.right .hud-top {
+  flex-direction: row-reverse;
+}
+
+.hud-name,
+.hud-hp,
+.hud-round {
+  color: var(--sticker-fill);
+  -webkit-text-stroke: var(--sticker-outline-sm) var(--sticker-ink);
+  paint-order: stroke fill;
+  font-weight: 800;
+  text-shadow: none;
+}
+
+.hud-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-hp {
+  font-size: var(--t-s);
+}
+
+.hud-round {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--t-s);
+}
+
+/* Bars with a paper sticker edge, lit from the top. */
+.meter {
+  display: flex;
+  height: 8px;
+  background: var(--outline);
+  border: 2px solid var(--outline);
+  border-radius: 6px 2px 6px 2px;
+  box-shadow: 0 0 0 2px var(--paper-lit);
+  overflow: hidden;
+}
+
+.hud-side.right .meter {
+  justify-content: flex-end;
+}
+
+.meter-hp {
+  height: 18px;
+  background: color-mix(in srgb, var(--bad) 45%, var(--outline));
+}
+
+.meter-fill {
+  height: 100%;
+  background: var(--green-lit);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.35);
+  transition: width var(--med) var(--ease-out);
+}
+
+.meter-stamina .meter-fill {
+  background: var(--lime);
+}
+
+.meter-stamina.low .meter-fill {
+  background: var(--orange);
+}
+
+.meter-mana .meter-fill {
+  background: var(--blue);
+}
+
+/* Under the arena: speed controls, then the tap area or the result. */
+.fight-zone {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--step);
 }
 
 .fight-controls {
   display: flex;
   justify-content: flex-end;
   gap: var(--step);
-  margin-top: 4px;
 }
 
-.fight-summary {
+.fight-zone .overlay.timing {
+  background: color-mix(in srgb, var(--outline) 35%, transparent);
+  border: 3px dashed color-mix(in srgb, var(--paper) 45%, transparent);
+  border-radius: var(--rough);
+}
+
+.timing-hint {
+  font-size: var(--t-s);
+  text-align: center;
+}
+
+/* Breaks between rounds: a sheet that slides up from the bottom. */
+body.sheet-open {
+  overflow: hidden;
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: color-mix(in srgb, var(--outline) 55%, transparent);
+  animation: fade-in var(--med) var(--ease-out);
+}
+
+.sheet {
+  width: 100%;
+  max-width: 440px;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--step);
+  padding: var(--step) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  background-color: var(--wall);
+  border: 3px solid var(--outline);
+  border-bottom: none;
+  border-radius: 24px 18px 0 0;
+  box-shadow: 0 0 0 3px var(--paper-lit);
+  animation: sheet-up var(--med) var(--ease-out);
+}
+
+.sheet-handle {
+  align-self: center;
+  width: 44px;
+  height: 5px;
+  margin: 2px 0 4px;
+  border-radius: 3px;
+  background: var(--wall-dim);
+}
+
+/* The main button stays visible at the bottom while the sheet scrolls. */
+.sheet-actions {
+  position: sticky;
+  bottom: 0;
   margin-top: var(--step);
+  padding: var(--step) 0 calc(var(--step) * 2 + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, var(--wall) 35%);
+}
+
+.sheet-actions .btn-big {
+  width: 100%;
+  margin-top: 0;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .sheet-backdrop {
+    animation: none;
+  }
+
+  .meter-fill {
+    transition: none;
+  }
 }
 
 .result {
@@ -1038,7 +1227,7 @@ a {
 /* Phone held sideways: keep the whole arena on screen. */
 @media (orientation: landscape) and (max-height: 500px) {
   .arena {
-    max-width: calc((100dvh - 120px) * 1.6);
+    max-width: calc((100dvh - 150px) * 240 / 210);
     margin-left: auto;
     margin-right: auto;
   }
@@ -1053,13 +1242,6 @@ a {
 }
 
 /* Breaks between rounds */
-.break-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--step);
-  margin-top: var(--step);
-}
-
 .break-fighter {
   display: flex;
   justify-content: space-between;

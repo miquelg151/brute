@@ -104,7 +104,15 @@ Original plan:
   (tap one to read it), strategy as icon segmented controls (stance / target / weapons)
   with the ✓ marks; long texts move into a bottom sheet that opens on tap.
 
-### Phase 4 — Fight screen · medium
+### Phase 4 — Fight screen · medium · DONE
+
+Done: arena 240 × 210 with sprites at 3× (same on-screen pixel size as the rest of the
+game), HUD in the DOM with sticker bars, round counter, special strike in the zone under
+the arena, hit-stop / shake / dust / slower KO, break as a bottom sheet, speed and skip
+as icons (speed returns to normal after a decision). Not done: phone held sideways
+needs a scroll to reach the tap zone (the game is meant for portrait).
+
+Original plan:
 
 - Arena uses the phone: portrait background **320 × 280** (taller sky and street) so
   it fills the width and ~45% of the height; landscape keeps the current fit.

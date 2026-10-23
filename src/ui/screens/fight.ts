@@ -21,9 +21,41 @@ import { PAL } from '../theme';
 
 const SPEEDS = [1, 2, 4];
 const SKIP_SPEED = 40;
+const ROUNDS = 3;
+/** Below this much stamina the bar turns orange. */
+const LOW_STAMINA = 25;
 
 const planText = (c: BreakChoice) =>
   `${STANCES[c.stance].name}, ${TARGETS[c.target].name.toLowerCase()}, ${WEAPON_STYLES[c.weaponStyle].name.toLowerCase()} weapons${c.recover ? ', and they will recover' : ''}.`;
+
+const percent = (value: number, max: number) => `${max > 0 ? Math.max(0, Math.min(100, (100 * value) / max)) : 0}%`;
+
+/** One fighter's name, health, stamina and mana above the arena. */
+function fighterHud(side: 'left' | 'right') {
+  const name = h('span', { class: 'hud-name' });
+  const hpValue = h('span', { class: 'hud-hp' });
+  const hp = h('div', { class: 'meter-fill' });
+  const hpMeter = h('div', { class: 'meter meter-hp', role: 'img' }, hp);
+  const stamina = h('div', { class: 'meter-fill' });
+  const staminaMeter = h('div', { class: 'meter meter-stamina', role: 'img' }, stamina);
+  const mana = h('div', { class: 'meter-fill' });
+  const manaMeter = h('div', { class: 'meter meter-mana hidden', role: 'img' }, mana);
+  const el = h('div', { class: `hud-side ${side}` }, h('div', { class: 'hud-top' }, name, hpValue), hpMeter, staminaMeter, manaMeter);
+
+  const update = (f: FighterState) => {
+    name.textContent = f.name;
+    hpValue.textContent = String(Math.max(0, f.hp));
+    hp.style.width = percent(f.hp, f.maxHp);
+    hpMeter.setAttribute('aria-label', `${f.name}: ${Math.max(0, f.hp)} of ${f.maxHp} health`);
+    stamina.style.width = percent(f.stamina, f.maxStamina);
+    staminaMeter.classList.toggle('low', f.stamina < LOW_STAMINA);
+    staminaMeter.setAttribute('aria-label', `Stamina ${f.stamina}`);
+    manaMeter.classList.toggle('hidden', f.maxMana <= 0);
+    mana.style.width = percent(f.mana, f.maxMana);
+    manaMeter.setAttribute('aria-label', `Mana ${f.mana}`);
+  };
+  return { el, update };
+}
 
 function fighterLine(f: FighterState): HTMLElement {
   return h(
@@ -41,10 +73,11 @@ function fighterLine(f: FighterState): HTMLElement {
 }
 
 /**
- * The break panel. Resolves with the player's choice for the next round.
+ * The break between rounds, as a sheet that slides up over the arena.
+ * Resolves with the player's choice for the next round.
  * In live fights the opponent's choice is not shown.
  */
-function breakPanel(host: HTMLElement, save: SaveData, event: BreakEvent, fighters: [FighterState, FighterState]): Promise<BreakChoice> {
+function breakSheet(save: SaveData, event: BreakEvent, fighters: [FighterState, FighterState]): Promise<BreakChoice> {
   const fight = save.pendingFight!;
   const previous: Plan = fight.inputs.breaks.at(-1) ?? fight.tactics!;
   const plan: Plan = { stance: previous.stance, target: previous.target, weaponStyle: previous.weaponStyle };
@@ -75,9 +108,10 @@ function breakPanel(host: HTMLElement, save: SaveData, event: BreakEvent, fighte
     });
 
     const nextBtn = h('button', { class: 'btn btn-primary btn-big' }, `Start round ${event.round + 1}`);
-    const panel = h(
+    const sheet = h(
       'section',
-      { class: 'break-panel' },
+      { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Round ${event.round} is over` },
+      h('div', { class: 'sheet-handle', 'aria-hidden': 'true' }),
       h('h2', { class: 'section-icon' }, icon('round', 'Break', 'normal'), `Round ${event.round} is over`),
       h('div', { class: 'card' }, fighterLine(fighters[0]), fighterLine(fighters[1])),
       h(
@@ -101,57 +135,65 @@ function breakPanel(host: HTMLElement, save: SaveData, event: BreakEvent, fighte
         : '',
       h('h2', {}, 'Rest'),
       h('div', { class: 'choice-grid' }, ...recoverBtns),
-      nextBtn,
+      // The button stays at the bottom of the sheet while its content scrolls.
+      h('div', { class: 'sheet-actions' }, nextBtn),
     );
+    const backdrop = h('div', { class: 'sheet-backdrop' }, sheet);
     nextBtn.addEventListener('click', () => {
-      panel.remove();
+      backdrop.remove();
+      document.body.classList.remove('sheet-open');
       resolve({ ...plan, weapons: [...weapons], recover });
     });
-    host.append(panel);
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.body.classList.add('sheet-open');
+    document.body.append(backdrop);
   });
 }
 
 /** Plays the started pending fight. Every input is saved as soon as it is made. */
 export function renderFight(root: HTMLElement, save: SaveData, store: () => void, onDone: () => void): void {
   const opponent = save.pendingFight!.opponent;
-  const arena = h('div', { class: 'arena' });
-  const speedBtn = h('button', { class: 'btn btn-small' }, 'x1');
-  const skipBtn = h('button', { class: 'btn btn-small' }, 'Skip');
+  const huds = [fighterHud('left'), fighterHud('right')] as const;
+  const roundText = h('span', {}, `1/${ROUNDS}`);
+  const hud = h(
+    'header',
+    { class: 'hud' },
+    huds[0].el,
+    h('div', { class: 'hud-round', title: 'Round' }, icon('round', 'Round', 'small'), roundText),
+    huds[1].el,
+  );
+  const arena = h('div', { class: 'arena', style: `aspect-ratio:${ARENA_W} / ${ARENA_H}` });
+
+  const speedLabel = h('span', {}, 'x1');
+  const speedBtn = h('button', { class: 'btn btn-small btn-with-icon', 'aria-label': 'Speed' }, icon('fast', 'Speed', 'normal'), speedLabel);
+  const skipBtn = h('button', { class: 'btn btn-small btn-icon', 'aria-label': 'Skip to the next decision' }, icon('skip', 'Skip', 'normal'));
   const controls = h('div', { class: 'fight-controls' }, speedBtn, skipBtn);
   const summary = h('div', { class: 'card fight-summary hidden' });
-  const continueBtn = h('button', { class: 'btn btn-primary hidden' }, 'Continue');
-  const below = h('div', {});
+  const continueBtn = h('button', { class: 'btn btn-primary btn-big hidden' }, 'Continue');
+  // Everything under the arena. The special strike uses all of it as its tap area.
+  const zone = h('section', { class: 'fight-zone' }, controls, summary, continueBtn);
 
-  root.append(
-    h(
-      'main',
-      { class: 'screen fight' },
-      h('div', { class: 'versus' }, `${save.character.name} vs ${opponent.name}, level ${opponent.level}`),
-      arena,
-      controls,
-      below,
-      summary,
-      continueBtn,
-    ),
-  );
+  root.append(h('main', { class: 'screen fight' }, hud, arena, zone));
 
-  let speed = 1;
+  let speedIndex = 0;
+  // After a decision the fight goes on at the chosen speed, even if Skip brought it there.
+  const resumeSpeed = () => scene.setSpeed(SPEEDS[speedIndex]!);
+
   // Created after the arena is in the DOM: Phaser sizes the canvas from its parent.
   const scene = new ReplayScene(simulateFight(save), {
     requestSpecial: async () => {
-      recordSpecial(save, await playSpecialStrike(arena));
+      recordSpecial(save, await playSpecialStrike(zone));
       store();
+      resumeSpeed();
     },
     requestBreak: async (event, fighters) => {
-      controls.classList.add('hidden');
-      const choice = await breakPanel(below, save, event, fighters);
+      const choice = await breakSheet(save, event, fighters);
       recordBreak(save, choice);
       store();
-      controls.classList.remove('hidden');
-      arena.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      resumeSpeed();
     },
     resimulate: () => simulateFight(save),
+    onFighter: (team, state) => huds[team].update(state),
+    onRound: (round) => (roundText.textContent = `${round}/${ROUNDS}`),
     onFinished: () => {
       const result = finishFight(save);
       store();
@@ -177,11 +219,10 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
     scene,
   });
 
-  let speedIndex = 0;
   speedBtn.addEventListener('click', () => {
     speedIndex = (speedIndex + 1) % SPEEDS.length;
-    speed = SPEEDS[speedIndex]!;
-    speedBtn.textContent = `x${speed}`;
+    const speed = SPEEDS[speedIndex]!;
+    speedLabel.textContent = `x${speed}`;
     scene.setSpeed(speed);
   });
   // Skip races to the next decision (special or break) and stops there, since those need the player.
