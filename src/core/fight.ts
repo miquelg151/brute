@@ -1,6 +1,6 @@
 // The fight simulation. See docs/COMBAT.md for the rules in plain words.
 import { CLASSES, FISTS_DAMAGE, GEAR, LEARNED_MANA, LOADOUT_SIZE, ORIGINS, PETS, SPELLS, WEAPONS, type GearDef } from './catalog';
-import { CARDS, DECK_SIZE, botCardLevel, scaled } from './cards';
+import { CARDS, DECK_SIZE, botCardLevel, scaled, scaledCount } from './cards';
 import { maxHpFor } from './character';
 import { Rng } from './rng';
 import { DEFAULT_PLAN, STANCES, TARGETS, WEAPON_STYLES, type Plan } from './tactics';
@@ -203,6 +203,17 @@ interface Unit {
   /** Special Strike waiting for this unit's next turn: its quality and max bonus. */
   pendingSpecial: { quality: number; bonus: number } | null;
   lastEnergy: number;
+  /** Rage card: turns left and the damage bonus (%). */
+  rageTurns: number;
+  ragePct: number;
+  /** Roll and Wall cards: attacks that will surely be dodged or blocked. */
+  sureDodges: number;
+  sureBlocks: number;
+  /** Bonus damage (%) and "can't be dodged" for the unit's next hit only. */
+  nextHitPct: number;
+  nextHitSure: boolean;
+  /** Overcharge card: bonus (%) for the next spell. */
+  spellBonusPct: number;
   breaks: readonly BreakChoice[] | undefined;
   lastRes: string;
 }
@@ -325,6 +336,13 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     specialQuality: opts.specialQuality,
     pendingSpecial: null,
     lastEnergy: -1,
+    rageTurns: 0,
+    ragePct: 0,
+    sureDodges: 0,
+    sureBlocks: 0,
+    nextHitPct: 0,
+    nextHitSure: false,
+    spellBonusPct: 0,
     breaks: opts.breaks,
     lastRes: '',
   };
@@ -461,7 +479,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
   };
 
   const baseDamage = (att: Unit, kind: HitKind, quality: number, specialBonus = SPECIAL_MAX_BONUS): number => {
-    if (!att.isMain) return att.power;
+    if (!att.isMain) return Math.floor((att.power * (100 + att.nextHitPct)) / 100);
     const weapon = att.weapon ? WEAPONS[att.weapon] : undefined;
     let dmg = att.power + (weapon ? weapon.damage : FISTS_DAMAGE + (att.skills.has('iron_fists') ? 4 : 0));
     if (weapon?.heavy && att.skills.has('heavy_hands')) dmg = Math.floor((dmg * 125) / 100);
@@ -469,6 +487,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (kind === 'special') dmg = Math.floor((dmg * (100 + (quality * specialBonus) / 100)) / 100);
     if (att.skills.has('fury') && att.hp * 100 < att.maxHp * 30) dmg = Math.floor((dmg * 130) / 100);
     if (tired(att)) dmg = Math.floor((dmg * 75) / 100);
+    const cardBonus = (att.rageTurns > 0 ? att.ragePct : 0) + att.nextHitPct;
+    if (cardBonus) dmg = Math.floor((dmg * (100 + cardBonus)) / 100);
     return Math.floor((dmg * att.damagePct) / 100);
   };
 
@@ -511,7 +531,13 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
   /** Resolves one physical attack. Returns true if the target survived. Specials and throws cannot be dodged. */
   const attack = (att: Unit, def: Unit, kind: HitKind, quality = 0, specialBonus = SPECIAL_MAX_BONUS): boolean => {
     if (missesBlind(att, def)) return true;
-    if (kind !== 'special' && kind !== 'throw' && rng.chance(dodgeChance(att, def))) {
+    const sure = kind === 'special' || kind === 'throw' || att.nextHitSure;
+    if (!sure && def.sureDodges > 0) {
+      def.sureDodges--;
+      events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
+      return true;
+    }
+    if (!sure && rng.chance(dodgeChance(att, def))) {
       events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
       if (kind !== 'counter' && def.skills.has('counter') && canPay(def, STAMINA_COST.counter) && rng.chance(50)) {
         pay(def, STAMINA_COST.counter);
@@ -527,8 +553,14 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const armor = att.isMain && !quickHit ? fullArmor : Math.floor(fullArmor / 2);
     let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality, specialBonus) * roll) / 100) - armor);
     if (!def.isMain) damage = Math.max(1, Math.floor((damage * TARGETS[att.plan.target].petDamagePct) / 100));
-    const blocked = def.skills.has('shield') && rng.chance(SHIELD_BLOCK);
+    let blocked = false;
+    if (def.sureBlocks > 0) {
+      def.sureBlocks--;
+      blocked = true;
+    } else blocked = def.skills.has('shield') && rng.chance(SHIELD_BLOCK);
     if (blocked) damage = Math.max(1, Math.floor(damage / 4));
+    att.nextHitPct = 0;
+    att.nextHitSure = false;
     const survived = land(att, def, kind, damage, blocked);
     if (survived && att.skills.has('disarm') && def.weapon && rng.chance(15)) {
       events.push({ t: 'disarm', actor: att.idx, target: def.idx, weapon: def.weapon });
@@ -545,7 +577,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       return { survived: true, dealt: 0 };
     }
     const roll = rng.int(85, 116);
-    const raw = Math.floor((base * roll * att.damagePct) / 10000);
+    const raw = Math.floor((base * roll * att.damagePct * (100 + att.spellBonusPct)) / 1000000);
+    att.spellBonusPct = 0;
     const damage = Math.max(1, Math.floor((raw * (100 - def.magicResist)) / 100));
     const before = def.hp;
     const survived = land(att, def, 'spell', damage, false);
@@ -650,6 +683,27 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       case 'special':
         u.pendingSpecial = { quality: Math.max(0, Math.min(100, Math.round(quality))), bonus: scaled(SPECIAL_MAX_BONUS, level) };
         break;
+      case 'rage':
+        u.rageTurns = 3;
+        u.ragePct = scaled(30, level);
+        break;
+      case 'roll':
+        u.sureDodges += scaledCount(2, level);
+        break;
+      case 'wall':
+        u.sureBlocks += scaledCount(3, level);
+        break;
+      case 'sic_em':
+        for (const pet of units.filter((p) => p.team === u.team && !p.isMain && alive(p))) {
+          pet.nextHitPct = scaled(50, level);
+          attack(pet, pickTarget(pet), 'melee');
+          if (winner !== null) break;
+        }
+        break;
+      case 'overcharge':
+        u.mana = Math.min(u.maxMana, u.mana + scaled(30, level));
+        u.spellBonusPct = scaled(50, level);
+        break;
     }
   };
 
@@ -681,7 +735,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     }
   };
 
-  const takeTurn = (u: Unit) => {
+  const takeTurnBody = (u: Unit) => {
     u.roundTurns++;
     if (u.isMain) {
       u.stamina = Math.min(u.maxStamina, u.stamina + u.staminaRegen);
@@ -728,6 +782,11 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         }
       }
     }
+  };
+
+  const takeTurn = (u: Unit) => {
+    takeTurnBody(u);
+    if (u.rageTurns > 0) u.rageTurns--;
   };
 
   const applyBreak = (u: Unit, choice: BreakChoice, c: Character) => {

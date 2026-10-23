@@ -512,3 +512,52 @@ describe('card upgrades', () => {
     expect(eligibleUpgrades(c, 'brawler').some((u) => u.id === 'card:haymaker')).toBe(false);
   });
 });
+
+describe('starting cards', () => {
+  const brawler = generateOpponent(10, new Rng(51), 'brawler');
+  const parkour = generateOpponent(10, new Rng(52), 'parkour');
+  const bouncer = generateOpponent(10, new Rng(53), 'bouncer');
+  const tamer = generateOpponent(10, new Rng(54), 'tamer');
+  const mystic = generateOpponent(10, new Rng(55), 'mystic');
+  const deckOf = (...ids: string[]) => Object.fromEntries(ids.map((id) => [id, 1]));
+  const after = (log: FightLog, card: string) => log.events.slice(log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0));
+
+  it('Rage adds damage to the next 3 turns', () => {
+    // Rage costs 4 and a fighter starts with 3 energy, so it is played at tick 4, when the 4th point arrives.
+    const hits = (plays: CardPlay[]) => {
+      const log = runFight(brawler, bouncer, 7, { a: { interactive: true, deck: deckOf('rage'), plays, breaks: [] }, b: { deck: {} } });
+      return log.events.slice(log.events.findIndex((e) => e.t === 'tick' && e.n === 4)).filter((e) => e.t === 'hit' && e.actor === 0).slice(0, 3).map((e) => (e.t === 'hit' ? e.damage : 0));
+    };
+    const normal = hits([]);
+    const raged = hits([{ tick: 4, card: 'rage' }]);
+    expect(raged.reduce((s, d) => s + d, 0)).toBeGreaterThan(normal.reduce((s, d) => s + d, 0));
+  });
+
+  it('Roll dodges the next 2 attacks for sure', () => {
+    const log = runFight(parkour, brawler, 9, { a: { interactive: true, deck: deckOf('roll'), plays: [{ tick: 0, card: 'roll' }], breaks: [] }, b: { deck: {} } });
+    const aimedAtMe = after(log, 'roll').filter((e) => (e.t === 'hit' || e.t === 'dodge' || e.t === 'block') && e.actor !== 0 && 'target' in e && e.target === 0);
+    expect(aimedAtMe.slice(0, 2).every((e) => e.t === 'dodge')).toBe(true);
+  });
+
+  it('Wall blocks the next 3 hits for sure', () => {
+    const log = runFight(bouncer, brawler, 9, { a: { interactive: true, deck: deckOf('wall'), plays: [{ tick: 0, card: 'wall' }], breaks: [] }, b: { deck: {} } });
+    const landed = after(log, 'wall').filter((e) => (e.t === 'hit' || e.t === 'block') && e.actor !== 0 && e.target === 0 && e.kind !== 'spell');
+    expect(landed.slice(0, 3).every((e) => e.t === 'block')).toBe(true);
+  });
+
+  it("Sic 'em makes every pet attack at once", () => {
+    const log = runFight(tamer, brawler, 4, { a: { interactive: true, deck: deckOf('sic_em'), plays: [{ tick: 0, card: 'sic_em' }], breaks: [] }, b: { deck: {} } });
+    const i = log.events.findIndex((e) => e.t === 'card' && e.card === 'sic_em');
+    const pets = log.roster.map((u, idx) => (u.team === 0 && !u.isMain ? idx : -1)).filter((idx) => idx >= 0);
+    const next = log.events.slice(i + 1, i + 1 + pets.length);
+    for (const e of next) expect(pets).toContain('actor' in e ? e.actor : -1);
+  });
+
+  it('Overcharge gives mana and boosts the next spell', () => {
+    const log = runFight(mystic, brawler, 2, { a: { interactive: true, deck: deckOf('overcharge'), plays: [{ tick: 4, card: 'overcharge' }], breaks: [] }, b: { deck: {} } });
+    const plain = runFight(mystic, brawler, 2, { a: { interactive: true, deck: deckOf('overcharge'), plays: [], breaks: [] }, b: { deck: {} } });
+    // Overcharge costs 4, so it is played at tick 4; look at spells after that.
+    const firstSpell = (l: FightLog) => l.events.slice(l.events.findIndex((e) => e.t === 'tick' && e.n === 4)).find((e) => e.t === 'hit' && e.kind === 'spell' && e.actor === 0);
+    expect((firstSpell(log) as { damage: number }).damage).toBeGreaterThan((firstSpell(plain) as { damage: number }).damage);
+  });
+});
