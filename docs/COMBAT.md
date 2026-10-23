@@ -62,3 +62,6 @@ Every piece has an upside and often a downside (a riot vest is great armor but s
   against them.
 - At each level-up, at least one of the three choices is a weapon, skill, pet or gear
   piece, as long as there is any left to get.
+- **Keep** weapons: hits with a weapon in hand ignore 2 armor (good against tough foes).
+- **Throw** weapons: 40% chance per turn to throw; throws can't be dodged or countered.
+- **Agile** stance: spells are dodged as easily as hits (normally only 60% as easily).

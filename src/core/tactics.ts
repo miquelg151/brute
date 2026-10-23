@@ -84,11 +84,13 @@ const stance = (id: Stance, name: string, damage: number, armor: number, dodge: 
   return { id, name, damage, armor, dodge, stamina, effects, strongVs };
 };
 
+const withEffect = (def: StanceDef, effect: Effect): StanceDef => ({ ...def, effects: [...def.effects, effect] });
+
 export const STANCES: Record<Stance, StanceDef> = {
   balanced: stance('balanced', 'Balanced', 0, 0, 0, 100, null),
   aggressive: stance('aggressive', 'Aggressive', 20, 0, -5, 150, 'tough'),
   defensive: stance('defensive', 'Defensive', -15, 2, 0, 70, 'many_hits'),
-  agile: stance('agile', 'Agile', -5, 0, 15, 110, 'magic_user'),
+  agile: withEffect(stance('agile', 'Agile', -5, 0, 15, 110, 'magic_user'), { text: 'Dodges spells as well as hits', good: true }),
 };
 
 // --- Target -----------------------------------------------------------------
@@ -139,15 +141,18 @@ export interface WeaponStyleDef extends TacticOption<WeaponStyle> {
   throwChance: number;
   /** Chance per turn to draw a weapon while unarmed. */
   drawChance: number;
+  /** Armor ignored by hits with a weapon in hand. */
+  armorPierce: number;
 }
 
 export const WEAPON_STYLES: Record<WeaponStyle, WeaponStyleDef> = {
-  normal: { id: 'normal', name: 'Normal', throwChance: 8, drawChance: 50, effects: [], strongVs: null },
+  normal: { id: 'normal', name: 'Normal', throwChance: 8, drawChance: 50, armorPierce: 0, effects: [], strongVs: null },
   throw: {
     id: 'throw',
     name: 'Throw',
-    throwChance: 30,
+    throwChance: 40,
     drawChance: 50,
+    armorPierce: 0,
     effects: [
       { text: 'Big throws, never countered', good: true },
       { text: 'Runs out of weapons', good: false },
@@ -159,7 +164,10 @@ export const WEAPON_STYLES: Record<WeaponStyle, WeaponStyleDef> = {
     name: 'Keep',
     throwChance: 0,
     drawChance: 80,
+    // A weapon held all fight long, swung with weight: it gets through armor.
+    armorPierce: 2,
     effects: [
+      { text: 'Weapon hits ignore 2 armor', good: true },
       { text: 'Draws weapons sooner', good: true },
       { text: 'Never throws', good: false },
     ],

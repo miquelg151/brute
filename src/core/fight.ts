@@ -163,6 +163,7 @@ interface Unit {
   fighterChance: number;
   throwChance: number;
   drawChance: number;
+  armorPierce: number;
   stamina: number;
   maxStamina: number;
   staminaRegen: number;
@@ -227,6 +228,7 @@ function applyPlan(u: Unit, plan: Plan): void {
   // The Thrower skill makes any style except "keep" throw much more.
   u.throwChance = style.throwChance === 0 ? 0 : style.throwChance + (u.skills.has('thrower') ? 27 : 0);
   u.drawChance = style.drawChance;
+  u.armorPierce = style.armorPierce;
 }
 
 function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInfo[], units: Unit[]): void {
@@ -278,6 +280,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     fighterChance: 0,
     throwChance: 0,
     drawChance: 0,
+    armorPierce: 0,
     stamina: MAX_STAMINA,
     maxStamina: MAX_STAMINA,
     staminaRegen: STAMINA_REGEN + sum('staminaRegen'),
@@ -421,8 +424,9 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (weapon?.heavy && accuracy < 0 && att.skills.has('heavy_hands')) accuracy = 0;
     const chance = 5 + 4 * def.agility - 2 * att.agility + def.dodgeBonus - accuracy - (tired(def) ? 10 : 0);
     const capped = Math.max(0, Math.min(def.dodgeCap, chance));
-    // Spells are hard to dodge: a bit more than half the usual chance.
-    return magic ? Math.floor((capped * 60) / 100) : capped;
+    // Spells are hard to dodge: a bit more than half the usual chance, unless the
+    // defender fights in the Agile stance.
+    return magic && def.plan.stance !== 'agile' ? Math.floor((capped * 60) / 100) : capped;
   };
 
   const baseDamage = (att: Unit, kind: HitKind, quality: number): number => {
@@ -488,7 +492,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     // Pets, spirits and quick extra hits (double strikes, counters) are many small hits,
     // so armor only counts half against them.
     const quickHit = kind === 'double' || kind === 'counter';
-    const armor = att.isMain && !quickHit ? def.armor : Math.floor(def.armor / 2);
+    const fullArmor = Math.max(0, def.armor - (att.weapon && kind !== 'throw' ? att.armorPierce : 0));
+    const armor = att.isMain && !quickHit ? fullArmor : Math.floor(fullArmor / 2);
     let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality) * roll) / 100) - armor);
     if (!def.isMain) damage = Math.max(1, Math.floor((damage * TARGETS[att.plan.target].petDamagePct) / 100));
     const blocked = def.skills.has('shield') && rng.chance(SHIELD_BLOCK);
