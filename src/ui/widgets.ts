@@ -23,3 +23,8 @@ export function pips(on: number, total: number, label: string): HTMLElement {
     ...Array.from({ length: total }, (_, i) => h('span', { class: i < on ? 'pip on' : 'pip' })),
   );
 }
+
+/** The screen's main action, kept at the bottom of the screen within reach of the thumb. */
+export function actionBar(...children: (Node | string)[]): HTMLElement {
+  return h('div', { class: 'action-bar' }, ...children);
+}

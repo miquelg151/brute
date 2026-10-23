@@ -26,6 +26,7 @@ import { playWarmup } from '../minigames';
 import { CLASS_COLORS } from '../palette';
 import { gearPicker, planEditor, weaponPicker } from '../plan';
 import { drawFighter } from '../sprites';
+import { actionBar } from '../widgets';
 
 interface PrefightActions {
   onWarmup: (score: number) => void;
@@ -68,6 +69,21 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
   const fightBtn = h('button', { class: 'btn btn-primary btn-big' }, 'Start fight');
   fightBtn.addEventListener('click', () => actions.onStart({ ...plan }, [...loadout], { ...worn }));
 
+  /** What stands out about the opponent, as stickers: tap one to read what it means. */
+  const traitStickers = () => {
+    if (foeTraits.length === 0) return h('p', { class: 'dim' }, 'Nothing stands out.');
+    const info = h('p', { class: 'trait-info small' }, 'Tap a sticker to see what it means.');
+    const chips = foeTraits.map((t) => {
+      const chip = h('button', { class: 'trait-chip', 'aria-pressed': 'false' }, icon(TRAIT_ICONS[t] ?? 'skill', TRAITS[t].name, 'normal'), TRAITS[t].name);
+      chip.addEventListener('click', () => {
+        chips.forEach((c) => c.setAttribute('aria-pressed', c === chip ? 'true' : 'false'));
+        info.textContent = TRAITS[t].description;
+      });
+      return chip;
+    });
+    return h('div', { class: 'traits-box' }, h('div', { class: 'trait-chips' }, ...chips), info);
+  };
+
   const side = (canvas: HTMLCanvasElement, name: string, sub: HTMLElement) =>
     h('div', { class: 'poster-side' }, h('div', { class: 'spot' }, canvas), h('div', { class: 'poster-name' }, name), sub);
   const foePlan = fight.opponentPlan;
@@ -87,23 +103,11 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
       ),
     ),
     h('h2', {}, `Scouting ${foe.name}`),
+    traitStickers(),
     h(
-      'section',
-      { class: 'card' },
-      h(
-        'ul',
-        { class: 'traits' },
-        ...(foeTraits.length
-          ? foeTraits.map((t) =>
-              h(
-                'li',
-                { class: 'trait-row' },
-                icon(TRAIT_ICONS[t] ?? 'skill', TRAITS[t].name),
-                h('span', {}, h('span', { class: 'trait' }, TRAITS[t].name), ' ', h('span', { class: 'dim small' }, TRAITS[t].description)),
-              ),
-            )
-          : [h('li', { class: 'dim' }, 'Nothing stands out.')]),
-      ),
+      'details',
+      { class: 'card more' },
+      h('summary', {}, `Everything about ${foe.name}`),
       h(
         'dl',
         { class: 'intel' },
@@ -135,7 +139,7 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
         h('dd', {}, names(foeWorn, (id) => GEAR[id]?.name)),
       ),
     ),
-    h('p', { class: 'lede small' }, 'Options marked ✓ are strong against something this opponent has. You can change them at each break.'),
+    h('p', { class: 'lede small' }, '✓ = strong against this opponent. You can change your plan at each break.'),
     ...planEditor(plan, foeTraits),
     me.weapons.length > LOADOUT_SIZE
       ? h('section', {}, h('h2', {}, `Bring up to ${LOADOUT_SIZE} weapons`), h('p', { class: 'lede small' }, 'Accurate weapons are better against fighters who dodge a lot.'), weaponPicker(me.weapons, loadout))
@@ -143,7 +147,7 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
     me.gear.length > 0 ? h('section', {}, h('h2', {}, 'Gear'), gearPicker(me.gear, worn)) : '',
     h('h2', {}, 'Warm-up'),
     h('section', { class: 'card' }, warmupInfo, warmupBtn),
-    fightBtn,
+    actionBar(fightBtn),
   );
   root.append(screen);
 }

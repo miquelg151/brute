@@ -17,10 +17,15 @@ import {
   type Trait,
 } from '../core';
 import { gearEffects } from './describe';
-import { h } from './dom';
-import { TRAIT_ICONS, icon, iconValue } from './icons';
+import { h, pixelArt } from './dom';
+import { draggable } from './drag';
+import { TRAIT_ICONS, icon, iconValue, type IconName } from './icons';
+import { drawWeapon } from './sprites';
 
-/** A card per option: effects with arrows, and the trait it is strong against (ticked if the opponent has it). */
+/**
+ * One row of buttons (a ✓ on those strong against the opponent) and, under it, what the
+ * selected option does.
+ */
 export function optionGroup<Id extends string>(
   ids: readonly Id[],
   defs: Record<Id, TacticOption<Id>>,
@@ -28,13 +33,12 @@ export function optionGroup<Id extends string>(
   selected: Id,
   onPick: (id: Id) => void,
 ): HTMLElement {
-  const buttons = ids.map((id) => {
+  const matches = (id: Id) => defs[id].strongVs !== null && foeTraits.includes(defs[id].strongVs!);
+  const detail = h('div', { class: 'option-detail' });
+
+  const showDetail = (id: Id) => {
     const def = defs[id];
-    const matches = def.strongVs !== null && foeTraits.includes(def.strongVs);
-    const btn = h(
-      'button',
-      { class: 'choice option', 'aria-pressed': id === selected ? 'true' : 'false' },
-      h('div', { class: 'choice-title' }, def.name),
+    detail.replaceChildren(
       h(
         'ul',
         { class: 'effects' },
@@ -52,25 +56,27 @@ export function optionGroup<Id extends string>(
       def.strongVs
         ? h(
             'div',
-            { class: matches ? 'strong-vs match' : 'strong-vs' },
-            matches ? '✓ ' : '',
+            { class: matches(id) ? 'strong-vs match' : 'strong-vs' },
+            matches(id) ? '✓ ' : '',
             'Strong against ',
             icon(TRAIT_ICONS[def.strongVs] ?? 'skill', TRAITS[def.strongVs].name),
             ` ${TRAITS[def.strongVs].name.toLowerCase()}`,
           )
         : '',
     );
+  };
+
+  const buttons = ids.map((id) => {
+    const btn = h('button', { class: 'segment', 'aria-pressed': id === selected ? 'true' : 'false' }, defs[id].name, matches(id) ? h('span', { class: 'segment-tick' }, ' ✓') : '');
     btn.addEventListener('click', () => {
-      buttons.forEach((b) => {
-        b.classList.toggle('selected', b === btn);
-        b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
-      });
+      buttons.forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+      showDetail(id);
       onPick(id);
     });
-    if (id === selected) btn.classList.add('selected');
     return btn;
   });
-  return h('div', { class: ids.length === 3 ? 'choice-grid cols-3' : 'choice-grid' }, ...buttons);
+  showDetail(selected);
+  return h('div', { class: 'option-group' }, h('div', { class: 'segments', role: 'group', 'data-count': ids.length, style: `--count:${ids.length}` }, ...buttons), detail);
 }
 
 /** Stance, target and weapon-use pickers. Edits `plan` in place. */
@@ -85,48 +91,115 @@ export function planEditor(plan: Plan, foeTraits: Trait[]): HTMLElement[] {
   ];
 }
 
-/** Toggle chips to bring up to LOADOUT_SIZE of the owned weapons. Edits `chosen` in place. */
-export function weaponPicker(owned: string[], chosen: Set<string>): HTMLElement {
+interface PickItem {
+  id: string;
+  name: string;
+  detail: string;
+  /** A fresh picture each call (a canvas can only be in one place). */
+  art: () => HTMLElement;
+}
+
+/**
+ * Stickers you can drag (or tap) into a row of `capacity` slots. Tap or drag a sticker out
+ * of a slot to take it back. With one slot, a new sticker replaces the old one.
+ * Edits `chosen` in place and calls `onChange` after every change.
+ */
+function stickerPicker(items: PickItem[], chosen: string[], capacity: number, onChange: () => void): HTMLElement {
+  const slots = h('div', { class: 'pick-slots drop-zone' });
+  const bag = h('div', { class: 'pick-bag drop-zone' });
   const hint = h('div', { class: 'dim small' });
-  const refreshHint = () => (hint.textContent = `${chosen.size} of ${LOADOUT_SIZE} chosen`);
-  const chips = owned.map((id) => {
-    const w = WEAPONS[id];
-    const chip = h(
-      'button',
-      { class: 'chip-toggle' },
-      w?.name ?? id,
-      w ? h('span', { class: 'dim small' }, ` ${w.damage} dmg${w.accuracy ? `, ${w.accuracy > 0 ? '+' : ''}${w.accuracy}% aim` : ''}`) : '',
+
+  const add = (id: string) => {
+    if (chosen.includes(id)) return;
+    if (chosen.length >= capacity) {
+      if (capacity > 1) {
+        // Full: wiggle the slots instead of silently doing nothing.
+        slots.classList.remove('full');
+        void slots.offsetWidth;
+        slots.classList.add('full');
+        return;
+      }
+      chosen.splice(0, 1);
+    }
+    chosen.push(id);
+    render();
+  };
+  const remove = (id: string) => {
+    const i = chosen.indexOf(id);
+    if (i >= 0) chosen.splice(i, 1);
+    render();
+  };
+
+  const sticker = (item: PickItem, inSlot: boolean) => {
+    const el = h(
+      'div',
+      { class: 'pick-item', role: 'button', tabindex: '0', 'aria-label': `${item.name}: ${inSlot ? 'take out' : 'bring'}` },
+      h('div', { class: 'pick-art' }, item.art()),
+      h('span', { class: 'pick-name' }, item.name),
+      h('span', { class: 'pick-detail' }, item.detail),
     );
-    chip.classList.toggle('selected', chosen.has(id));
-    chip.addEventListener('click', () => {
-      if (chosen.has(id)) chosen.delete(id);
-      else if (chosen.size < LOADOUT_SIZE) chosen.add(id);
-      chip.classList.toggle('selected', chosen.has(id));
-      refreshHint();
+    draggable(el, {
+      onTap: () => (inSlot ? remove(item.id) : add(item.id)),
+      onDrop: (zone) => {
+        if (inSlot && zone !== slots) remove(item.id);
+        else if (!inSlot && zone === slots) add(item.id);
+      },
     });
-    return chip;
+    return el;
+  };
+
+  const render = () => {
+    slots.replaceChildren(
+      ...Array.from({ length: capacity }, (_, i) => {
+        const item = items.find((it) => it.id === chosen[i]);
+        return item ? sticker(item, true) : h('div', { class: 'pick-empty', 'aria-hidden': 'true' });
+      }),
+    );
+    // The bag only shows what is not in a slot yet.
+    bag.replaceChildren(...items.filter((item) => !chosen.includes(item.id)).map((item) => sticker(item, false)));
+    hint.textContent = capacity > 1 ? `${chosen.length} of ${capacity} · drag or tap` : 'Drag one in or tap it · empty means none';
+    onChange();
+  };
+  render();
+  return h('div', { class: 'picker' }, slots, hint, bag);
+}
+
+/** Bring up to LOADOUT_SIZE of the owned weapons. Edits `chosen` in place. */
+export function weaponPicker(owned: string[], chosen: Set<string>): HTMLElement {
+  const picked = [...chosen].filter((id) => owned.includes(id));
+  const items: PickItem[] = owned.map((id) => {
+    const w = WEAPONS[id];
+    return {
+      id,
+      name: w?.name ?? id,
+      detail: w ? `${w.damage} dmg${w.accuracy ? ` ${w.accuracy > 0 ? '+' : ''}${w.accuracy}% aim` : ''}` : '',
+      art: () => pixelArt(drawWeapon(id), 'normal'),
+    };
   });
-  refreshHint();
-  return h('div', {}, h('div', { class: 'slots' }, ...chips), hint);
+  return stickerPicker(items, picked, LOADOUT_SIZE, () => {
+    chosen.clear();
+    picked.forEach((id) => chosen.add(id));
+  });
 }
 
 /** One armor and one accessory (or none) from the owned gear. Edits `worn` in place. */
 export function gearPicker(owned: string[], worn: GearChoice): HTMLElement {
-  const row = (slot: GearSlot, label: string, iconName: 'armor' | 'accessory') => {
+  const row = (slot: GearSlot, label: string, iconName: IconName) => {
     const pieces = owned.filter((g) => GEAR[g]?.slot === slot);
     if (pieces.length === 0) return '';
-    const options = [null, ...pieces];
-    const chips = options.map((id) => {
-      const g = id ? GEAR[id] : undefined;
-      const chip = h('button', { class: 'chip-toggle gear-chip' }, g ? g.name : 'None', g ? h('span', { class: 'dim small' }, gearEffects(g)) : '');
-      chip.addEventListener('click', () => {
-        worn[slot] = id;
-        chips.forEach((c) => c.classList.toggle('selected', c === chip));
-      });
-      chip.classList.toggle('selected', worn[slot] === id);
-      return chip;
-    });
-    return h('div', { class: 'gear-row' }, h('div', { class: 'section-icon' }, icon(iconName, label, 'normal'), h('span', {}, label)), h('div', { class: 'slots' }, ...chips));
+    const picked = worn[slot] ? [worn[slot]] : [];
+    const items: PickItem[] = pieces.map((id) => ({
+      id,
+      name: GEAR[id]!.name,
+      detail: gearEffects(GEAR[id]!),
+      art: () => icon(iconName, label, 'normal'),
+    }));
+    return h(
+      'div',
+      { class: 'gear-row' },
+      h('div', { class: 'section-icon' }, icon(iconName, label, 'normal'), h('span', {}, label)),
+      stickerPicker(items, picked, 1, () => (worn[slot] = picked[0] ?? null)),
+    );
   };
   return h('div', { class: 'gear-picker' }, row('armor', 'Armor', 'armor'), row('accessory', 'Accessory', 'accessory'));
 }

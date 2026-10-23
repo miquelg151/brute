@@ -87,7 +87,16 @@ Original plan:
   become speed/skip icons, "Random look" becomes a dice.
 - Add the gallery page section "Icons" so the whole set can be seen side by side.
 
-### Phase 3 — Touch and layout · medium/large
+### Phase 3 — Touch and layout · medium/large · DONE
+
+Done: sticky action bar (create, home, pre-fight), class carousel (swipe picks the card in
+the middle), look editor with arrows and swatches, strategy as button rows with the
+selected option's effects under them (pre-fight and breaks), weapons and gear as
+stickers dragged or tapped into slots (`src/ui/drag.ts`), opponent traits as stickers
+to tap, the rest of the scouting folded away. Not done: swiping on the fighter preview
+to change the look (the arrows do it).
+
+Original plan:
 
 - **Thumb zone:** the main action of each screen (Create / Fight / Start fight /
   Continue) lives in a sticky bottom bar with safe-area padding; always reachable.

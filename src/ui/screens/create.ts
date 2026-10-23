@@ -4,6 +4,7 @@ import { icon, statRow } from '../icons';
 import { logo } from '../logo';
 import { CLASS_COLORS, HAIR_COLORS, HAIR_STYLE_NAMES, OUTFIT_COLORS, SKIN_TONES } from '../palette';
 import { drawFighter } from '../sprites';
+import { actionBar } from '../widgets';
 
 const LOOK_ROWS: { key: keyof Appearance; label: string }[] = [
   { key: 'skinTone', label: 'Skin' },
@@ -80,11 +81,10 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
     card: (id: T) => HTMLElement,
     onPick: (id: T) => void,
     selected: T,
-    accent?: (id: T) => string,
   ) => {
     const grid = h('div', { class: 'choice-grid' });
     const buttons = ids.map((id) => {
-      const btn = h('button', { class: 'choice', style: accent?.(id) ?? '' }, card(id));
+      const btn = h('button', { class: 'choice' }, card(id));
       btn.addEventListener('click', () => {
         buttons.forEach((b) => b.classList.remove('selected'));
         btn.classList.add('selected');
@@ -95,6 +95,43 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
     });
     grid.append(...buttons);
     return grid;
+  };
+
+  /** Big class cards side by side: swipe to look through them, the one in the middle is picked. */
+  const classCarousel = () => {
+    const track = h('div', { class: 'carousel' });
+    const dots = h('div', { class: 'carousel-dots', 'aria-hidden': 'true' });
+    const cards = CLASS_IDS.map((id) =>
+      h('button', { class: 'choice carousel-card', style: `--accent:${CLASS_COLORS[id]}`, 'aria-label': CLASSES[id].name }, classCard(id)),
+    );
+    const pick = (i: number) => {
+      const id = CLASS_IDS[i]!;
+      cards.forEach((c, j) => c.classList.toggle('selected', j === i));
+      [...dots.children].forEach((d, j) => d.classList.toggle('on', j === i));
+      if (id !== classId) {
+        classId = id;
+        refreshPreview();
+      }
+    };
+    const centre = (card: HTMLElement) => track.scrollTo({ left: card.offsetLeft - (track.clientWidth - card.offsetWidth) / 2, behavior: 'smooth' });
+    cards.forEach((card, i) => card.addEventListener('click', () => (pick(i), centre(card))));
+    dots.append(...cards.map(() => h('span', {})));
+    // When a swipe settles, pick the card closest to the middle.
+    let settle = 0;
+    track.addEventListener('scroll', () => {
+      clearTimeout(settle);
+      settle = window.setTimeout(() => {
+        const mid = track.scrollLeft + track.clientWidth / 2;
+        let best = 0;
+        cards.forEach((c, i) => {
+          if (Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid) < Math.abs(cards[best]!.offsetLeft + cards[best]!.offsetWidth / 2 - mid)) best = i;
+        });
+        pick(best);
+      }, 90);
+    });
+    track.append(...cards);
+    pick(CLASS_IDS.indexOf(classId));
+    return h('div', {}, track, dots);
   };
 
   const classCard = (id: ClassId) => {
@@ -146,11 +183,11 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
       ),
       h('h2', {}, 'Class'),
       h('p', { class: 'lede small' }, 'Sets your starting stats and skill, and which upgrades you see most.'),
-      choiceGrid(CLASS_IDS, classCard, (id) => ((classId = id), refreshPreview()), classId, (id) => `--accent:${CLASS_COLORS[id]}`),
+      classCarousel(),
       h('h2', {}, 'Origin'),
       h('p', { class: 'lede small' }, 'A small bonus in every fight.'),
       choiceGrid(ORIGIN_IDS, originCard, (id) => (originId = id), originId),
-      startBtn,
+      actionBar(startBtn),
     ),
   );
   refreshPreview();

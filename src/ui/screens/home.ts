@@ -4,7 +4,7 @@ import { h, pixelArt } from '../dom';
 import { icon, iconHeading, iconValue } from '../icons';
 import { CLASS_COLORS } from '../palette';
 import { drawFighter } from '../sprites';
-import { petSlot, pips, slot, weaponSlot } from '../widgets';
+import { actionBar, petSlot, pips, slot, weaponSlot } from '../widgets';
 
 interface HomeActions {
   onFight: () => void;
@@ -90,8 +90,8 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
         { class: 'today' },
         h('span', { class: 'icon-value' }, icon('fights', 'Fights left today', 'normal'), pips(left, FIGHTS_PER_DAY, `${left} of ${FIGHTS_PER_DAY} fights left today`)),
       ),
-      fightBtn,
       resetBtn,
+      actionBar(fightBtn),
     ),
   );
 }
