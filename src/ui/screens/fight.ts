@@ -5,7 +5,6 @@ import {
   WEAPON_STYLES,
   finishFight,
   recordBreak,
-  recordSpecial,
   simulateFight,
   traitsOf,
   type BreakChoice,
@@ -15,7 +14,6 @@ import {
 import { ARENA_H, ARENA_W, ARENA_ZOOM, ReplayScene, type BreakEvent, type FighterState } from '../../fight/ReplayScene';
 import { h } from '../dom';
 import { icon, iconValue } from '../icons';
-import { playSpecialStrike } from '../minigames';
 import { planEditor, weaponPicker } from '../plan';
 import { PAL } from '../theme';
 
@@ -180,11 +178,6 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
 
   // Created after the arena is in the DOM: Phaser sizes the canvas from its parent.
   const scene = new ReplayScene(simulateFight(save), {
-    requestSpecial: async () => {
-      recordSpecial(save, await playSpecialStrike(zone));
-      store();
-      resumeSpeed();
-    },
     requestBreak: async (event, fighters) => {
       const choice = await breakSheet(save, event, fighters);
       recordBreak(save, choice);

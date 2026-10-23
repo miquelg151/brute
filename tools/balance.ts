@@ -83,7 +83,7 @@ if (section('classes')) {
 
 // --- Player skill -----------------------------------------------------------
 // Mirror matches (same class, same level): team A plays with skill, team B does not.
-// Answers: how much does being good at specials and the warm-up actually matter?
+// Temporary (Task 7 rewrites this): player cards are not in the sim yet, so every profile plays no cards.
 const SKILL_MAX = 0.65;
 const SKILL_LEVEL = 10;
 const profiles: { name: string; quality: number; warmup: number }[] = [
@@ -92,7 +92,7 @@ const profiles: { name: string; quality: number; warmup: number }[] = [
   { name: 'perfect player', quality: 100, warmup: 100 },
 ];
 
-function skillWinRate(classId: ClassId, quality: number, warmup: number): number {
+function skillWinRate(classId: ClassId): number {
   let wins = 0;
   for (let i = 0; i < FIGHTS; i++) {
     const rng = new Rng(mixSeed(424242 + CLASS_IDS.indexOf(classId), i));
@@ -101,7 +101,7 @@ function skillWinRate(classId: ClassId, quality: number, warmup: number): number
     // A skilled player times every special; breaks keep the same plan.
     const breaks = Array.from({ length: ROUNDS - 1 }, () => ({ ...DEFAULT_PLAN, weapons: ca.weapons, recover: false }));
     const log = runFight(ca, cb, rng.next(), {
-      a: { interactive: true, specials: Array.from({ length: ROUNDS }, () => quality), breaks, warmup },
+      a: { interactive: true, breaks },
     });
     if (log.winner === 0) wins++;
   }
@@ -112,8 +112,8 @@ if (section('skill')) {
   console.log(`\nPlayer skill at level ${SKILL_LEVEL} (mirror match win rate vs a passive copy, max ${SKILL_MAX * 100}%)`);
   console.log('           ' + profiles.map((p) => p.name.padStart(16)).join(''));
   for (const classId of CLASS_IDS) {
-    const cells = profiles.map((p) => {
-      const rate = skillWinRate(classId, p.quality, p.warmup);
+    const cells = profiles.map(() => {
+      const rate = skillWinRate(classId);
       const flag = rate > SKILL_MAX ? '!' : ' ';
       if (flag === '!') problems++;
       return `${pct(rate)}${flag}`.padStart(16);

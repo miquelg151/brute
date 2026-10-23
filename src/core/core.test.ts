@@ -23,7 +23,6 @@ import {
   prepareFight,
   recordWarmup,
   recordBreak,
-  recordSpecial,
   rollOffer,
   scaled,
   scaledCount,
@@ -33,9 +32,9 @@ import {
   simulateFight,
   gearFor,
   type BreakChoice,
+  type CardPlay,
   type Character,
   startFight,
-  warmupBonus,
   runFight,
   useFight,
   xpToNext,
@@ -48,28 +47,21 @@ const look: Appearance = { skinTone: 0, hairStyle: 0, hairColor: 0, outfitColor:
 
 const keep = (weapons: string[], recover = false): BreakChoice => ({ ...DEFAULT_PLAN, weapons, recover });
 
-/** Plays a whole daily fight like the UI does: every special gets `quality`, every break keeps the plan. */
-function playAuto(save: SaveData, day: number, quality = 50) {
+/** Plays a whole daily fight like the UI does, playing no cards; every break keeps the plan. */
+function playAuto(save: SaveData, day: number) {
   if (!prepareFight(save, day)) return null;
   startFight(save, DEFAULT_PLAN, save.character.weapons);
-  for (let log = simulateFight(save); log.winner === null; log = simulateFight(save)) {
-    const last = log.events.at(-1)!;
-    if (last.t === 'special') recordSpecial(save, quality);
-    else recordBreak(save, keep(save.character.weapons));
-  }
+  for (let log = simulateFight(save); log.winner === null; log = simulateFight(save)) recordBreak(save, keep(save.character.weapons));
   return finishFight(save);
 }
 
-/** Runs an interactive fight for side a to the end, answering everything the same way. */
-function playThrough(a: Character, b: Character, seed: number, quality: number, recover = false) {
-  const specials: number[] = [];
+/** Runs an interactive fight for side a to the end with the given plays, keeping the plan at breaks. */
+function playThrough(a: Character, b: Character, seed: number, plays: CardPlay[] = [], recover = false) {
   const breaks: BreakChoice[] = [];
   for (;;) {
-    const log = runFight(a, b, seed, { a: { interactive: true, specials, breaks } });
-    if (log.winner !== null) return { log, specials, breaks };
-    const last = log.events.at(-1)!;
-    if (last.t === 'special') specials.push(quality);
-    else breaks.push(keep(a.weapons, recover));
+    const log = runFight(a, b, seed, { a: { interactive: true, plays, breaks } });
+    if (log.winner !== null) return { log, breaks };
+    breaks.push(keep(a.weapons, recover));
   }
 }
 
@@ -261,39 +253,58 @@ describe('game', () => {
   });
 });
 
-describe('skill', () => {
+describe('energy and cards', () => {
   const a = generateOpponent(10, new Rng(11), 'brawler');
   const b = generateOpponent(10, new Rng(12), 'bouncer');
+  const energyOf = (log: FightLog, actor: number) => log.events.filter((e) => e.t === 'energy' && e.actor === actor).map((e) => (e.t === 'energy' ? e.energy : 0));
 
-  it('stops at each input and keeps the same events before it', () => {
-    const specials: number[] = [];
-    const breaks: BreakChoice[] = [];
-    let previous: FightLog | null = null;
-    for (let step = 0; step < 20; step++) {
-      const log = runFight(a, b, 42, { a: { interactive: true, specials, breaks } });
-      if (previous) expect(log.events.slice(0, previous.events.length - 1)).toEqual(previous.events.slice(0, -1));
-      if (log.winner !== null) return;
-      const last = log.events.at(-1)!;
-      expect(['special', 'break']).toContain(last.t);
-      if (last.t === 'special') specials.push(90);
-      else breaks.push(keep(a.weapons));
-      previous = log;
-    }
-    throw new Error('fight never ended');
+  it('energy starts at 3, fills one point every 4 ticks and never passes 10', () => {
+    const { log } = playThrough(a, b, 42);
+    const first = log.events.find((e) => e.t === 'energy' && e.actor === 0);
+    expect(first).toEqual({ t: 'energy', actor: 0, energy: 3 });
+    expect(Math.max(...energyOf(log, 0))).toBeLessThanOrEqual(10);
+    const tick8 = log.events.findIndex((e) => e.t === 'tick' && e.n === 8);
+    const at8 = log.events.slice(0, tick8 + 2).filter((e) => e.t === 'energy' && e.actor === 0).at(-1);
+    expect(at8).toMatchObject({ energy: 5 });
   });
 
-  it('a special strike cannot be dodged', () => {
-    const { log } = playThrough(a, b, 42, 90);
-    const i = log.events.findIndex((e) => e.t === 'special' && e.quality === 90);
+  it('a play is applied at its tick and leaves earlier events identical', () => {
+    const before = playThrough(a, b, 42).log;
+    const plays = [{ tick: 6, card: 'rage' }];
+    const after = playThrough(a, b, 42, plays).log;
+    const cut = before.events.findIndex((e) => e.t === 'tick' && e.n === 6);
+    expect(after.events.slice(0, cut + 1)).toEqual(before.events.slice(0, cut + 1));
+    // A level-10 fighter's default deck is at bot level 3.
+    expect(after.events.slice(cut + 1).find((e) => e.t === 'card' && e.actor === 0)).toEqual({ t: 'card', actor: 0, card: 'rage', level: 3 });
+  });
+
+  it('a play without enough energy does nothing', () => {
+    const { log } = playThrough(a, b, 42, [{ tick: 1, card: 'special', quality: 100 }]);
+    expect(log.events.some((e) => e.t === 'card' && e.actor === 0)).toBe(false);
+  });
+
+  it('the special strike card makes the next attack an undodgeable special', () => {
+    const { log } = playThrough(a, b, 42, [{ tick: 8, card: 'special', quality: 90 }]);
+    const i = log.events.findIndex((e) => e.t === 'special' && e.actor === 0);
     expect(i).toBeGreaterThanOrEqual(0);
+    expect(log.events[i]).toEqual({ t: 'special', actor: 0, quality: 90 });
     expect(log.events[i + 1]).toMatchObject({ actor: 0, kind: 'special' });
-    // A shield can still block it.
     expect(['hit', 'block']).toContain(log.events[i + 1]!.t);
   });
 
-  it('a failed special plays a normal turn', () => {
-    const { log } = playThrough(a, b, 42, 0);
-    expect(log.events.some((e) => (e.t === 'hit' || e.t === 'block') && e.kind === 'special')).toBe(false);
+  it('a failed special strike plays a normal turn', () => {
+    const { log } = playThrough(a, b, 42, [{ tick: 8, card: 'special', quality: 0 }]);
+    expect(log.events.some((e) => (e.t === 'hit' || e.t === 'block') && e.kind === 'special' && e.actor === 0)).toBe(false);
+  });
+
+  it('bots play cards on their own', () => {
+    const plays = Array.from({ length: 20 }, (_, seed) => runFight(a, b, seed)).flatMap((l) => l.events.filter((e) => e.t === 'card'));
+    expect(plays.length).toBeGreaterThan(0);
+  });
+
+  it('an empty deck plays nothing', () => {
+    const log = runFight(a, b, 3, { a: { deck: {} }, b: { deck: {} } });
+    expect(log.events.some((e) => e.t === 'card')).toBe(false);
   });
 
   it('non-interactive fights never ask for input', () => {
@@ -305,12 +316,6 @@ describe('skill', () => {
     c.weapons.push('chain', 'umbrella', 'skateboard');
     expect(loadoutFor(c, ['chain', 'traffic_sign', 'umbrella'])).toEqual(['chain', 'umbrella']);
     expect(loadoutFor(c)).toHaveLength(3);
-  });
-
-  it('warm-up bonus is capped at 5%', () => {
-    expect(warmupBonus(0)).toBe(0);
-    expect(warmupBonus(100)).toBe(5);
-    expect(warmupBonus(500)).toBe(5);
   });
 });
 
@@ -330,7 +335,7 @@ describe('rounds', () => {
   });
 
   it('at a break the automatic side has already chosen, the player has not', () => {
-    const log = runFight(a, b, 1, { a: { interactive: true, specials: [50, 50, 50] } });
+    const log = runFight(a, b, 1, { a: { interactive: true } });
     const last = log.events.at(-1)!;
     if (last.t !== 'break') return; // the fight ended in round 1
     expect(last.choices[0]).toBeNull();
@@ -339,7 +344,7 @@ describe('rounds', () => {
 
   it('recovering at a break gives more stamina', () => {
     const staminaAfterBreak = (recover: boolean) => {
-      const { log } = playThrough(a, b, 5, 50, recover);
+      const { log } = playThrough(a, b, 5, [], recover);
       const br = log.events.findIndex((e) => e.t === 'break');
       if (br < 0) return null;
       const res = log.events.slice(br).find((e) => e.t === 'res' && e.actor === 0);
@@ -417,7 +422,7 @@ describe('tactics', () => {
     const dogIdx = log.roster.findIndex((u) => u.defId === 'dog');
     const dogDeath = log.events.findIndex((e) => e.t === 'death' && e.actor === dogIdx);
     const before = dogDeath === -1 ? log.events : log.events.slice(0, dogDeath);
-    for (const e of before) if ((e.t === 'hit' || e.t === 'dodge' || e.t === 'block') && e.actor === 0) expect(e.target).toBe(dogIdx);
+    for (const e of before) if ((e.t === 'hit' || e.t === 'dodge' || e.t === 'block') && e.actor === 0 && e.kind !== 'special') expect(e.target).toBe(dogIdx);
   });
 
   it('keep style never throws', () => {

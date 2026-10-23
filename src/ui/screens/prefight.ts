@@ -14,7 +14,6 @@ import {
   gearFor,
   loadoutFor,
   traitsOf,
-  warmupBonus,
   type GearChoice,
   type Plan,
   type SaveData,
@@ -54,7 +53,7 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
     warmupInfo.textContent =
       score === null
         ? 'Optional. Tap targets for 8 seconds, once per fight. Worth up to +5% damage.'
-        : `You scored ${score}: +${warmupBonus(score)}% damage this fight.`;
+        : `You scored ${score}.`;
   };
   refreshWarmup(fight.warmup);
 

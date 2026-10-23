@@ -1,5 +1,6 @@
 // The fight simulation. See docs/COMBAT.md for the rules in plain words.
 import { CLASSES, FISTS_DAMAGE, GEAR, LEARNED_MANA, LOADOUT_SIZE, ORIGINS, PETS, SPELLS, WEAPONS, type GearDef } from './catalog';
+import { CARDS, DECK_SIZE, botCardLevel, scaled } from './cards';
 import { maxHpFor } from './character';
 import { Rng } from './rng';
 import { DEFAULT_PLAN, STANCES, TARGETS, WEAPON_STYLES, type Plan } from './tactics';
@@ -57,8 +58,12 @@ export type FightEvent =
   | { t: 'rest'; actor: number }
   /** Current stamina and mana of a main fighter, sent when they change. */
   | { t: 'res'; actor: number; stamina: number; mana: number }
-  /** A special-strike moment. `quality` is null when the player's input is still missing. */
-  | { t: 'special'; actor: number; index: number; quality: number | null }
+  /** Start of a tick (counted across rounds), so a replay knows where it is. */
+  | { t: 'tick'; n: number }
+  | { t: 'energy'; actor: number; energy: number }
+  | { t: 'card'; actor: number; card: string; level: number }
+  /** A special strike from the Special Strike card, with its timing quality. */
+  | { t: 'special'; actor: number; quality: number }
   | { t: 'death'; actor: number };
 
 export interface FightLog {
@@ -69,17 +74,27 @@ export interface FightLog {
   winner: Team | null;
 }
 
+/** A card played by the player: applied at the start of `tick` (ticks count across rounds from 0). */
+export interface CardPlay {
+  tick: number;
+  card: string;
+  /** Special Strike only: how well the timing bar was hit, 0-100. */
+  quality?: number;
+}
+
 /** Per-team choices and player inputs. Everything here is part of what makes a fight reproducible. */
 export interface TeamOptions extends Partial<Plan> {
   /** Weapons brought into this fight (owned ones only, max LOADOUT_SIZE). Defaults to the first owned ones. */
   weapons?: string[];
   gear?: GearChoice;
-  /** Warm-up minigame score, 0-100. */
-  warmup?: number;
-  /** True when a player controls this side: it gets special strikes and decides at breaks. */
+  /** True when a player controls this side: it plays its own cards and decides at breaks. */
   interactive?: boolean;
-  /** Timing quality (0-100) of each special strike, in order. */
-  specials?: number[];
+  /** Cards brought (id -> level). Missing: the first DECK_SIZE owned cards at bot level. */
+  deck?: Record<string, number>;
+  /** Interactive side: the cards the player played, in order. */
+  plays?: CardPlay[];
+  /** Bots: timing quality of their special strikes (missing: rolled 40-90). */
+  specialQuality?: number;
   /** Choice at each break, in order. */
   breaks?: BreakChoice[];
 }
@@ -91,15 +106,18 @@ export interface FightOptions {
 
 export const ROUNDS = 3;
 /** Length of a round, in initiative ticks. */
-export const ROUND_TICKS = 30;
-/** Own turn within each round on which an interactive fighter gets a special strike. */
-export const SPECIAL_TURN = 3;
+export const ROUND_TICKS = 45;
 /** Below this timing quality the special fails and the turn plays normally. */
 export const SPECIAL_MIN_QUALITY = 25;
 /** Extra damage of a perfect special strike, in percent. */
 export const SPECIAL_MAX_BONUS = 60;
-/** A perfect warm-up adds this much damage, in percent. */
-export const WARMUP_MAX_BONUS = 5;
+
+export const MAX_ENERGY = 10;
+export const START_ENERGY = 3;
+/** One energy point every this many ticks. */
+export const ENERGY_EVERY = 4;
+/** Bots play a card when their energy reaches this (unless a rule fires earlier). */
+const BOT_SPEND_AT = 8;
 
 export const MAX_STAMINA = 100;
 /** Base stamina cost of each kind of action, before stance and gear. */
@@ -145,7 +163,7 @@ interface Unit {
   armor: number;
   dodgeBonus: number;
   dodgeCap: number;
-  /** Percent multiplier on damage (stance, warm-up). */
+  /** Percent multiplier on damage (stance). */
   damagePct: number;
   /** Percent multiplier on stamina costs (stance, gear). */
   staminaPct: number;
@@ -177,8 +195,14 @@ interface Unit {
   /** For spirits: their owner, and whether they are currently on the field. */
   owner: number;
   interactive: boolean;
-  specials: readonly number[];
-  specialsUsed: number;
+  /** Card state (main fighters). */
+  energy: number;
+  deck: Record<string, number>;
+  plays: readonly CardPlay[];
+  specialQuality: number | undefined;
+  /** Special Strike waiting for this unit's next turn: its quality and max bonus. */
+  pendingSpecial: { quality: number; bonus: number } | null;
+  lastEnergy: number;
   breaks: readonly BreakChoice[] | undefined;
   lastRes: string;
 }
@@ -199,8 +223,10 @@ export function gearFor(c: Character, chosen?: GearChoice): GearChoice {
   return { armor: pick('armor', chosen?.armor), accessory: pick('accessory', chosen?.accessory) };
 }
 
-export function warmupBonus(score: number): number {
-  return Math.floor((Math.max(0, Math.min(100, score)) * WARMUP_MAX_BONUS) / 100);
+/** The cards a fighter brings when nobody chose: the first DECK_SIZE, at the bot level. */
+export function defaultDeck(c: Character): Record<string, number> {
+  const level = botCardLevel(c.level);
+  return Object.fromEntries(c.cards.slice(0, DECK_SIZE).map((id) => [id, level]));
 }
 
 export function spellsOf(c: Character): string[] {
@@ -258,7 +284,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     base: {
       armor: origin.armor + sum('armor') + (skills.has('iron_skin') ? 3 : 0),
       dodge: origin.dodge + sum('dodge') + (skills.has('sixth_sense') ? 6 : 0),
-      damagePct: 100 + warmupBonus(opts.warmup ?? 0),
+      damagePct: 100,
       staminaPct: 100 + sum('staminaCost'),
     },
     armor: 0,
@@ -293,8 +319,12 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     summonedThisRound: false,
     owner: -1,
     interactive: opts.interactive ?? false,
-    specials: opts.specials ?? [],
-    specialsUsed: 0,
+    energy: START_ENERGY,
+    deck: opts.deck ?? defaultDeck(c),
+    plays: opts.plays ?? [],
+    specialQuality: opts.specialQuality,
+    pendingSpecial: null,
+    lastEnergy: -1,
     breaks: opts.breaks,
     lastRes: '',
   };
@@ -327,7 +357,8 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
       mana: 0,
       owner: main.idx,
       interactive: false,
-      specials: [],
+      deck: {},
+      plays: [],
       breaks: undefined,
     };
     applyPlan(u, main.plan);
@@ -374,7 +405,7 @@ function autoBreak(me: Unit, foe: Unit): BreakChoice {
  * Simulates a whole fight. Pure and deterministic: the same characters, seed and
  * options always produce the same log. Team 0 is `a`, team 1 is `b`.
  *
- * If an interactive side reaches a special strike or a break whose input is not
+ * If an interactive side reaches a break whose input is not
  * given yet, the log stops there with `winner: null`. Re-running with the input
  * appended reproduces the same events up to that point and continues.
  */
@@ -429,13 +460,13 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     return magic && def.plan.stance !== 'agile' ? Math.floor((capped * 60) / 100) : capped;
   };
 
-  const baseDamage = (att: Unit, kind: HitKind, quality: number): number => {
+  const baseDamage = (att: Unit, kind: HitKind, quality: number, specialBonus = SPECIAL_MAX_BONUS): number => {
     if (!att.isMain) return att.power;
     const weapon = att.weapon ? WEAPONS[att.weapon] : undefined;
     let dmg = att.power + (weapon ? weapon.damage : FISTS_DAMAGE + (att.skills.has('iron_fists') ? 4 : 0));
     if (weapon?.heavy && att.skills.has('heavy_hands')) dmg = Math.floor((dmg * 125) / 100);
     if (kind === 'throw') dmg = Math.floor((dmg * (att.skills.has('thrower') ? 200 : 150)) / 100);
-    if (kind === 'special') dmg = Math.floor((dmg * (100 + (quality * SPECIAL_MAX_BONUS) / 100)) / 100);
+    if (kind === 'special') dmg = Math.floor((dmg * (100 + (quality * specialBonus) / 100)) / 100);
     if (att.skills.has('fury') && att.hp * 100 < att.maxHp * 30) dmg = Math.floor((dmg * 130) / 100);
     if (tired(att)) dmg = Math.floor((dmg * 75) / 100);
     return Math.floor((dmg * att.damagePct) / 100);
@@ -478,7 +509,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
   };
 
   /** Resolves one physical attack. Returns true if the target survived. Specials and throws cannot be dodged. */
-  const attack = (att: Unit, def: Unit, kind: HitKind, quality = 0): boolean => {
+  const attack = (att: Unit, def: Unit, kind: HitKind, quality = 0, specialBonus = SPECIAL_MAX_BONUS): boolean => {
     if (missesBlind(att, def)) return true;
     if (kind !== 'special' && kind !== 'throw' && rng.chance(dodgeChance(att, def))) {
       events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
@@ -494,7 +525,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const quickHit = kind === 'double' || kind === 'counter';
     const fullArmor = Math.max(0, def.armor - (att.weapon && kind !== 'throw' ? att.armorPierce : 0));
     const armor = att.isMain && !quickHit ? fullArmor : Math.floor(fullArmor / 2);
-    let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality) * roll) / 100) - armor);
+    let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality, specialBonus) * roll) / 100) - armor);
     if (!def.isMain) damage = Math.max(1, Math.floor((damage * TARGETS[att.plan.target].petDamagePct) / 100));
     const blocked = def.skills.has('shield') && rng.chance(SHIELD_BLOCK);
     if (blocked) damage = Math.max(1, Math.floor(damage / 4));
@@ -576,23 +607,78 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     return true;
   };
 
-  /** Returns true if the turn was consumed by a special strike (or is waiting for one). */
+  /** Returns true if the turn was used by a special strike waiting from the Special Strike card. */
   const trySpecial = (u: Unit): boolean => {
-    if (!u.isMain || !u.interactive || u.roundTurns !== SPECIAL_TURN || !canPay(u, STAMINA_COST.special)) return false;
-    const index = u.specialsUsed;
-    const quality = u.specials[index];
-    if (quality === undefined) {
-      events.push({ t: 'special', actor: u.idx, index, quality: null });
-      waiting = true;
-      return true;
-    }
-    u.specialsUsed++;
-    const q = Math.max(0, Math.min(100, Math.round(quality)));
-    events.push({ t: 'special', actor: u.idx, index, quality: q });
-    if (q < SPECIAL_MIN_QUALITY) return false;
+    const s = u.pendingSpecial;
+    if (!s) return false;
+    u.pendingSpecial = null;
+    events.push({ t: 'special', actor: u.idx, quality: s.quality });
+    if (s.quality < SPECIAL_MIN_QUALITY || !canPay(u, STAMINA_COST.special)) return false;
     pay(u, STAMINA_COST.special);
-    attack(u, enemyMainOf(u), 'special', q);
+    attack(u, enemyMainOf(u), 'special', s.quality, s.bonus);
     return true;
+  };
+
+  const emitEnergy = () => {
+    for (const m of mains) {
+      if (m.energy !== m.lastEnergy) {
+        m.lastEnergy = m.energy;
+        events.push({ t: 'energy', actor: m.idx, energy: m.energy });
+      }
+    }
+  };
+
+  /** The last card each team played, for the bot's reactions. */
+  const lastCard: [{ card: string; tick: number } | null, { card: string; tick: number } | null] = [null, null];
+
+  /** Plays a card for a main fighter. Returns false (and does nothing) if it can't be played now. */
+  const playCard = (u: Unit, id: string, tick: number, quality?: number): boolean => {
+    const level = u.deck[id];
+    const def = CARDS[id];
+    if (!def || level === undefined || u.energy < def.cost || !alive(u) || winner !== null) return false;
+    u.energy -= def.cost;
+    events.push({ t: 'card', actor: u.idx, card: id, level });
+    lastCard[u.team] = { card: id, tick };
+    applyCard(u, id, level, quality ?? 0);
+    emitEnergy();
+    return true;
+  };
+
+  /** What each card does. Task 3 only has the Special Strike; Tasks 5 and 6 add the rest. */
+  const applyCard = (u: Unit, id: string, level: number, quality: number): void => {
+    switch (id) {
+      case 'special':
+        u.pendingSpecial = { quality: Math.max(0, Math.min(100, Math.round(quality))), bonus: scaled(SPECIAL_MAX_BONUS, level) };
+        break;
+    }
+  };
+
+  /** A bot's choice for this tick: a card id and, for the special strike, its quality. */
+  const botChoice = (u: Unit, _tick: number): { card: string; quality?: number } | null => {
+    const affordable = Object.keys(u.deck).filter((id) => CARDS[id] && u.energy >= CARDS[id]!.cost);
+    if (affordable.length === 0) return null;
+    if (u.energy >= BOT_SPEND_AT) {
+      const card = affordable.sort((x, y) => CARDS[y]!.cost - CARDS[x]!.cost || x.localeCompare(y))[0]!;
+      return card === 'special' ? { card, quality: u.specialQuality ?? rng.int(40, 91) } : { card };
+    }
+    return null;
+  };
+
+  /** Start of each tick: energy, then the player's plays for this tick or the bots' choices. */
+  const startTick = (n: number) => {
+    events.push({ t: 'tick', n });
+    for (const m of mains) {
+      if (n > 0 && n % ENERGY_EVERY === 0) m.energy = Math.min(MAX_ENERGY, m.energy + 1);
+    }
+    emitEnergy();
+    for (const m of mains) {
+      if (m.interactive) {
+        for (const p of m.plays) if (p.tick === n) playCard(m, p.card, n, p.quality);
+      } else {
+        const choice = botChoice(m, n);
+        if (choice) playCard(m, choice.card, n, choice.quality);
+      }
+    }
   };
 
   const takeTurn = (u: Unit) => {
@@ -653,10 +739,13 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (u.maxMana > 0) u.mana = Math.min(u.maxMana, u.mana + (choice.recover ? RECOVER_MANA : BREAK_MANA));
   };
 
+  emitEnergy();
+  let globalTick = 0;
   rounds: for (let round = 1; round <= ROUNDS; round++) {
     events.push({ t: 'round', round });
     for (const u of units) u.roundTurns = 0;
     for (let tick = 0; tick < ROUND_TICKS; tick++) {
+      startTick(globalTick);
       for (const u of units) if (alive(u)) u.gauge += gaugeGain(u.speed, u.isMain);
       const ready = units.filter((u) => alive(u) && u.gauge >= GAUGE_FULL).sort((x, y) => y.gauge - x.gauge || x.tieBreak - y.tieBreak);
       for (const u of ready) {
@@ -667,6 +756,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         // Nothing may follow an input request (the replay resumes right after it) or a knockout.
         if (!waiting && winner === null) emitRes();
       }
+      globalTick++;
       if (winner !== null || waiting) break rounds;
     }
 

@@ -65,8 +65,6 @@ interface UnitView {
 const KIND_LABEL: Partial<Record<HitKind, string>> = { combo: 'COMBO', counter: 'COUNTER', double: 'x2' };
 
 export interface ReplayHooks {
-  /** Lets the player perform a special strike and records it. */
-  requestSpecial: () => Promise<void>;
   /** Lets the player decide at a break and records it. */
   requestBreak: (event: BreakEvent, fighters: [FighterState, FighterState]) => Promise<void>;
   /** Re-runs the deterministic simulation with the inputs recorded so far. */
@@ -287,11 +285,7 @@ export class ReplayScene extends Phaser.Scene {
     await this.wait(400);
     for (let i = 0; i < this.log.events.length; i++) {
       let e = this.log.events[i]!;
-      if (e.t === 'special' && e.quality === null) {
-        await this.hooks.requestSpecial();
-        this.log = this.hooks.resimulate();
-        e = this.log.events[i]!;
-      } else if (e.t === 'break' && e.choices[0] === null) {
+      if (e.t === 'break' && e.choices[0] === null) {
         await this.hooks.requestBreak(e, [this.snapshot(0), this.snapshot(1)]);
         this.log = this.hooks.resimulate();
         e = this.log.events[i]!;
@@ -338,6 +332,11 @@ export class ReplayScene extends Phaser.Scene {
         return this.onRest(e.actor);
       case 'res':
         return this.onResources(e.actor, e.stamina, e.mana);
+      case 'tick':
+      case 'energy':
+      case 'card':
+        // Task 9 shows these; for now the replay ignores them.
+        return Promise.resolve();
       case 'special':
         return this.onSpecial(e.actor, e.quality ?? 0);
       case 'death':

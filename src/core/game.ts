@@ -18,7 +18,6 @@ export interface Tactics extends Plan {
 
 /** Player inputs made during the fight, saved as they happen so a reload resumes the same fight. */
 export interface FightInputs {
-  specials: number[];
   breaks: BreakChoice[];
 }
 
@@ -106,7 +105,7 @@ export function prepareFight(save: SaveData, today: number): PendingFight | null
     seed: rng.next(),
     warmup: null,
     tactics: null,
-    inputs: { specials: [], breaks: [] },
+    inputs: { breaks: [] },
   };
   return save.pendingFight;
 }
@@ -132,10 +131,6 @@ export function startFight(save: SaveData, plan: Plan, weapons: string[], gear?:
   return fight.tactics;
 }
 
-export function recordSpecial(save: SaveData, quality: number): void {
-  save.pendingFight?.inputs.specials.push(Math.max(0, Math.min(100, Math.round(quality))));
-}
-
 export function recordBreak(save: SaveData, choice: BreakChoice): void {
   save.pendingFight?.inputs.breaks.push({ ...choice, weapons: loadoutFor(save.character, choice.weapons) });
 }
@@ -144,8 +139,10 @@ export function recordBreak(save: SaveData, choice: BreakChoice): void {
 export function simulateFight(save: SaveData): FightLog {
   const fight = save.pendingFight;
   if (!fight?.tactics) throw new Error('Fight not started');
+  // The warm-up is still stored (Task 4 removes it) but no longer changes the fight.
+  const { warmup: _warmup, ...tactics } = fight.tactics;
   return runFight(save.character, fight.opponent, fight.seed, {
-    a: { ...fight.tactics, interactive: true, specials: fight.inputs.specials, breaks: fight.inputs.breaks },
+    a: { ...tactics, interactive: true, plays: [], breaks: fight.inputs.breaks },
     b: { ...fight.opponentPlan },
   });
 }
