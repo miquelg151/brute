@@ -150,7 +150,14 @@ Original plan:
 - Only `transform` and `opacity` (smooth on cheap Android); everything respects
   `prefers-reduced-motion`.
 
-### Phase 6 — Real pixel art · large (art work)
+### Phase 6 — Real pixel art · large (art work) · FIRST PASS DONE
+
+Done: every fighter layer (body, 5 outfits, 3 hair styles, 5 class extras) as 5-frame
+strips (idle ×2, wind-up, punch, hurt) played in the arena; 4 pets, 6 weapons and the
+240 × 210 street background, all PNGs in `public/art/` with the game palette, meant to be
+retouched by hand.
+
+Original plan:
 
 - Final art with the pipeline in `docs/ART.md`, using the master palette (export it as
   an Aseprite/Lospec `.gpl` file so drawing tools use exactly the same colours).

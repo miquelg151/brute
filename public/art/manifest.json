@@ -1,0 +1,54 @@
+{
+  "fighter": {
+    "body": "fighter/body.png",
+    "hair": [
+      "fighter/hair-short.png",
+      "fighter/hair-mohawk.png",
+      "fighter/hair-long.png",
+      null
+    ],
+    "outfit": {
+      "brawler": "fighter/outfit-brawler.png",
+      "parkour": "fighter/outfit-parkour.png",
+      "bouncer": "fighter/outfit-bouncer.png",
+      "tamer": "fighter/outfit-tamer.png",
+      "mystic": "fighter/outfit-mystic.png"
+    },
+    "extra": {
+      "brawler": "fighter/extra-brawler.png",
+      "parkour": "fighter/extra-parkour.png",
+      "bouncer": "fighter/extra-bouncer.png",
+      "tamer": "fighter/extra-tamer.png",
+      "mystic": "fighter/extra-mystic.png"
+    },
+    "frameWidth": 18,
+    "animations": {
+      "idle": [
+        0,
+        1
+      ],
+      "attack": [
+        2,
+        3
+      ],
+      "hurt": [
+        4
+      ]
+    }
+  },
+  "pets": {
+    "dog": "pets/dog.png",
+    "crow": "pets/crow.png",
+    "raccoon": "pets/raccoon.png",
+    "spirit": "pets/spirit.png"
+  },
+  "weapons": {
+    "bat": "weapons/bat.png",
+    "chain": "weapons/chain.png",
+    "skateboard": "weapons/skateboard.png",
+    "umbrella": "weapons/umbrella.png",
+    "traffic_sign": "weapons/traffic_sign.png",
+    "extinguisher": "weapons/extinguisher.png"
+  },
+  "background": "backgrounds/street.png"
+}

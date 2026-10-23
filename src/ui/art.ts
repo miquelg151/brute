@@ -13,10 +13,14 @@ export interface ArtManifest {
     outfit?: Partial<Record<ClassId, string>>;
     /** Full-colour details per class (headband, cap, glasses...), drawn on top untinted. */
     extra?: Partial<Record<ClassId, string>>;
+    /** Width of one animation frame: every layer is a strip of frames side by side. Leave it out for a single picture. */
+    frameWidth?: number;
+    /** Which frames (counting from 0) each pose uses. Idle frames loop; attack frames play in order. */
+    animations?: Partial<Record<'idle' | 'attack' | 'hurt', number[]>>;
   };
   pets?: Record<string, string>;
   weapons?: Record<string, string>;
-  /** Fight background, 320x200. */
+  /** Fight background, 240x210 (the street starts at y = 175). */
   background?: string;
   /** Interface icons by name (health, strength, skill...). See src/ui/icons.ts. */
   icons?: Record<string, string>;

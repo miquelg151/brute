@@ -227,8 +227,32 @@ function customFighter(look: Appearance, classId: ClassId): HTMLCanvasElement | 
   return canvas;
 }
 
+export type Pose = 'idle' | 'attack' | 'hurt';
+
+/** Every animation frame of a fighter, cut from the layer strips (just one without custom art). */
+export function fighterFrames(look: Appearance, classId: ClassId): HTMLCanvasElement[] {
+  const sheet = customFighter(look, classId);
+  if (!sheet) return [placeholderFighter(look, classId)];
+  const w = artManifest().fighter?.frameWidth ?? sheet.width;
+  const count = Math.max(1, Math.floor(sheet.width / w));
+  return Array.from({ length: count }, (_, i) => {
+    const frame = document.createElement('canvas');
+    frame.width = w;
+    frame.height = sheet.height;
+    frame.getContext('2d')!.drawImage(sheet, i * w, 0, w, sheet.height, 0, 0, w, sheet.height);
+    return frame;
+  });
+}
+
+/** The frame numbers a pose uses (frame 0 when the art has none for it). */
+export function fighterAnimation(pose: Pose): number[] {
+  const frames = artManifest().fighter?.animations?.[pose];
+  return frames?.length ? frames : [0];
+}
+
+/** A fighter standing still (the first frame). */
 export function drawFighter(look: Appearance, classId: ClassId): HTMLCanvasElement {
-  return customFighter(look, classId) ?? placeholderFighter(look, classId);
+  return fighterFrames(look, classId)[0]!;
 }
 
 export function drawPet(petId: string): HTMLCanvasElement {

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Rng, SKILLS, SPECIAL_MIN_QUALITY, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
 import { artImage, artManifest } from '../ui/art';
-import { drawFighter, drawPet, drawWeapon } from '../ui/sprites';
+import { drawPet, drawWeapon, fighterAnimation, fighterFrames, type Pose } from '../ui/sprites';
 import { PAL, num } from '../ui/theme';
 
 /** Size of the arena in art pixels. Narrow and tall, so fighters look big on a phone. */
@@ -18,6 +18,8 @@ const MAIN_X = 82;
 const FONT = '"Shantell Sans Variable", sans-serif';
 /** Arena text looks like the "sticker" title style: dark outline, offset shadow. */
 const STICKER = { fontFamily: FONT, fontStyle: 'bold', stroke: PAL.black, resolution: ARENA_ZOOM };
+/** How long each idle (breathing) frame stays on screen (ms). */
+const IDLE_FRAME_MS = 450;
 /** Freeze on every landed hit, so it feels heavy (ms). */
 const HIT_STOP = 60;
 /** Hits taking at least this share of max health shake the screen. */
@@ -54,6 +56,10 @@ interface UnitView {
   bar: Phaser.GameObjects.Graphics;
   ring: Phaser.GameObjects.Graphics;
   weapon: Phaser.GameObjects.Image | null;
+  /** Texture key of every animation frame (just one for pets and placeholder art). */
+  frames: string[];
+  pose: Pose;
+  knockedOut: boolean;
 }
 
 const KIND_LABEL: Partial<Record<HitKind, string>> = { combo: 'COMBO', counter: 'COUNTER', double: 'x2' };
@@ -98,6 +104,16 @@ export class ReplayScene extends Phaser.Scene {
     this.cameras.main.setZoom(ARENA_ZOOM).centerOn(ARENA_W / 2, ARENA_H / 2);
     this.drawBackground();
     this.createUnits();
+    // Breathing: idle fighters flip through their idle frames.
+    let tick = 0;
+    this.time.addEvent({
+      delay: IDLE_FRAME_MS,
+      loop: true,
+      callback: () => {
+        tick++;
+        for (const v of this.views) if (v.pose === 'idle') this.setPose(v, 'idle', tick);
+      },
+    });
     void this.play();
   }
 
@@ -132,9 +148,13 @@ export class ReplayScene extends Phaser.Scene {
     const sideCount: [number, number] = [0, 0];
     this.log.roster.forEach((info, idx) => {
       const dir: 1 | -1 = info.team === 0 ? 1 : -1;
-      const key = `unit-${idx}`;
-      const canvas = info.isMain && info.appearance ? drawFighter(info.appearance, info.defId as ClassId) : drawPet(info.defId);
-      this.textures.addCanvas(key, canvas);
+      const canvases = info.isMain && info.appearance ? fighterFrames(info.appearance, info.defId as ClassId) : [drawPet(info.defId)];
+      const frames = canvases.map((canvas, f) => {
+        const key = `unit-${idx}-${f}`;
+        this.textures.addCanvas(key, canvas);
+        return key;
+      });
+      const key = frames[0]!;
 
       let x: number;
       let y: number;
@@ -166,6 +186,9 @@ export class ReplayScene extends Phaser.Scene {
         bar: this.add.graphics().setDepth(1000),
         ring: this.add.graphics().setDepth(y + 2),
         weapon: null,
+        frames,
+        pose: 'idle',
+        knockedOut: false,
       };
       this.views.push(view);
       this.drawBars(view);
@@ -188,6 +211,15 @@ export class ReplayScene extends Phaser.Scene {
 
   private stateOf(v: UnitView): FighterState {
     return { name: v.name, hp: v.hp, maxHp: v.maxHp, stamina: v.stamina, maxStamina: v.maxStamina, mana: v.mana, maxMana: v.maxMana };
+  }
+
+  /** Shows a fighter's frame for a pose; `step` picks which frame of it (it wraps around). */
+  private setPose(v: UnitView, pose: Pose, step = 0): void {
+    if (v.knockedOut) return;
+    v.pose = pose;
+    if (v.frames.length <= 1) return;
+    const list = fighterAnimation(pose);
+    v.sprite.setTexture(v.frames[list[step % list.length]!] ?? v.frames[0]!);
   }
 
   private drawWard(v: UnitView, amount: number): void {
@@ -349,7 +381,9 @@ export class ReplayScene extends Phaser.Scene {
   private async melee(att: UnitView, def: UnitView, fast: boolean, impact: () => Promise<void>): Promise<void> {
     const duration = fast ? 90 : 150;
     const targetX = def.sprite.x - att.dir * (att.isMain ? 13 : 9) * SCALE;
+    this.setPose(att, 'attack', 0);
     await this.tween({ targets: att.sprite, x: targetX, duration, ease: 'Quad.easeIn', onUpdate: () => this.placeWeapon(att) });
+    this.setPose(att, 'attack', 1);
     if (att.weapon) {
       const swing = this.tween({ targets: att.weapon, angle: 60 * att.dir, duration: 80, yoyo: true });
       await impact();
@@ -358,22 +392,28 @@ export class ReplayScene extends Phaser.Scene {
       await impact();
     }
     await this.tween({ targets: att.sprite, x: att.homeX, duration, ease: 'Quad.easeOut', onUpdate: () => this.placeWeapon(att) });
+    this.setPose(att, 'idle');
   }
 
   private async throwAt(att: UnitView, def: UnitView, impact: () => Promise<void>): Promise<void> {
     const projectile = att.weapon;
     att.weapon = null;
-    if (!projectile) return impact();
-    await this.tween({ targets: projectile, x: def.sprite.x, y: def.sprite.y - 10 * SCALE, angle: 720 * att.dir, duration: 280 });
-    projectile.destroy();
+    this.setPose(att, 'attack', 1);
+    if (projectile) {
+      await this.tween({ targets: projectile, x: def.sprite.x, y: def.sprite.y - 10 * SCALE, angle: 720 * att.dir, duration: 280 });
+      projectile.destroy();
+    }
     await impact();
+    this.setPose(att, 'idle');
   }
 
   /** A glowing orb from the caster to the target (or past it, on a dodge). */
   private async orb(att: UnitView, def: UnitView, past: boolean, impact: () => Promise<void>): Promise<void> {
+    this.setPose(att, 'attack', 1);
     const orb = this.add.circle(att.sprite.x + att.dir * 5 * SCALE, att.sprite.y - 13 * SCALE, 4, num(PAL.purple)).setStrokeStyle(1, num(PAL.lilac)).setDepth(1500);
     await this.tween({ targets: orb, x: def.sprite.x + (past ? def.dir * -30 : 0), y: def.sprite.y - 11 * SCALE, duration: 260, ease: 'Sine.easeIn' });
     orb.destroy();
+    this.setPose(att, 'idle');
     await impact();
   }
 
@@ -385,11 +425,13 @@ export class ReplayScene extends Phaser.Scene {
     this.drawBars(def);
     // Hit-stop: everything freezes for a moment on a landed hit; big hits also shake the screen.
     if (damage > 0 && !blocked) {
+      this.setPose(def, 'hurt');
       if (damage >= def.maxHp * BIG_HIT) this.cameras.main.shake(140, 0.012);
       await this.wait(HIT_STOP);
     }
     await this.tween({ targets: def.sprite, x: def.sprite.x - def.dir * 4, duration: 50, yoyo: true });
     def.sprite.clearTint();
+    if (def.pose === 'hurt') this.wait(140).then(() => def.pose === 'hurt' && this.setPose(def, 'idle'));
   }
 
   private async onStrike(actor: number, target: number, kind: HitKind, damage: number, hp: number, blocked: boolean): Promise<void> {
@@ -497,6 +539,8 @@ export class ReplayScene extends Phaser.Scene {
     v.weapon?.destroy();
     v.weapon = null;
     v.sprite.setTint(num(PAL.smoke));
+    this.setPose(v, 'hurt');
+    v.knockedOut = true;
     if (v.isMain) {
       // Knock-out: one heavy fall, a small bump on landing and a light shake.
       v.sprite.setOrigin(0.5, 0.9);

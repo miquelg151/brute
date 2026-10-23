@@ -1,13 +1,16 @@
 # Adding your own pixel art
 
-Right now every sprite is a placeholder drawn in code. You can replace any of them
-with a PNG without touching code. Anything you don't replace keeps the placeholder,
-so you can go one sprite at a time.
+The fighters, pets, weapons and the fight background are PNG files in `public/art/`,
+listed in `public/art/manifest.json`. Open any of them in your drawing program, change it,
+save it with the same name and reload the game: that's all. If a file is missing or not
+listed, the game falls back to a simple placeholder drawn in code, so nothing breaks.
+The interface icons are still drawn in code (`src/ui/icons.ts`), but can be replaced the
+same way (see the end of this page).
 
 ## Workflow
 
 1. Run the game (`npm run dev`) and open **http://localhost:5199/?gallery**.
-   The gallery shows every sprite. Use **Save PNG** to download the placeholder
+   The gallery shows every sprite. Use **Save PNG** to download one
    as a size reference.
 2. Draw your sprite. Good tools:
    - **Aseprite** (paid, the standard for pixel art)
@@ -39,9 +42,9 @@ and the rest of the art. Skin, hair and outfit colours are picked from the same 
 
 | What | Size (px) | Notes |
 |---|---|---|
-| Fighter layers | 16 × 24 suggested | All layers of a fighter must be the same size. Feet on the bottom row. |
-| Pets | about 12 × 8 | Feet on the bottom row. |
-| Weapons | about 10 × 3 | Drawn lying flat, handle on the left. |
+| Fighter layers | 18 × 26 per frame, 5 frames side by side = 90 × 26 | All layers of a fighter must be the same size. Feet on the bottom row. |
+| Pets | about 13 × 9 (+ outline) | Feet on the bottom row. |
+| Weapons | about 13 × 4 (+ outline) | Drawn lying flat, handle on the left. |
 | Fight background | 240 × 210 exactly | The street (where fighters stand) starts at y = 175. In the arena every sprite is shown 3 times bigger. |
 
 ## Fighters are drawn in layers
@@ -51,10 +54,29 @@ fighter is assembled from layers that the game colours in:
 
 | Layer | Colour it | How to draw it |
 |---|---|---|
-| `body` | skin tone | Head, hands, legs, shoes. **Greyscale.** |
-| `outfit` (one per class) | outfit colour | Clothes. **Greyscale.** |
+| `body` | skin tone | Head, chest, arms and hands. **Greyscale.** |
+| `outfit` (one per class) | outfit colour | Top: shirt, hoodie, jacket, robe. **Greyscale.** |
 | `hair` (one per hair style) | hair colour | **Greyscale.** Use `null` for "bald". |
-| `extra` (one per class, optional) | not coloured | Details in their real colours: the Brawler's headband, the Tamer's cap, sunglasses... |
+| `extra` (one per class, optional) | not coloured | Real colours: trousers and shoes, plus the class details (headband, cap, sunglasses, hood, runes...). |
+
+They are drawn in that order, so `extra` covers everything else.
+
+### Animation frames
+
+Every layer file is a strip of 5 frames, each 18 × 26, side by side. The game cuts them
+using `frameWidth` in the manifest and plays them with `animations`:
+
+| Frame | Pose | Used when |
+|---|---|---|
+| 0 | standing | idle (and on every screen outside fights) |
+| 1 | standing, breathing in | idle: frames 0 and 1 take turns |
+| 2 | wind-up / guard | running in to attack, casting |
+| 3 | punch | the moment of the hit, throwing |
+| 4 | hurt | taking a hit, knocked out |
+
+In Aseprite, set the grid to 18 × 26 (View → Grid Settings) to see the frames. Keep the
+same pose in the same place in every layer, or the layers won't line up. You can add more
+frames: make the strip wider and list them, e.g. `"idle": [0, 1, 5]`.
 
 **How greyscale colouring works:** the game multiplies each pixel by the chosen
 colour. White becomes exactly that colour, light grey becomes a slightly darker
@@ -64,38 +86,19 @@ the lines black.
 Once you add `fighter.body`, **every class** uses your layers, so draw an outfit
 for each class too, or classes without one will have no clothes.
 
-## Example `public/art/manifest.json`
+## The manifest
+
+`public/art/manifest.json` lists every file. Open it to see the current one; the part
+for fighters looks like this:
 
 ```json
-{
-  "fighter": {
-    "body": "fighter/body.png",
-    "hair": ["fighter/hair-short.png", "fighter/hair-mohawk.png", "fighter/hair-long.png", null],
-    "outfit": {
-      "brawler": "fighter/outfit-brawler.png",
-      "parkour": "fighter/outfit-parkour.png",
-      "bouncer": "fighter/outfit-bouncer.png",
-      "tamer": "fighter/outfit-tamer.png"
-    },
-    "extra": {
-      "brawler": "fighter/extra-brawler.png",
-      "tamer": "fighter/extra-tamer.png"
-    }
-  },
-  "pets": {
-    "dog": "pets/dog.png",
-    "crow": "pets/crow.png",
-    "raccoon": "pets/raccoon.png"
-  },
-  "weapons": {
-    "bat": "weapons/bat.png",
-    "chain": "weapons/chain.png",
-    "skateboard": "weapons/skateboard.png",
-    "umbrella": "weapons/umbrella.png",
-    "traffic_sign": "weapons/traffic_sign.png",
-    "extinguisher": "weapons/extinguisher.png"
-  },
-  "background": "backgrounds/street.png"
+"fighter": {
+  "body": "fighter/body.png",
+  "hair": ["fighter/hair-short.png", "fighter/hair-mohawk.png", "fighter/hair-long.png", null],
+  "outfit": { "brawler": "fighter/outfit-brawler.png", "...": "one per class" },
+  "extra": { "brawler": "fighter/extra-brawler.png", "...": "one per class" },
+  "frameWidth": 18,
+  "animations": { "idle": [0, 1], "attack": [2, 3], "hurt": [4] }
 }
 ```
 
