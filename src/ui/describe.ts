@@ -1,4 +1,5 @@
 import {
+  CARDS,
   CLASSES,
   GEAR,
   ORIGINS,
@@ -34,7 +35,7 @@ export function upgradeKindLabel(upgradeId: string): string {
   if (!u) return '';
   if (u.kind === 'gear') return GEAR[u.ref]?.slot === 'armor' ? 'Armor' : 'Accessory';
   if (u.kind === 'skill' && SPELLS[u.ref]) return 'Spell';
-  return { stat: 'Stats', weapon: 'Weapon', skill: 'Skill', pet: 'Pet' }[u.kind];
+  return { stat: 'Stats', weapon: 'Weapon', skill: 'Skill', pet: 'Pet', card: 'Card' }[u.kind];
 }
 
 /** Plain-words list of what a piece of gear changes, e.g. "+3 armor, -2 speed". */
@@ -74,5 +75,9 @@ export function upgradeDetail(upgradeId: string): string {
     }
     case 'gear':
       return `${gearEffects(GEAR[u.ref]!)}. Choose what to wear before each fight.`;
+    case 'card': {
+      const card = CARDS[u.ref]!;
+      return `${card.cost} energy. ${card.describe(1)}`;
+    }
   }
 }

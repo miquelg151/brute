@@ -1,3 +1,4 @@
+import { startingCards } from './cards';
 import { CLASSES, ORIGINS } from './catalog';
 import { ZERO_STATS, type Appearance, type Character, type ClassId } from './types';
 
@@ -17,6 +18,8 @@ export function createCharacter(name: string, appearance: Appearance, classId: C
     skills: [cls.startSkill],
     pets: cls.startPet ? [cls.startPet] : [],
     gear: [],
+    cards: startingCards(classId),
+    cardUses: {},
   };
 }
 

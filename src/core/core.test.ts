@@ -470,3 +470,22 @@ describe('cards', () => {
     expect([1, 4, 5, 10, 19, 20, 40].map(botCardLevel)).toEqual([1, 1, 2, 3, 4, 5, 5]);
   });
 });
+
+describe('card upgrades', () => {
+  it('new characters own their starting cards with no uses', () => {
+    const c = createCharacter('C', look, 'mystic', 'port');
+    expect(c.cards).toEqual(['special', 'overcharge']);
+    expect(c.cardUses).toEqual({});
+  });
+
+  it('non-starting cards are offered in their pool and can be learned once', () => {
+    const general = UPGRADES.filter((u) => u.kind === 'card' && u.pool === 'general').map((u) => u.id);
+    expect(general).toEqual(expect.arrayContaining(['card:patch_up', 'card:hurl', 'card:rush', 'card:feint', 'card:second_breath']));
+    expect(UPGRADES.find((u) => u.id === 'card:rage')).toBeUndefined();
+    const c = createCharacter('B', look, 'brawler', 'port');
+    applyUpgrade(c, 'card:haymaker');
+    expect(c.cards).toContain('haymaker');
+    expect(() => applyUpgrade(c, 'card:haymaker')).toThrow();
+    expect(eligibleUpgrades(c, 'brawler').some((u) => u.id === 'card:haymaker')).toBe(false);
+  });
+});

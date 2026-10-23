@@ -51,4 +51,8 @@ export interface Character {
   pets: string[];
   /** Owned armor and accessories; one of each is worn in a fight. */
   gear: string[];
+  /** Owned cards (ids from CARDS). Up to DECK_SIZE of them are brought into a fight. */
+  cards: string[];
+  /** How many times each card has been played in finished fights; sets its level. */
+  cardUses: Record<string, number>;
 }

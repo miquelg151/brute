@@ -1,3 +1,4 @@
+import { CARDS } from './cards';
 import type { ClassId, Stats } from './types';
 
 export interface WeaponDef {
@@ -81,7 +82,7 @@ export type UpgradePool = ClassId | 'general';
 
 export type UpgradeDef =
   | { id: string; kind: 'stat'; pool: UpgradePool; name: string; stats: Partial<Stats> }
-  | { id: string; kind: 'weapon' | 'skill' | 'pet' | 'gear'; pool: UpgradePool; name: string; ref: string };
+  | { id: string; kind: 'weapon' | 'skill' | 'pet' | 'gear' | 'card'; pool: UpgradePool; name: string; ref: string };
 
 /** Max weapons a fighter brings into one fight. */
 export const LOADOUT_SIZE = 3;
@@ -221,8 +222,8 @@ const stat = (id: string, pool: UpgradePool, name: string, stats: Partial<Stats>
   stats,
 });
 
-const ref = (kind: 'weapon' | 'skill' | 'pet' | 'gear', pool: UpgradePool, refId: string): UpgradeDef => {
-  const table = { weapon: WEAPONS, skill: SKILLS, pet: PETS, gear: GEAR }[kind];
+const ref = (kind: 'weapon' | 'skill' | 'pet' | 'gear' | 'card', pool: UpgradePool, refId: string): UpgradeDef => {
+  const table = { weapon: WEAPONS, skill: SKILLS, pet: PETS, gear: GEAR, card: CARDS }[kind];
   const name = table[refId]?.name;
   if (!name) throw new Error(`Unknown ${kind} '${refId}'`);
   return { id: `${kind}:${refId}`, kind, pool, name, ref: refId };
@@ -247,6 +248,11 @@ export const UPGRADES: UpgradeDef[] = [
   ref('gear', 'general', 'leather_jacket'),
   ref('gear', 'general', 'sneakers'),
   ref('gear', 'general', 'charm'),
+  ref('card', 'general', 'patch_up'),
+  ref('card', 'general', 'hurl'),
+  ref('card', 'general', 'rush'),
+  ref('card', 'general', 'feint'),
+  ref('card', 'general', 'second_breath'),
   // Brawler
   stat('brawler_strength', 'brawler', '+1 Strength, +1 Health', { strength: 1, health: 1 }),
   stat('brawler_health', 'brawler', '+3 Health', { health: 3 }),
@@ -254,6 +260,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('skill', 'brawler', 'fury'),
   ref('skill', 'brawler', 'second_wind'),
   ref('gear', 'brawler', 'gloves'),
+  ref('card', 'brawler', 'haymaker'),
   // Parkour
   stat('parkour_agility', 'parkour', '+2 Agility', { agility: 2 }),
   stat('parkour_speed', 'parkour', '+2 Speed, +1 Strength', { speed: 2, strength: 1 }),
@@ -261,6 +268,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('skill', 'parkour', 'quick_start'),
   ref('skill', 'parkour', 'disarm'),
   ref('gear', 'parkour', 'tracksuit'),
+  ref('card', 'parkour', 'flurry'),
   // Bouncer
   stat('bouncer_health', 'bouncer', '+5 Health', { health: 5 }),
   stat('bouncer_strength', 'bouncer', '+2 Strength, +1 Health', { strength: 2, health: 1 }),
@@ -269,6 +277,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('weapon', 'bouncer', 'traffic_sign'),
   ref('weapon', 'bouncer', 'extinguisher'),
   ref('gear', 'bouncer', 'riot_vest'),
+  ref('card', 'bouncer', 'body_slam'),
   // Tamer
   stat('tamer_agility', 'tamer', '+2 Agility', { agility: 2 }),
   stat('tamer_health', 'tamer', '+2 Health, +1 Speed', { health: 2, speed: 1 }),
@@ -276,6 +285,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('pet', 'tamer', 'crow'),
   ref('pet', 'tamer', 'raccoon'),
   ref('gear', 'tamer', 'treat_bag'),
+  ref('card', 'tamer', 'stray_dog'),
   // Mystic
   stat('mystic_magic', 'mystic', '+2 Magic', { magic: 2 }),
   stat('mystic_health', 'mystic', '+2 Health, +1 Agility', { health: 2, agility: 1 }),
@@ -283,6 +293,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('skill', 'mystic', 'drain'),
   ref('skill', 'mystic', 'spirit'),
   ref('gear', 'mystic', 'rune_hoodie'),
+  ref('card', 'mystic', 'bolt'),
 ];
 
 export const UPGRADES_BY_ID: Record<string, UpgradeDef> = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));

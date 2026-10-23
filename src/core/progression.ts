@@ -36,6 +36,8 @@ function owns(c: Character, u: UpgradeDef): boolean {
       return c.pets.includes(u.ref);
     case 'gear':
       return c.gear.includes(u.ref);
+    case 'card':
+      return c.cards.includes(u.ref);
   }
 }
 
@@ -90,6 +92,9 @@ export function applyUpgrade(c: Character, upgradeId: string): void {
       break;
     case 'gear':
       c.gear.push(u.ref);
+      break;
+    case 'card':
+      c.cards.push(u.ref);
       break;
   }
 }
