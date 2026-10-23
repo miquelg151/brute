@@ -1,23 +1,25 @@
+import { DECK_SIZE, cardLevel, startingCards } from './cards';
 import { createCharacter } from './character';
-import { gearFor, loadoutFor, runFight, type BreakChoice, type FightLog, type GearChoice } from './fight';
+import { gearFor, loadoutFor, runFight, type BreakChoice, type CardPlay, type FightLog, type GearChoice } from './fight';
 import { generateOpponent } from './opponents';
-import { XP_LOSS, XP_WIN, addXp, applyUpgrade, rollOffer, useFight, type DailyFights } from './progression';
+import { XP_LOSS, XP_WIN, addXp, applyUpgrade, rollOffer } from './progression';
 import { Rng, mixSeed } from './rng';
 import { DEFAULT_PLAN, STANCE_IDS, TARGET_IDS, WEAPON_STYLE_IDS, type Plan } from './tactics';
 import type { Appearance, Character, ClassId } from './types';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 /** What the player decides before a fight. Locked once the fight starts. */
 export interface Tactics extends Plan {
   weapons: string[];
   gear: GearChoice;
-  /** Warm-up minigame score, 0-100 (0 if skipped). */
-  warmup: number;
+  /** Cards brought into this fight (up to DECK_SIZE owned ones). */
+  deck: string[];
 }
 
 /** Player inputs made during the fight, saved as they happen so a reload resumes the same fight. */
 export interface FightInputs {
+  plays: CardPlay[];
   breaks: BreakChoice[];
 }
 
@@ -32,8 +34,6 @@ export interface PendingFight {
    */
   live: boolean;
   seed: number;
-  /** Warm-up score, set once the minigame is played (it can only be played once). */
-  warmup: number | null;
   /** Set when the fight starts; from then on the choices cannot change. */
   tactics: Tactics | null;
   inputs: FightInputs;
@@ -45,7 +45,6 @@ export interface SaveData {
   seed: number;
   fightCount: number;
   character: Character;
-  daily: DailyFights;
   /** Level-ups not yet chosen. While > 0 the player must pick from `offer` before fighting. */
   pendingLevelUps: number;
   offer: string[] | null;
@@ -58,6 +57,10 @@ export interface FightResult {
   won: boolean;
   xpGained: number;
   levelsGained: number;
+  /** How many times each card was played by the player. */
+  cardsPlayed: Record<string, number>;
+  /** Cards that reached a new level from these plays. */
+  cardLevelUps: { card: string; level: number }[];
 }
 
 export function newGame(name: string, appearance: Appearance, classId: ClassId, originId: string, seed: number): SaveData {
@@ -66,7 +69,6 @@ export function newGame(name: string, appearance: Appearance, classId: ClassId, 
     seed: seed >>> 0,
     fightCount: 0,
     character: createCharacter(name, appearance, classId, originId),
-    daily: { day: -1, used: 0 },
     pendingLevelUps: 0,
     offer: null,
     pendingFight: null,
@@ -74,7 +76,7 @@ export function newGame(name: string, appearance: Appearance, classId: ClassId, 
 }
 
 export function defaultTactics(c: Character): Tactics {
-  return { ...DEFAULT_PLAN, weapons: loadoutFor(c), gear: gearFor(c), warmup: 0 };
+  return { ...DEFAULT_PLAN, weapons: loadoutFor(c), gear: gearFor(c), deck: c.cards.slice(0, DECK_SIZE) };
 }
 
 /** Offers are derived from the save seed and level, so reloading never rerolls them. */
@@ -83,41 +85,32 @@ function offerFor(save: SaveData): string[] {
   return rollOffer(save.character, rng);
 }
 
+/** The player's chosen cards (owned ones only, at most DECK_SIZE) with their levels from use. */
+export function playerDeck(c: Character, chosen?: string[]): Record<string, number> {
+  const ids = (chosen ?? c.cards).filter((id) => c.cards.includes(id)).slice(0, DECK_SIZE);
+  return Object.fromEntries(ids.map((id) => [id, cardLevel(c.cardUses[id] ?? 0)]));
+}
+
 /**
- * Uses one daily fight and picks the opponent, so the player can study it and
- * choose tactics. Returns the existing pending fight if there is one, or null
- * if fighting is not allowed right now.
+ * Picks the opponent, so the player can study it and choose tactics. Returns
+ * the existing pending fight if there is one, or null if the player must
+ * choose a level-up first.
  */
-export function prepareFight(save: SaveData, today: number): PendingFight | null {
+export function prepareFight(save: SaveData): PendingFight | null {
   if (save.pendingFight) return save.pendingFight;
   if (save.pendingLevelUps > 0) return null;
-  if (!useFight(save.daily, today)) return null;
 
   const rng = new Rng(mixSeed(save.seed, save.fightCount));
   save.fightCount++;
   const level = Math.max(1, save.character.level + rng.int(-1, 2));
   const opponent = generateOpponent(level, rng);
   const opponentPlan: Plan = { stance: rng.pick(STANCE_IDS), target: rng.pick(TARGET_IDS), weaponStyle: rng.pick(WEAPON_STYLE_IDS) };
-  save.pendingFight = {
-    opponent,
-    opponentPlan,
-    live: false,
-    seed: rng.next(),
-    warmup: null,
-    tactics: null,
-    inputs: { breaks: [] },
-  };
+  save.pendingFight = { opponent, opponentPlan, live: false, seed: rng.next(), tactics: null, inputs: { plays: [], breaks: [] } };
   return save.pendingFight;
 }
 
-export function recordWarmup(save: SaveData, score: number): void {
-  const fight = save.pendingFight;
-  if (!fight || fight.warmup !== null || fight.tactics) return;
-  fight.warmup = Math.max(0, Math.min(100, Math.round(score)));
-}
-
 /** Locks the player's choices. Later calls keep the first choice. */
-export function startFight(save: SaveData, plan: Plan, weapons: string[], gear?: GearChoice): Tactics {
+export function startFight(save: SaveData, plan: Plan, weapons: string[], gear?: GearChoice, deck?: string[]): Tactics {
   const fight = save.pendingFight;
   if (!fight) throw new Error('No pending fight');
   fight.tactics ??= {
@@ -126,9 +119,13 @@ export function startFight(save: SaveData, plan: Plan, weapons: string[], gear?:
     weaponStyle: plan.weaponStyle,
     weapons: loadoutFor(save.character, weapons),
     gear: gearFor(save.character, gear),
-    warmup: fight.warmup ?? 0,
+    deck: Object.keys(playerDeck(save.character, deck)),
   };
   return fight.tactics;
+}
+
+export function recordPlay(save: SaveData, play: CardPlay): void {
+  save.pendingFight?.inputs.plays.push({ ...play });
 }
 
 export function recordBreak(save: SaveData, choice: BreakChoice): void {
@@ -139,10 +136,8 @@ export function recordBreak(save: SaveData, choice: BreakChoice): void {
 export function simulateFight(save: SaveData): FightLog {
   const fight = save.pendingFight;
   if (!fight?.tactics) throw new Error('Fight not started');
-  // The warm-up is still stored (Task 4 removes it) but no longer changes the fight.
-  const { warmup: _warmup, ...tactics } = fight.tactics;
   return runFight(save.character, fight.opponent, fight.seed, {
-    a: { ...tactics, interactive: true, plays: [], breaks: fight.inputs.breaks },
+    a: { ...fight.tactics, deck: playerDeck(save.character, fight.tactics.deck), interactive: true, plays: fight.inputs.plays, breaks: fight.inputs.breaks },
     b: { ...fight.opponentPlan },
   });
 }
@@ -160,8 +155,18 @@ export function finishFight(save: SaveData): FightResult {
     save.pendingLevelUps += levelsGained;
     save.offer = offerFor(save);
   }
+  // Every card the player played counts as one use; enough uses level it up.
+  const cardsPlayed: Record<string, number> = {};
+  for (const e of log.events) if (e.t === 'card' && e.actor === 0) cardsPlayed[e.card] = (cardsPlayed[e.card] ?? 0) + 1;
+  const cardLevelUps: { card: string; level: number }[] = [];
+  for (const [card, count] of Object.entries(cardsPlayed)) {
+    const before = cardLevel(save.character.cardUses[card] ?? 0);
+    save.character.cardUses[card] = (save.character.cardUses[card] ?? 0) + count;
+    const after = cardLevel(save.character.cardUses[card]!);
+    if (after > before) cardLevelUps.push({ card, level: after });
+  }
   save.pendingFight = null;
-  return { opponent: fight.opponent, log, won, xpGained, levelsGained };
+  return { opponent: fight.opponent, log, won, xpGained, levelsGained, cardsPlayed, cardLevelUps };
 }
 
 export function chooseUpgrade(save: SaveData, upgradeId: string): void {
@@ -169,4 +174,20 @@ export function chooseUpgrade(save: SaveData, upgradeId: string): void {
   applyUpgrade(save.character, upgradeId);
   save.pendingLevelUps--;
   save.offer = save.pendingLevelUps > 0 ? offerFor(save) : null;
+}
+
+/** Brings an older save up to date. Returns null if it is too old to keep. */
+export function migrateSave(raw: unknown): SaveData | null {
+  const save = raw as Record<string, unknown> & { version?: number };
+  if (!save || typeof save !== 'object') return null;
+  if (save.version === 4) {
+    const c = save.character as Character;
+    c.cards ??= startingCards(c.classId);
+    c.cardUses ??= {};
+    delete save.daily;
+    // A fight started under the old rules can't continue under the new ones.
+    save.pendingFight = null;
+    save.version = 5;
+  }
+  return save.version === SAVE_VERSION ? (save as unknown as SaveData) : null;
 }

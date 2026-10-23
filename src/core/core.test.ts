@@ -3,7 +3,6 @@ import {
   CARDS,
   CLASS_IDS,
   DEFAULT_PLAN,
-  FIGHTS_PER_DAY,
   Rng,
   UPGRADES,
   UPGRADES_BY_ID,
@@ -14,14 +13,14 @@ import {
   cardLevel,
   chooseUpgrade,
   createCharacter,
-  fightsLeft,
   generateOpponent,
   mixSeed,
   finishFight,
   loadoutFor,
   newGame,
   prepareFight,
-  recordWarmup,
+  recordPlay,
+  migrateSave,
   recordBreak,
   rollOffer,
   scaled,
@@ -36,7 +35,6 @@ import {
   type Character,
   startFight,
   runFight,
-  useFight,
   xpToNext,
   type Appearance,
   type FightLog,
@@ -47,9 +45,9 @@ const look: Appearance = { skinTone: 0, hairStyle: 0, hairColor: 0, outfitColor:
 
 const keep = (weapons: string[], recover = false): BreakChoice => ({ ...DEFAULT_PLAN, weapons, recover });
 
-/** Plays a whole daily fight like the UI does, playing no cards; every break keeps the plan. */
-function playAuto(save: SaveData, day: number) {
-  if (!prepareFight(save, day)) return null;
+/** Plays a whole fight like the UI does, playing no cards; every break keeps the plan. */
+function playAuto(save: SaveData) {
+  if (!prepareFight(save)) return null;
   startFight(save, DEFAULT_PLAN, save.character.weapons);
   for (let log = simulateFight(save); log.winner === null; log = simulateFight(save)) recordBreak(save, keep(save.character.weapons));
   return finishFight(save);
@@ -192,24 +190,13 @@ describe('progression', () => {
     const c = createCharacter('C', look, 'tamer', 'port');
     expect(() => applyUpgrade(c, 'pet:dog')).toThrow();
   });
-
-  it('daily fights reset on a new day', () => {
-    const d = { day: -1, used: 0 };
-    for (let i = 0; i < FIGHTS_PER_DAY; i++) expect(useFight(d, 100)).toBe(true);
-    expect(useFight(d, 100)).toBe(false);
-    expect(fightsLeft(d, 101)).toBe(FIGHTS_PER_DAY);
-    expect(useFight(d, 101)).toBe(true);
-  });
 });
 
 describe('game', () => {
   it('plays fights, levels up and requires choosing an upgrade', () => {
     const save = newGame('Me', look, 'brawler', 'port', 77);
-    let day = 1;
-    while (save.pendingLevelUps === 0) {
-      if (!playAuto(save, day)) day++;
-    }
-    expect(prepareFight(save, day)).toBeNull();
+    while (save.pendingLevelUps === 0) playAuto(save);
+    expect(prepareFight(save)).toBeNull();
     const offer = save.offer!;
     expect(offer).toHaveLength(3);
     chooseUpgrade(save, offer[0]!);
@@ -220,7 +207,7 @@ describe('game', () => {
   it('a save survives a JSON round trip and stays deterministic', () => {
     const save = newGame('Me', look, 'parkour', 'rooftops', 5);
     const copy = JSON.parse(JSON.stringify(save));
-    expect(playAuto(save, 1)).toEqual(playAuto(copy, 1));
+    expect(playAuto(save)).toEqual(playAuto(copy));
   });
 
   it('cannot choose an upgrade that is not offered', () => {
@@ -230,26 +217,57 @@ describe('game', () => {
 
   it('a prepared fight is reused, so the opponent cannot be rerolled', () => {
     const save = newGame('Me', look, 'tamer', 'metro', 9);
-    const first = prepareFight(save, 1);
-    expect(prepareFight(save, 1)).toBe(first);
-    expect(save.daily.used).toBe(1);
+    const first = prepareFight(save);
+    expect(prepareFight(save)).toBe(first);
   });
 
-  it('tactics and warm-up are locked once the fight starts', () => {
+  it('fights are unlimited', () => {
+    const save = newGame('Me', look, 'tamer', 'metro', 9);
+    for (let i = 0; i < 12; i++) {
+      if (save.pendingLevelUps > 0) chooseUpgrade(save, save.offer![0]!);
+      expect(playAuto(save)).not.toBeNull();
+    }
+  });
+
+  it('tactics and deck are locked once the fight starts', () => {
     const save = newGame('Me', look, 'bouncer', 'port', 3);
-    prepareFight(save, 1);
-    recordWarmup(save, 80);
-    recordWarmup(save, 100);
-    startFight(save, { stance: 'defensive', target: 'pets', weaponStyle: 'keep' }, []);
-    const locked = startFight(save, DEFAULT_PLAN, ['bat']);
+    prepareFight(save);
+    startFight(save, { stance: 'defensive', target: 'pets', weaponStyle: 'keep' }, [], undefined, ['wall']);
+    const locked = startFight(save, DEFAULT_PLAN, ['bat'], undefined, ['special', 'wall']);
     expect(locked).toEqual({
       stance: 'defensive',
       target: 'pets',
       weaponStyle: 'keep',
       weapons: [],
       gear: { armor: null, accessory: null },
-      warmup: 80,
+      deck: ['wall'],
     });
+  });
+
+  it('played cards gain uses and can level up', () => {
+    const save = newGame('Me', look, 'brawler', 'port', 21);
+    save.character.cardUses.rage = 2;
+    prepareFight(save);
+    startFight(save, DEFAULT_PLAN, []);
+    recordPlay(save, { tick: 4, card: 'rage' });
+    for (let log = simulateFight(save); log.winner === null; log = simulateFight(save)) recordBreak(save, keep([]));
+    const result = finishFight(save);
+    expect(result.cardsPlayed.rage).toBe(1);
+    expect(save.character.cardUses.rage).toBe(3);
+    expect(result.cardLevelUps).toEqual([{ card: 'rage', level: 2 }]);
+  });
+
+  it('a version 4 save is migrated, keeping the fighter', () => {
+    const v4 = { version: 4, seed: 1, fightCount: 3, character: { ...createCharacter('Old', look, 'parkour', 'port') }, daily: { day: 5, used: 2 }, pendingLevelUps: 0, offer: null, pendingFight: null };
+    delete (v4.character as Partial<Character>).cards;
+    delete (v4.character as Partial<Character>).cardUses;
+    const save = migrateSave(JSON.parse(JSON.stringify(v4)))!;
+    expect(save.version).toBe(5);
+    expect(save.character.name).toBe('Old');
+    expect(save.character.cards).toEqual(['special', 'roll']);
+    expect(save.character.cardUses).toEqual({});
+    expect('daily' in save).toBe(false);
+    expect(migrateSave({ version: 1 })).toBeNull();
   });
 });
 

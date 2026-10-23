@@ -1,6 +1,6 @@
 import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
-import { chooseUpgrade, dayNumber, prepareFight, recordWarmup, startFight, type SaveData } from './core';
+import { chooseUpgrade, prepareFight, startFight, type SaveData } from './core';
 import { loadArt } from './ui/art';
 import { animateIn } from './ui/motion';
 import { applyTheme } from './ui/theme';
@@ -64,13 +64,9 @@ function render(): void {
   }
   if (fight) {
     renderPrefight(root, current, {
-      onWarmup: (score) => {
-        recordWarmup(current, score);
-        storeSave(current);
-      },
-      onStart: (plan, weapons, gear) => {
+      onStart: (plan, weapons, gear, deck) => {
         // Locked and saved before the replay, so reloading cannot change the choices.
-        startFight(current, plan, weapons, gear);
+        startFight(current, plan, weapons, gear, deck);
         storeSave(current);
         show();
       },
@@ -78,10 +74,9 @@ function render(): void {
     return;
   }
 
-  const today = dayNumber(new Date());
-  renderHome(root, current, today, {
+  renderHome(root, current, {
     onFight: () => {
-      prepareFight(current, today);
+      prepareFight(current);
       storeSave(current);
       show();
     },

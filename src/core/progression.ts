@@ -98,30 +98,3 @@ export function applyUpgrade(c: Character, upgradeId: string): void {
       break;
   }
 }
-
-export const FIGHTS_PER_DAY = 6;
-
-export interface DailyFights {
-  /** Local day number the counter belongs to. */
-  day: number;
-  used: number;
-}
-
-/** Local calendar day as an integer, so the daily reset happens at local midnight. */
-export function dayNumber(date: Date): number {
-  return Math.floor((date.getTime() - date.getTimezoneOffset() * 60_000) / 86_400_000);
-}
-
-export function fightsLeft(d: DailyFights, today: number): number {
-  return d.day === today ? Math.max(0, FIGHTS_PER_DAY - d.used) : FIGHTS_PER_DAY;
-}
-
-export function useFight(d: DailyFights, today: number): boolean {
-  if (fightsLeft(d, today) === 0) return false;
-  if (d.day !== today) {
-    d.day = today;
-    d.used = 0;
-  }
-  d.used++;
-  return true;
-}

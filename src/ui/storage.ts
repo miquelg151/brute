@@ -1,4 +1,4 @@
-import { SAVE_VERSION, type SaveData } from '../core';
+import { migrateSave, type SaveData } from '../core';
 
 const KEY = 'brute.save';
 
@@ -7,8 +7,7 @@ export function loadSave(): SaveData | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    const save = JSON.parse(raw) as SaveData;
-    return save.version === SAVE_VERSION ? save : null;
+    return migrateSave(JSON.parse(raw));
   } catch {
     return null;
   }

@@ -11,6 +11,7 @@ import {
   TRAITS,
   WEAPONS,
   WEAPON_STYLES,
+  defaultTactics,
   gearFor,
   loadoutFor,
   traitsOf,
@@ -21,15 +22,13 @@ import {
 import { maxHpOf, maxManaOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
 import { TRAIT_ICONS, icon, iconValue, statRow } from '../icons';
-import { playWarmup } from '../minigames';
 import { CLASS_COLORS } from '../palette';
 import { gearPicker, planEditor, weaponPicker } from '../plan';
 import { drawFighter } from '../sprites';
 import { actionBar } from '../widgets';
 
 interface PrefightActions {
-  onWarmup: (score: number) => void;
-  onStart: (plan: Plan, weapons: string[], gear: GearChoice) => void;
+  onStart: (plan: Plan, weapons: string[], gear: GearChoice, deck: string[]) => void;
 }
 
 const names = (ids: string[], name: (id: string) => string | undefined) => (ids.length ? ids.map((id) => name(id) ?? id).join(', ') : 'None');
@@ -46,27 +45,10 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
   const loadout = new Set(loadoutFor(me));
   const worn: GearChoice = gearFor(me);
 
-  const warmupInfo = h('p', { class: 'dim small' });
-  const warmupBtn = h('button', { class: 'btn' }, 'Warm up');
-  const refreshWarmup = (score: number | null) => {
-    warmupBtn.classList.toggle('hidden', score !== null);
-    warmupInfo.textContent =
-      score === null
-        ? 'Optional. Tap targets for 8 seconds, once per fight. Worth up to +5% damage.'
-        : `You scored ${score}.`;
-  };
-  refreshWarmup(fight.warmup);
-
   const screen = h('main', { class: 'screen prefight' });
-  warmupBtn.addEventListener('click', async () => {
-    warmupBtn.disabled = true;
-    const score = await playWarmup(screen);
-    actions.onWarmup(score);
-    refreshWarmup(score);
-  });
 
   const fightBtn = h('button', { class: 'btn btn-primary btn-big' }, 'Start fight');
-  fightBtn.addEventListener('click', () => actions.onStart({ ...plan }, [...loadout], { ...worn }));
+  fightBtn.addEventListener('click', () => actions.onStart({ ...plan }, [...loadout], { ...worn }, defaultTactics(me).deck));
 
   /** What stands out about the opponent, as stickers: tap one to read what it means. */
   const traitStickers = () => {
@@ -144,8 +126,6 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
       ? h('section', {}, h('h2', {}, `Bring up to ${LOADOUT_SIZE} weapons`), h('p', { class: 'lede small' }, 'Accurate weapons are better against fighters who dodge a lot.'), weaponPicker(me.weapons, loadout))
       : '',
     me.gear.length > 0 ? h('section', {}, h('h2', {}, 'Gear'), gearPicker(me.gear, worn)) : '',
-    h('h2', {}, 'Warm-up'),
-    h('section', { class: 'card' }, warmupInfo, warmupBtn),
     actionBar(fightBtn),
   );
   root.append(screen);

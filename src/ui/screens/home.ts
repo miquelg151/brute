@@ -1,23 +1,22 @@
-import { CLASSES, FIGHTS_PER_DAY, GEAR, ORIGINS, SKILLS, fightsLeft, xpToNext, type SaveData } from '../../core';
+import { CLASSES, GEAR, ORIGINS, SKILLS, xpToNext, type SaveData } from '../../core';
 import { gearEffects, maxHpOf, maxManaOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
 import { icon, iconHeading, iconValue } from '../icons';
 import { CLASS_COLORS } from '../palette';
 import { drawFighter } from '../sprites';
-import { actionBar, petSlot, pips, slot, weaponSlot } from '../widgets';
+import { actionBar, petSlot, slot, weaponSlot } from '../widgets';
 
 interface HomeActions {
   onFight: () => void;
   onReset: () => void;
 }
 
-export function renderHome(root: HTMLElement, save: SaveData, today: number, actions: HomeActions): void {
+export function renderHome(root: HTMLElement, save: SaveData, actions: HomeActions): void {
   const c = save.character;
   const stats = totalStats(c);
   const need = xpToNext(c.level);
-  const left = fightsLeft(save.daily, today);
 
-  const fightBtn = h('button', { class: 'btn btn-primary btn-big', disabled: left === 0, onclick: actions.onFight }, left > 0 ? 'Fight' : 'Back tomorrow');
+  const fightBtn = h('button', { class: 'btn btn-primary btn-big', onclick: actions.onFight }, 'Fight');
 
   // Two taps to delete, so a stray tap never wipes the save.
   const resetBtn = h('button', { class: 'btn btn-ghost btn-small' }, 'Delete fighter');
@@ -84,11 +83,6 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
         'ul',
         { class: 'skill-list' },
         ...c.skills.map((id) => h('li', {}, h('strong', {}, SKILLS[id]?.name ?? id), ' ', h('span', {}, SKILLS[id]?.description ?? ''))),
-      ),
-      h(
-        'div',
-        { class: 'today' },
-        h('span', { class: 'icon-value' }, icon('fights', 'Fights left today', 'normal'), pips(left, FIGHTS_PER_DAY, `${left} of ${FIGHTS_PER_DAY} fights left today`)),
       ),
       resetBtn,
       actionBar(fightBtn),

@@ -487,14 +487,7 @@ a {
   font-size: var(--t-s);
 }
 
-/* Daily fights as tally marks */
-.today {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: calc(var(--step) * 2);
-}
-
+/* Tally marks */
 .pips {
   display: flex;
   gap: 5px;
@@ -977,64 +970,7 @@ body.sheet-open {
   box-shadow: 0 0 0 2px var(--outline);
 }
 
-.overlay.warmup {
-  position: fixed;
-  background-color: var(--wall);
-  justify-content: flex-start;
-  padding-top: calc(var(--step) * 4);
-}
-
-.warmup-status {
-  font-family: var(--font);
-  font-weight: var(--heavy);
-  font-size: var(--t-xxl);
-}
-
-.warmup-field {
-  position: relative;
-  width: 100%;
-  max-width: 440px;
-  flex: 1;
-  max-height: 70vh;
-  background: var(--paper);
-  border: 2px solid var(--ink);
-  border-radius: var(--rough);
-}
-
-.warmup-target {
-  position: absolute;
-  width: 48px;
-  height: 48px;
-  border: 3px solid var(--ink);
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--pink) 28%, var(--paper) 29%, var(--paper) 46%, var(--pink) 47%);
-  padding: 0;
-  cursor: pointer;
-  animation: pop 0.95s linear forwards;
-}
-
-@keyframes pop {
-  0% {
-    transform: scale(0.4);
-  }
-  15% {
-    transform: scale(1);
-  }
-  80% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .warmup-target {
-    animation-timing-function: steps(1, end);
-  }
-
   .btn,
   .choice {
     transition: none;
@@ -1305,8 +1241,7 @@ h2:not(.card h2),
 .stat-value,
 .result,
 .skill-list strong,
-.timing-label,
-.warmup-status {
+.timing-label {
   color: var(--sticker-fill);
   -webkit-text-stroke: var(--sticker-outline) var(--sticker-ink);
   /* The outline is drawn behind the letters, so it only grows outwards. */
@@ -1324,8 +1259,7 @@ h2:not(.card h2),
 .stat-value,
 .result,
 .skill-list strong,
-.timing-label,
-.warmup-status {
+.timing-label {
   filter: drop-shadow(var(--sticker-drop) var(--sticker-drop) 0 var(--sticker-shadow));
 }
 
@@ -1387,8 +1321,7 @@ body {
 .chip-toggle,
 .btn,
 input,
-.gallery-art,
-.warmup-field {
+.gallery-art {
   text-shadow: none;
 }
 
