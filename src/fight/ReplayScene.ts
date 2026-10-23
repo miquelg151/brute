@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Rng, SKILLS, SPECIAL_MIN_QUALITY, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
 import { artImage, artManifest } from '../ui/art';
 import { drawFighter, drawPet, drawWeapon } from '../ui/sprites';
+import { PAL, num } from '../ui/theme';
 
 export const ARENA_W = 320;
 export const ARENA_H = 200;
@@ -93,22 +94,22 @@ export class ReplayScene extends Phaser.Scene {
       return;
     }
     const g = this.add.graphics();
-    g.fillStyle(0x222634).fillRect(0, 0, ARENA_W, GROUND_Y);
+    g.fillStyle(num(PAL.wall)).fillRect(0, 0, ARENA_W, GROUND_Y);
     // City skyline, seeded by the fight so a replay always looks the same.
     const rng = new Rng(this.log.seed);
     for (let x = -10; x < ARENA_W; ) {
       const w = rng.int(24, 48);
       const top = rng.int(48, 110);
-      g.fillStyle(0x15171f).fillRect(x, top, w, GROUND_Y - top);
-      g.fillStyle(0xffb347);
+      g.fillStyle(num(PAL.night)).fillRect(x, top, w, GROUND_Y - top);
+      g.fillStyle(num(PAL.amber));
       for (let wy = top + 6; wy < GROUND_Y - 14; wy += 9) {
         for (let wx = x + 4; wx < x + w - 4; wx += 7) if (rng.chance(25)) g.fillRect(wx, wy, 3, 4);
       }
       x += w + rng.int(2, 8);
     }
-    g.fillStyle(0x30333f).fillRect(0, GROUND_Y, ARENA_W, ARENA_H - GROUND_Y);
-    g.fillStyle(0x4b4f5e).fillRect(0, GROUND_Y, ARENA_W, 3);
-    g.fillStyle(0x5c6070);
+    g.fillStyle(num(PAL.asphalt)).fillRect(0, GROUND_Y, ARENA_W, ARENA_H - GROUND_Y);
+    g.fillStyle(num(PAL.stone)).fillRect(0, GROUND_Y, ARENA_W, 3);
+    g.fillStyle(num(PAL.stone));
     for (let x = 8; x < ARENA_W; x += 32) g.fillRect(x, GROUND_Y + 20, 16, 2);
   }
 
@@ -155,7 +156,7 @@ export class ReplayScene extends Phaser.Scene {
 
       if (info.isMain) {
         this.add
-          .text(info.team === 0 ? 8 : ARENA_W - 8, 3, info.name, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color: '#ffffff', resolution: ARENA_ZOOM })
+          .text(info.team === 0 ? 8 : ARENA_W - 8, 3, info.name, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color: PAL.white, resolution: ARENA_ZOOM })
           .setOrigin(info.team === 0 ? 0 : 1, 0)
           .setDepth(1000);
       }
@@ -169,27 +170,27 @@ export class ReplayScene extends Phaser.Scene {
       if (v.hp <= 0) return;
       const bx = v.homeX - 10;
       const by = v.homeY - v.sprite.displayHeight - 6;
-      g.fillStyle(0x111111).fillRect(bx - 1, by - 1, 22, 4);
-      g.fillStyle(0x22c55e).fillRect(bx, by, Math.round((20 * v.hp) / v.maxHp), 2);
+      g.fillStyle(num(PAL.black)).fillRect(bx - 1, by - 1, 22, 4);
+      g.fillStyle(num(PAL.green)).fillRect(bx, by, Math.round((20 * v.hp) / v.maxHp), 2);
       return;
     }
     const left = v.dir === 1;
     const bx = left ? 8 : ARENA_W - 8 - BAR_W;
     const meter = (y: number, h: number, value: number, max: number, color: number, back: number) => {
       const w = max > 0 ? Math.round((BAR_W * Math.max(0, value)) / max) : 0;
-      g.fillStyle(0x111111).fillRect(bx - 1, y - 1, BAR_W + 2, h + 2);
+      g.fillStyle(num(PAL.black)).fillRect(bx - 1, y - 1, BAR_W + 2, h + 2);
       g.fillStyle(back).fillRect(bx, y, BAR_W, h);
       g.fillStyle(color).fillRect(left ? bx : bx + BAR_W - w, y, w, h);
     };
-    meter(17, 6, v.hp, v.maxHp, 0x22c55e, 0x7f1d1d);
-    meter(25, 2, v.stamina, v.maxStamina, v.stamina < 25 ? 0xff8a3d : 0x8bd450, 0x2a2f22);
-    if (v.maxMana > 0) meter(29, 2, v.mana, v.maxMana, 0x5b8cff, 0x1c2340);
+    meter(17, 6, v.hp, v.maxHp, num(PAL.green), num(PAL.maroon));
+    meter(25, 2, v.stamina, v.maxStamina, v.stamina < 25 ? num(PAL.orange) : num(PAL.lime), num(PAL.night));
+    if (v.maxMana > 0) meter(29, 2, v.mana, v.maxMana, num(PAL.blue), num(PAL.navy));
   }
 
   private drawWard(v: UnitView, amount: number): void {
     v.ring.clear();
     if (amount <= 0) return;
-    v.ring.lineStyle(1.5, 0x7df9ff, 0.9).strokeEllipse(v.homeX, v.homeY - v.sprite.displayHeight / 2, 34, v.sprite.displayHeight + 10);
+    v.ring.lineStyle(1.5, num(PAL.cyan), 0.9).strokeEllipse(v.homeX, v.homeY - v.sprite.displayHeight / 2, 34, v.sprite.displayHeight + 10);
   }
 
   private view(idx: number): UnitView {
@@ -211,14 +212,14 @@ export class ReplayScene extends Phaser.Scene {
 
   private floatText(x: number, y: number, text: string, color: string): void {
     const t = this.add
-      .text(x, y, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color, stroke: '#000000', strokeThickness: 3, resolution: ARENA_ZOOM })
+      .text(x, y, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '10px', color, stroke: PAL.black, strokeThickness: 3, resolution: ARENA_ZOOM })
       .setOrigin(0.5)
       .setDepth(2000);
     this.tweens.add({ targets: t, y: y - 18, alpha: 0, duration: 750, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
   }
 
   private async banner(text: string, color: string, ms: number): Promise<void> {
-    const box = this.add.rectangle(ARENA_W / 2, 90, ARENA_W, 30, 0x000000, 0.65).setDepth(3000);
+    const box = this.add.rectangle(ARENA_W / 2, 90, ARENA_W, 30, num(PAL.black), 0.65).setDepth(3000);
     const label = this.add
       .text(ARENA_W / 2, 90, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '18px', color, resolution: ARENA_ZOOM })
       .setOrigin(0.5)
@@ -254,14 +255,14 @@ export class ReplayScene extends Phaser.Scene {
     }
     await this.wait(400);
     const won = this.log.winner === 0;
-    void this.banner(won ? 'VICTORY' : 'DEFEAT', won ? '#ffd23f' : '#ff6b6b', 60_000);
+    void this.banner(won ? 'VICTORY' : 'DEFEAT', won ? PAL.yellow : PAL.coral, 60_000);
     this.hooks.onFinished(this.log);
   }
 
   private handle(e: FightEvent): Promise<void> {
     switch (e.t) {
       case 'round':
-        return this.banner(`Round ${e.round}`, '#efe8d8', 700);
+        return this.banner(`Round ${e.round}`, PAL.paper, 700);
       case 'break':
         return this.wait(200);
       case 'draw':
@@ -306,7 +307,7 @@ export class ReplayScene extends Phaser.Scene {
   private async onSpecial(actor: number, quality: number): Promise<void> {
     const v = this.view(actor);
     const [text, color] =
-      quality >= 90 ? ['PERFECT!', '#ffd23f'] : quality >= SPECIAL_MIN_QUALITY ? ['SPECIAL!', '#fb923c'] : ['MISSED', '#9ca3af'];
+      quality >= 90 ? ['PERFECT!', PAL.yellow] : quality >= SPECIAL_MIN_QUALITY ? ['SPECIAL!', PAL.orange] : ['MISSED', PAL.fog];
     this.floatText(v.sprite.x, this.headY(v) - 8, text, color);
     if (quality >= SPECIAL_MIN_QUALITY) {
       this.cameras.main.flash(120, 255, 220, 120);
@@ -354,15 +355,15 @@ export class ReplayScene extends Phaser.Scene {
 
   /** A glowing orb from the caster to the target (or past it, on a dodge). */
   private async orb(att: UnitView, def: UnitView, past: boolean, impact: () => Promise<void>): Promise<void> {
-    const orb = this.add.circle(att.sprite.x + att.dir * 10, att.sprite.y - 26, 4, 0xb388ff).setStrokeStyle(1, 0xf1e6ff).setDepth(1500);
+    const orb = this.add.circle(att.sprite.x + att.dir * 10, att.sprite.y - 26, 4, num(PAL.purple)).setStrokeStyle(1, num(PAL.lilac)).setDepth(1500);
     await this.tween({ targets: orb, x: def.sprite.x + (past ? def.dir * -30 : 0), y: def.sprite.y - 22, duration: 260, ease: 'Sine.easeIn' });
     orb.destroy();
     await impact();
   }
 
   private async impactHit(def: UnitView, damage: number, hp: number, blocked: boolean, magic: boolean): Promise<void> {
-    def.sprite.setTintFill(blocked ? 0x93c5fd : magic ? 0xd9c2ff : 0xffffff);
-    const color = blocked ? '#93c5fd' : magic ? '#d0b3ff' : '#ff6b6b';
+    def.sprite.setTintFill(blocked ? num(PAL.sky) : magic ? num(PAL.lilac) : num(PAL.white));
+    const color = blocked ? PAL.sky : magic ? PAL.lilac : PAL.coral;
     if (damage > 0) this.floatText(def.sprite.x, this.headY(def), blocked ? `BLOCK ${damage}` : `-${damage}`, color);
     def.hp = hp;
     this.drawBars(def);
@@ -374,7 +375,7 @@ export class ReplayScene extends Phaser.Scene {
     const att = this.view(actor);
     const def = this.view(target);
     const label = KIND_LABEL[kind];
-    if (label) this.floatText(att.sprite.x, this.headY(att), label, '#ffd23f');
+    if (label) this.floatText(att.sprite.x, this.headY(att), label, PAL.yellow);
     const impact = () => this.impactHit(def, damage, hp, blocked, kind === 'spell');
     if (kind === 'spell') await this.orb(att, def, false, impact);
     else if (kind === 'throw') await this.throwAt(att, def, impact);
@@ -385,7 +386,7 @@ export class ReplayScene extends Phaser.Scene {
     const att = this.view(actor);
     const def = this.view(target);
     const hop = async () => {
-      this.floatText(def.sprite.x, this.headY(def), 'DODGE', '#ffffff');
+      this.floatText(def.sprite.x, this.headY(def), 'DODGE', PAL.white);
       await this.tween({ targets: def.sprite, x: def.homeX - def.dir * 14, y: def.homeY - 8, duration: 100, yoyo: true, onUpdate: () => this.placeWeapon(def) });
     };
     if (kind === 'spell') await this.orb(att, def, true, hop);
@@ -395,20 +396,20 @@ export class ReplayScene extends Phaser.Scene {
 
   private async onMiss(actor: number): Promise<void> {
     const v = this.view(actor);
-    this.floatText(v.sprite.x, this.headY(v), 'BLINDED', '#efe8d8');
+    this.floatText(v.sprite.x, this.headY(v), 'BLINDED', PAL.paper);
     await this.tween({ targets: v.sprite, x: v.homeX + v.dir * 6, duration: 120, yoyo: true });
   }
 
   private async onCast(actor: number, spell: string, target: number | null): Promise<void> {
     const v = this.view(actor);
-    this.floatText(v.sprite.x, this.headY(v) - 6, SKILLS[spell]?.name ?? spell, '#d0b3ff');
-    v.sprite.setTint(0xd9c2ff);
+    this.floatText(v.sprite.x, this.headY(v) - 6, SKILLS[spell]?.name ?? spell, PAL.lilac);
+    v.sprite.setTint(num(PAL.lilac));
     await this.tween({ targets: v.sprite, y: v.homeY - 4, duration: 120, yoyo: true });
     v.sprite.clearTint();
     if (spell === 'flash' && target !== null) {
       const t = this.view(target);
       this.cameras.main.flash(90, 255, 255, 255);
-      t.sprite.setTintFill(0xffffff);
+      t.sprite.setTintFill(num(PAL.white));
       await this.wait(160);
       t.sprite.clearTint();
     }
@@ -417,8 +418,8 @@ export class ReplayScene extends Phaser.Scene {
   private async onWard(actor: number, absorbed: number, left: number): Promise<void> {
     const v = this.view(actor);
     this.drawWard(v, left);
-    if (absorbed === 0) this.floatText(v.sprite.x, this.headY(v), 'WARD', '#7df9ff');
-    else this.floatText(v.sprite.x + 10, this.headY(v) + 8, `-${absorbed}`, '#7df9ff');
+    if (absorbed === 0) this.floatText(v.sprite.x, this.headY(v), 'WARD', PAL.cyan);
+    else this.floatText(v.sprite.x + 10, this.headY(v) + 8, `-${absorbed}`, PAL.cyan);
     await this.wait(absorbed === 0 ? 250 : 120);
   }
 
@@ -426,7 +427,7 @@ export class ReplayScene extends Phaser.Scene {
     const v = this.view(actor);
     v.hp = hp;
     v.sprite.setPosition(v.homeX, v.homeY).setAngle(0).clearTint();
-    this.floatText(v.homeX, this.headY(v), 'SPIRIT!', '#a5f3fc');
+    this.floatText(v.homeX, this.headY(v), 'SPIRIT!', PAL.ice);
     await this.tween({ targets: v.sprite, alpha: 0.85, duration: 300 });
     this.drawBars(v);
   }
@@ -441,7 +442,7 @@ export class ReplayScene extends Phaser.Scene {
 
   private async onRest(actor: number): Promise<void> {
     const v = this.view(actor);
-    this.floatText(v.sprite.x, this.headY(v), 'catching breath', '#c9c2d6');
+    this.floatText(v.sprite.x, this.headY(v), 'catching breath', PAL.mist);
     await this.tween({ targets: v.sprite, scaleY: SCALE * 0.92, duration: 200, yoyo: true });
   }
 
@@ -450,15 +451,15 @@ export class ReplayScene extends Phaser.Scene {
     const weapon = v.weapon;
     v.weapon = null;
     if (!weapon) return;
-    this.floatText(v.sprite.x, this.headY(v), 'DISARMED', '#fb923c');
+    this.floatText(v.sprite.x, this.headY(v), 'DISARMED', PAL.orange);
     await this.tween({ targets: weapon, y: GROUND_Y + 8, x: weapon.x - v.dir * 20, angle: 180, alpha: 0, duration: 350 });
     weapon.destroy();
   }
 
   private async onHeal(actor: number, amount: number, hp: number): Promise<void> {
     const v = this.view(actor);
-    v.sprite.setTint(0x86efac);
-    this.floatText(v.sprite.x, this.headY(v), `+${amount}`, '#4ade80');
+    v.sprite.setTint(num(PAL.lime));
+    this.floatText(v.sprite.x, this.headY(v), `+${amount}`, PAL.lime);
     v.hp = hp;
     this.drawBars(v);
     await this.wait(350);
@@ -472,7 +473,7 @@ export class ReplayScene extends Phaser.Scene {
     this.drawWard(v, 0);
     v.weapon?.destroy();
     v.weapon = null;
-    v.sprite.setTint(0x777777);
+    v.sprite.setTint(num(PAL.smoke));
     if (v.isMain) {
       v.sprite.setOrigin(0.5, 0.9);
       await this.tween({ targets: v.sprite, angle: -90 * v.dir, duration: 400, ease: 'Bounce.easeOut' });

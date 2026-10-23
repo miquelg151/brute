@@ -7,7 +7,7 @@ export function slot(canvas: HTMLCanvasElement | null, label: string): HTMLEleme
   return h(
     'div',
     { class: canvas ? 'slot' : 'slot slot-empty' },
-    h('div', { class: 'slot-art' }, canvas ? pixelArt(canvas, canvas.width > 12 ? 3 : 4) : ''),
+    h('div', { class: 'slot-art' }, canvas ? pixelArt(canvas, 'normal') : ''),
     label,
   );
 }

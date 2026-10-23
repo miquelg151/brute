@@ -22,7 +22,7 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
             ? 'magic'
             : 'skill'
     ) as IconName;
-    const picture = art ? slot(art, '') : h('div', { class: 'slot' }, h('div', { class: 'slot-art' }, icon(mainStat, u.name, 4)));
+    const picture = art ? slot(art, '') : h('div', { class: 'slot' }, h('div', { class: 'slot-art' }, icon(mainStat, u.name, 'normal')));
     return h(
       'button',
       { class: 'choice upgrade', onclick: () => onPick(id) },

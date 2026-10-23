@@ -1,3 +1,5 @@
+import { PIXEL, type PixelSize } from './theme';
+
 type Child = Node | string | null | undefined | false;
 type Props = Record<string, unknown>;
 
@@ -15,8 +17,9 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, props: Props = 
   return el;
 }
 
-/** Wraps a pixel sprite canvas so CSS can scale it up crisply. */
-export function pixelArt(canvas: HTMLCanvasElement, scale: number, flip = false): HTMLCanvasElement {
+/** Shows a pixel sprite canvas scaled up crisply, at one of the game's pixel sizes (see theme.ts). */
+export function pixelArt(canvas: HTMLCanvasElement, size: PixelSize, flip = false): HTMLCanvasElement {
+  const scale = PIXEL[size];
   canvas.classList.add('pixel');
   canvas.style.width = `${canvas.width * scale}px`;
   canvas.style.height = `${canvas.height * scale}px`;

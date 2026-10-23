@@ -4,11 +4,12 @@
 import type { Appearance, ClassId } from '../core';
 import { artImage, artManifest, imageToCanvas } from './art';
 import { HAIR_COLORS, OUTFIT_COLORS, SKIN_TONES, shade } from './palette';
+import { PAL } from './theme';
 
 type Px = (x: number, y: number, color: string) => void;
 type Rect = (x: number, y: number, w: number, h: number, color: string) => void;
 
-const OUTLINE = '#141218';
+const OUTLINE = PAL.black;
 
 export function sprite(w: number, h: number, draw: (px: Px, rect: Rect) => void): HTMLCanvasElement {
   const grid: (string | null)[][] = Array.from({ length: h }, () => Array<string | null>(w).fill(null));
@@ -43,20 +44,20 @@ function placeholderFighter(look: Appearance, classId: ClassId): HTMLCanvasEleme
   const skin = SKIN_TONES[look.skinTone] ?? SKIN_TONES[0]!;
   const hair = HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[0]!;
   const outfit = OUTFIT_COLORS[look.outfitColor] ?? OUTFIT_COLORS[0]!;
-  const pants = '#374151';
+  const pants = PAL.asphalt;
   const wide = classId === 'bouncer';
 
   return sprite(16, 24, (px, rect) => {
     // Legs and shoes
     rect(5, 17, 3, 5, pants);
     rect(8, 17, 3, 5, shade(pants, -0.2));
-    const shoes = classId === 'parkour' ? '#f5f5f5' : '#1f1f1f';
+    const shoes = classId === 'parkour' ? PAL.white : PAL.night;
     rect(5, 22, 3, 2, shoes);
     rect(8, 22, 4, 2, shoes);
     // Torso and belt
     rect(wide ? 3 : 4, 10, wide ? 10 : 8, 6, outfit);
     rect(wide ? 3 : 4, 10, 1, 6, shade(outfit, -0.25));
-    rect(wide ? 3 : 4, 16, wide ? 10 : 8, 1, '#2a2a2a');
+    rect(wide ? 3 : 4, 16, wide ? 10 : 8, 1, PAL.night);
     // Arms: sleeve then skin, hand at the bottom
     const backArm = wide ? 2 : 3;
     const frontArm = wide ? 13 : 12;
@@ -68,7 +69,7 @@ function placeholderFighter(look: Appearance, classId: ClassId): HTMLCanvasEleme
     rect(7, 9, 2, 1, shade(skin, -0.2));
     rect(5, 2, 6, 7, skin);
     rect(5, 2, 1, 7, shade(skin, -0.15));
-    px(9, 5, '#111111');
+    px(9, 5, PAL.black);
     px(9, 7, shade(skin, -0.35));
     // Hair
     switch (look.hairStyle) {
@@ -87,31 +88,31 @@ function placeholderFighter(look: Appearance, classId: ClassId): HTMLCanvasEleme
     // Class accessory
     switch (classId) {
       case 'brawler':
-        rect(5, 3, 6, 1, '#dc2626');
-        px(4, 4, '#dc2626');
-        px(backArm, 15, '#f5f5f5');
-        px(frontArm, 15, '#f5f5f5');
+        rect(5, 3, 6, 1, PAL.crimson);
+        px(4, 4, PAL.crimson);
+        px(backArm, 15, PAL.white);
+        px(frontArm, 15, PAL.white);
         break;
       case 'parkour':
         rect(4, 1, 2, 8, shade(outfit, -0.3));
         rect(5, 1, 5, 1, shade(outfit, -0.3));
         break;
       case 'bouncer':
-        rect(8, 5, 3, 1, '#0a0a0a');
+        rect(8, 5, 3, 1, PAL.black);
         break;
       case 'tamer':
-        rect(5, 1, 6, 2, '#4d7c0f');
-        rect(11, 2, 2, 1, '#3f6212');
+        rect(5, 1, 6, 2, PAL.moss);
+        rect(11, 2, 2, 1, PAL.forest);
         break;
       case 'mystic':
         // Deep hood with glowing neon runes on the chest.
-        rect(4, 0, 7, 2, '#2d2148');
-        rect(4, 2, 1, 7, '#2d2148');
-        rect(10, 1, 1, 2, '#2d2148');
-        px(6, 12, '#7df9ff');
-        px(8, 12, '#7df9ff');
-        px(7, 13, '#ff5dd8');
-        px(7, 11, '#ff5dd8');
+        rect(4, 0, 7, 2, PAL.grape);
+        rect(4, 2, 1, 7, PAL.grape);
+        rect(10, 1, 1, 2, PAL.grape);
+        px(6, 12, PAL.cyan);
+        px(8, 12, PAL.cyan);
+        px(7, 13, PAL.magenta);
+        px(7, 11, PAL.magenta);
         break;
     }
   });
@@ -121,47 +122,47 @@ function placeholderPet(petId: string): HTMLCanvasElement {
   switch (petId) {
     case 'spirit':
       return sprite(10, 12, (px, rect) => {
-        rect(2, 0, 6, 2, '#a5f3fc');
-        rect(1, 2, 8, 6, '#a5f3fc');
-        rect(1, 8, 2, 3, '#a5f3fc');
-        rect(4, 8, 2, 4, '#a5f3fc');
-        rect(7, 8, 2, 3, '#a5f3fc');
-        rect(2, 2, 1, 6, '#e0fbff');
-        px(5, 4, '#1e1b4b');
-        px(7, 4, '#1e1b4b');
+        rect(2, 0, 6, 2, PAL.ice);
+        rect(1, 2, 8, 6, PAL.ice);
+        rect(1, 8, 2, 3, PAL.ice);
+        rect(4, 8, 2, 4, PAL.ice);
+        rect(7, 8, 2, 3, PAL.ice);
+        rect(2, 2, 1, 6, PAL.ice);
+        px(5, 4, PAL.navy);
+        px(7, 4, PAL.navy);
       });
     case 'crow':
       return sprite(8, 8, (px, rect) => {
-        rect(1, 3, 5, 3, '#27272a');
-        rect(4, 1, 3, 3, '#27272a');
-        px(7, 2, '#facc15');
-        px(5, 2, '#f5f5f5');
-        rect(0, 3, 2, 1, '#3f3f46');
-        rect(2, 6, 1, 2, '#facc15');
-        rect(4, 6, 1, 2, '#facc15');
+        rect(1, 3, 5, 3, PAL.night);
+        rect(4, 1, 3, 3, PAL.night);
+        px(7, 2, PAL.yellow);
+        px(5, 2, PAL.white);
+        rect(0, 3, 2, 1, PAL.asphalt);
+        rect(2, 6, 1, 2, PAL.yellow);
+        rect(4, 6, 1, 2, PAL.yellow);
       });
     case 'raccoon':
       return sprite(12, 8, (px, rect) => {
-        rect(2, 3, 7, 3, '#8a8a95');
-        rect(8, 1, 4, 4, '#8a8a95');
-        rect(8, 2, 4, 1, '#27272a');
-        px(10, 2, '#f5f5f5');
-        rect(0, 2, 2, 1, '#8a8a95');
-        rect(0, 3, 2, 1, '#27272a');
-        rect(0, 4, 2, 1, '#8a8a95');
-        rect(3, 6, 1, 2, '#52525b');
-        rect(7, 6, 1, 2, '#52525b');
+        rect(2, 3, 7, 3, PAL.smoke);
+        rect(8, 1, 4, 4, PAL.smoke);
+        rect(8, 2, 4, 1, PAL.night);
+        px(10, 2, PAL.white);
+        rect(0, 2, 2, 1, PAL.smoke);
+        rect(0, 3, 2, 1, PAL.night);
+        rect(0, 4, 2, 1, PAL.smoke);
+        rect(3, 6, 1, 2, PAL.stone);
+        rect(7, 6, 1, 2, PAL.stone);
       });
     default:
       return sprite(12, 8, (px, rect) => {
-        rect(2, 3, 7, 3, '#a16207');
-        rect(8, 1, 3, 4, '#a16207');
-        px(11, 3, '#713f12');
-        px(8, 0, '#713f12');
-        px(10, 2, '#111111');
-        rect(0, 2, 2, 1, '#a16207');
-        rect(3, 6, 1, 2, '#854d0e');
-        rect(7, 6, 1, 2, '#854d0e');
+        rect(2, 3, 7, 3, PAL.wood);
+        rect(8, 1, 3, 4, PAL.wood);
+        px(11, 3, PAL.brown);
+        px(8, 0, PAL.brown);
+        px(10, 2, PAL.black);
+        rect(0, 2, 2, 1, PAL.wood);
+        rect(3, 6, 1, 2, PAL.brown);
+        rect(7, 6, 1, 2, PAL.brown);
       });
   }
 }
@@ -170,40 +171,40 @@ function placeholderWeapon(weaponId: string): HTMLCanvasElement {
   switch (weaponId) {
     case 'chain':
       return sprite(10, 3, (px) => {
-        for (let x = 0; x < 10; x++) px(x, x % 2, x % 4 < 2 ? '#a1a1aa' : '#71717a');
+        for (let x = 0; x < 10; x++) px(x, x % 2, x % 4 < 2 ? PAL.fog : PAL.smoke);
       });
     case 'skateboard':
       return sprite(12, 3, (px, rect) => {
-        rect(0, 0, 12, 1, '#f97316');
-        px(2, 1, '#52525b');
-        px(9, 1, '#52525b');
-        px(2, 2, '#e5e5e5');
-        px(9, 2, '#e5e5e5');
+        rect(0, 0, 12, 1, PAL.orange);
+        px(2, 1, PAL.stone);
+        px(9, 1, PAL.stone);
+        px(2, 2, PAL.mist);
+        px(9, 2, PAL.mist);
       });
     case 'umbrella':
       return sprite(10, 5, (px, rect) => {
-        rect(0, 2, 9, 1, '#3f3f46');
-        rect(6, 0, 4, 2, '#7c3aed');
-        rect(5, 1, 1, 3, '#7c3aed');
-        px(0, 3, '#3f3f46');
+        rect(0, 2, 9, 1, PAL.asphalt);
+        rect(6, 0, 4, 2, PAL.violet);
+        rect(5, 1, 1, 3, PAL.violet);
+        px(0, 3, PAL.asphalt);
       });
     case 'traffic_sign':
       return sprite(12, 6, (_px, rect) => {
-        rect(0, 2, 8, 1, '#9ca3af');
-        rect(8, 0, 4, 6, '#dc2626');
-        rect(9, 2, 2, 2, '#f5f5f5');
+        rect(0, 2, 8, 1, PAL.fog);
+        rect(8, 0, 4, 6, PAL.crimson);
+        rect(9, 2, 2, 2, PAL.white);
       });
     case 'extinguisher':
       return sprite(10, 4, (_px, rect) => {
-        rect(0, 0, 8, 4, '#dc2626');
-        rect(8, 1, 2, 2, '#27272a');
-        rect(1, 0, 1, 4, '#f5f5f5');
+        rect(0, 0, 8, 4, PAL.crimson);
+        rect(8, 1, 2, 2, PAL.night);
+        rect(1, 0, 1, 4, PAL.white);
       });
     default:
       return sprite(11, 3, (px, rect) => {
-        rect(0, 1, 4, 1, '#3f2a14');
-        rect(4, 0, 7, 3, '#b45309');
-        px(10, 0, '#92400e');
+        rect(0, 1, 4, 1, PAL.brownDark);
+        rect(4, 0, 7, 3, PAL.wood);
+        px(10, 0, PAL.brown);
       });
   }
 }

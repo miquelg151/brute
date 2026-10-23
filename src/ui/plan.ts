@@ -55,7 +55,7 @@ export function optionGroup<Id extends string>(
             { class: matches ? 'strong-vs match' : 'strong-vs' },
             matches ? '✓ ' : '',
             'Strong against ',
-            icon(TRAIT_ICONS[def.strongVs] ?? 'skill', TRAITS[def.strongVs].name, 2),
+            icon(TRAIT_ICONS[def.strongVs] ?? 'skill', TRAITS[def.strongVs].name),
             ` ${TRAITS[def.strongVs].name.toLowerCase()}`,
           )
         : '',
@@ -126,7 +126,7 @@ export function gearPicker(owned: string[], worn: GearChoice): HTMLElement {
       chip.classList.toggle('selected', worn[slot] === id);
       return chip;
     });
-    return h('div', { class: 'gear-row' }, h('div', { class: 'section-icon' }, icon(iconName, label, 3), h('span', {}, label)), h('div', { class: 'slots' }, ...chips));
+    return h('div', { class: 'gear-row' }, h('div', { class: 'section-icon' }, icon(iconName, label, 'normal'), h('span', {}, label)), h('div', { class: 'slots' }, ...chips));
   };
   return h('div', { class: 'gear-picker' }, row('armor', 'Armor', 'armor'), row('accessory', 'Accessory', 'accessory'));
 }

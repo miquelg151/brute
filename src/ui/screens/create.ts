@@ -38,7 +38,7 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
   const lookValues = new Map<keyof Appearance, HTMLElement>();
 
   const refreshPreview = () => {
-    preview.replaceChildren(pixelArt(drawFighter(look, classId), 6));
+    preview.replaceChildren(pixelArt(drawFighter(look, classId), 'big'));
     for (const row of LOOK_ROWS) {
       const v = look[row.key];
       lookValues.get(row.key)!.textContent = row.key === 'hairStyle' ? HAIR_STYLE_NAMES[v] ?? '' : `${v + 1}`;

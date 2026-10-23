@@ -34,7 +34,7 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
 
   const mana = maxManaOf(c);
   const stat = (name: 'health' | 'strength' | 'agility' | 'speed' | 'magic' | 'mana', value: number, label: string) =>
-    h('div', { class: 'stat', title: label }, icon(name, label, 3), h('span', { class: 'stat-value' }, String(value)));
+    h('div', { class: 'stat', title: label }, icon(name, label, 'normal'), h('span', { class: 'stat-value' }, String(value)));
 
   root.append(
     h(
@@ -43,7 +43,7 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
       h(
         'header',
         { class: 'hero' },
-        h('div', { class: 'spot' }, pixelArt(drawFighter(c.appearance, c.classId), 6)),
+        h('div', { class: 'spot' }, pixelArt(drawFighter(c.appearance, c.classId), 'big')),
         h(
           'div',
           { class: 'hero-info' },
@@ -88,7 +88,7 @@ export function renderHome(root: HTMLElement, save: SaveData, today: number, act
       h(
         'div',
         { class: 'today' },
-        h('span', { class: 'icon-value' }, icon('fights', 'Fights left today', 3), pips(left, FIGHTS_PER_DAY, `${left} of ${FIGHTS_PER_DAY} fights left today`)),
+        h('span', { class: 'icon-value' }, icon('fights', 'Fights left today', 'normal'), pips(left, FIGHTS_PER_DAY, `${left} of ${FIGHTS_PER_DAY} fights left today`)),
       ),
       fightBtn,
       resetBtn,

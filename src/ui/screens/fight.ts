@@ -17,6 +17,7 @@ import { h } from '../dom';
 import { icon, iconValue } from '../icons';
 import { playSpecialStrike } from '../minigames';
 import { planEditor, weaponPicker } from '../plan';
+import { PAL } from '../theme';
 
 const SPEEDS = [1, 2, 4];
 const SKIP_SPEED = 40;
@@ -77,7 +78,7 @@ function breakPanel(host: HTMLElement, save: SaveData, event: BreakEvent, fighte
     const panel = h(
       'section',
       { class: 'break-panel' },
-      h('h2', { class: 'section-icon' }, icon('round', 'Break', 3), `Round ${event.round} is over`),
+      h('h2', { class: 'section-icon' }, icon('round', 'Break', 'normal'), `Round ${event.round} is over`),
       h('div', { class: 'card' }, fighterLine(fighters[0]), fighterLine(fighters[1])),
       h(
         'p',
@@ -169,7 +170,7 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
     width: ARENA_W * ARENA_ZOOM,
     height: ARENA_H * ARENA_ZOOM,
     pixelArt: true,
-    backgroundColor: '#0b0c10',
+    backgroundColor: PAL.night,
     banner: false,
     audio: { noAudio: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_HORIZONTALLY },

@@ -4,6 +4,7 @@
 import { artImage, artManifest, imageToCanvas } from './art';
 import { h, pixelArt } from './dom';
 import { sprite } from './sprites';
+import { PAL, type PixelSize } from './theme';
 
 interface IconDef {
   rows: string[];
@@ -13,109 +14,110 @@ interface IconDef {
 const ICONS = {
   health: {
     rows: ['.RR.RR.', 'RwRRRRR', 'RRRRRRR', '.RRRRR.', '..RRR..', '...R...'],
-    colors: { R: '#e5484d', w: '#ffd0d0' },
+    colors: { R: PAL.red, w: PAL.blush },
   },
   strength: {
     rows: ['G.....G', 'G.....G', 'GGGGGGG', 'G.....G', 'G.....G'],
-    colors: { G: '#8b8f9c' },
+    colors: { G: PAL.smoke },
   },
   agility: {
     rows: ['....FF', '...FFF', '..FFF.', '.FFF..', 'FFF...', 'F.....'],
-    colors: { F: '#2ec4b6' },
+    colors: { F: PAL.teal },
   },
   speed: {
     rows: ['...YY', '..YY.', '.YYYY', '..YY.', '.YY..', 'YY...'],
-    colors: { Y: '#ffd23f' },
+    colors: { Y: PAL.yellow },
   },
   armor: {
     rows: ['SSSSSSS', 'SwSSSSS', 'SSSSSSS', '.SSSSS.', '..SSS..', '...S...'],
-    colors: { S: '#9aa3b5', w: '#e6ebf5' },
+    colors: { S: PAL.fog, w: PAL.white },
   },
   damage: {
     rows: ['O..O..O', '.O.O.O.', '..OOO..', 'OOOYOOO', '..OOO..', '.O.O.O.', 'O..O..O'],
-    colors: { O: '#ff8a3d', Y: '#ffd23f' },
+    colors: { O: PAL.orange, Y: PAL.yellow },
   },
   dodge: {
     rows: ['TTTTT..', '.....T.', '.TTTT..', '......T', 'TTTTTT.'],
-    colors: { T: '#7fdbff' },
+    colors: { T: PAL.cyan },
   },
   skill: {
     rows: ['...P...', '...P...', '.PPPPP.', 'PPPWPPP', '.PPPPP.', '...P...', '...P...'],
-    colors: { P: '#ff5d8f', W: '#ffe0ea' },
+    colors: { P: PAL.pink, W: PAL.blush },
   },
   weapon: {
     rows: ['.....BB', '....BBB', '...BBB.', '..BBB..', '.HB....', 'HH.....'],
-    colors: { B: '#c47a2c', H: '#5a3a1e' },
+    colors: { B: PAL.wood, H: PAL.brownDark },
   },
   pet: {
     rows: ['.P...P.', 'PP.P.PP', '...P...', '.PPPPP.', 'PPPPPPP', '.PP.PP.'],
-    colors: { P: '#d9a066' },
+    colors: { P: PAL.tan },
   },
   xp: {
     rows: ['...B...', '..BBB..', '.BBBBB.', 'BB.B.BB', '...B...', '...B...'],
-    colors: { B: '#6cb6ff' },
+    colors: { B: PAL.sky },
   },
   fights: {
     rows: ['.RRRR..', 'RRRRRR.', 'RRRRRRR', 'RRRRRRR', '.RRRRR.', '.WWWW..'],
-    colors: { R: '#e5484d', W: '#f0e9da' },
+    colors: { R: PAL.red, W: PAL.paper },
   },
   target: {
     rows: ['..RRR..', '.R...R.', 'R..R..R', 'R.RRR.R', 'R..R..R', '.R...R.', '..RRR..'],
-    colors: { R: '#ff5d8f' },
+    colors: { R: PAL.pink },
   },
   origin: {
     rows: ['...H...', '..HHH..', '.HHHHH.', 'HHHHHHH', '.W.W.W.', '.W.D.W.', '.WWDWW.'],
-    colors: { H: '#c94f3d', W: '#e8dcc4', D: '#5a3a1e' },
+    colors: { H: PAL.crimson, W: PAL.paper2, D: PAL.brownDark },
   },
   stance: {
     rows: ['..K..', '.KKK.', '..K..', '.K.K.', 'K...K'],
-    colors: { K: '#efe8d8' },
+    colors: { K: PAL.paper },
   },
   fragile: {
     rows: ['.RR.RR.', 'RRR.RRR', 'RRRR.RR', '.RR.RR.', '..R.R..', '...R...'],
-    colors: { R: '#e5484d' },
+    colors: { R: PAL.red },
   },
   heavy: {
     rows: ['..GGG..', '..G.G..', 'GGGGGGG', 'GGGGGGG', 'GGGGGGG', 'GGGGGGG'],
-    colors: { G: '#6b7080' },
+    colors: { G: PAL.stone },
   },
   manyHits: {
     rows: ['O.O.O', 'O.O.O', '.O.O.O', '.O.O.O', 'O.O.O', 'O.O.O'],
-    colors: { O: '#ff8a3d' },
+    colors: { O: PAL.orange },
   },
   stamina: {
     rows: ['...G...', '..GGG..', '.GGGGG.', 'GGWGGGG', 'GGGGGGG', '.GGGGG.', '..GGG..'],
-    colors: { G: '#8bd450', W: '#e4ffd0' },
+    colors: { G: PAL.lime, W: PAL.white },
   },
   mana: {
     rows: ['...B...', '..BBB..', '.BBWBB.', 'BBBWBBB', '.BBBBB.', '..BBB..', '...B...'],
-    colors: { B: '#5b8cff', W: '#d6e4ff' },
+    colors: { B: PAL.blue, W: PAL.ice },
   },
   magic: {
     rows: ['P.....P', '.P...P.', '..PPP..', '.PPWPP.', '..PPP..', '.P...P.', 'P.....P'],
-    colors: { P: '#b388ff', W: '#f1e6ff' },
+    colors: { P: PAL.purple, W: PAL.lilac },
   },
   magicResist: {
     rows: ['PPPPPPP', 'PWPPPPP', 'PPP.PPP', '.PP.PP.', '..PPP..', '...P...'],
-    colors: { P: '#9b6dff', W: '#e9ddff' },
+    colors: { P: PAL.violet, W: PAL.lilac },
   },
   accessory: {
     rows: ['..YYY..', '.Y...Y.', 'Y.....Y', 'Y.....Y', '.Y...Y.', '..YYY..'],
-    colors: { Y: '#ffd23f' },
+    colors: { Y: PAL.yellow },
   },
   round: {
     rows: ['.KKKKK.', 'K..K..K', 'K..K..K', 'K..KK.K', 'K.....K', '.KKKKK.'],
-    colors: { K: '#efe8d8' },
+    colors: { K: PAL.paper },
   },
   counter: {
     rows: ['...T...', '..TT...', '.TTTTT.', '..TT..T', '...T..T', '......T', '.TTTTT.'],
-    colors: { T: '#2ec4b6' },
+    colors: { T: PAL.teal },
   },
 } satisfies Record<string, IconDef>;
 
 export type IconName = keyof typeof ICONS;
+export const ICON_NAMES = Object.keys(ICONS) as IconName[];
 
-function drawIcon(name: IconName): HTMLCanvasElement {
+export function drawIcon(name: IconName): HTMLCanvasElement {
   const custom = artImage(artManifest().icons?.[name]);
   if (custom) return imageToCanvas(custom);
   const def: IconDef = ICONS[name];
@@ -131,8 +133,8 @@ function drawIcon(name: IconName): HTMLCanvasElement {
 }
 
 /** An icon with an accessible name (read by screen readers and shown on hover). */
-export function icon(name: IconName, label: string, scale = 2): HTMLElement {
-  return h('span', { class: 'icon', role: 'img', 'aria-label': label, title: label }, pixelArt(drawIcon(name), scale));
+export function icon(name: IconName, label: string, size: PixelSize = 'small'): HTMLElement {
+  return h('span', { class: 'icon', role: 'img', 'aria-label': label, title: label }, pixelArt(drawIcon(name), size));
 }
 
 /** Icon followed by a value, e.g. a heart and "75". */
@@ -164,5 +166,5 @@ export function statRow(hp: number, strength: number, agility: number, speed: nu
 
 /** A section heading shown as an icon; the word stays for screen readers. */
 export function iconHeading(name: IconName, text: string): HTMLElement {
-  return h('h2', { class: 'section-icon' }, icon(name, text, 3), h('span', { class: 'sr-only' }, text));
+  return h('h2', { class: 'section-icon' }, icon(name, text, 'normal'), h('span', { class: 'sr-only' }, text));
 }

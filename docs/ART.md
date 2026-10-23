@@ -18,12 +18,20 @@ so you can go one sprite at a time.
 5. Reload the gallery. Your sprite now shows a green **custom** tag. If it doesn't,
    the browser console says which file could not be loaded.
 
+## Use the game palette
+
+All the colours of the game live in `src/ui/theme.ts` (`PAL`). The gallery page shows
+them and has a **Save palette for Aseprite (.gpl)** button: load that file in Aseprite,
+LibreSprite or Piskel and draw only with those colours, so your art matches the interface
+and the rest of the art. Skin, hair and outfit colours are picked from the same palette.
+
 ## Rules for every sprite
 
 - PNG with a transparent background.
 - One pixel in the file is one pixel in the game. The game scales it up itself, so
   never export it scaled.
 - No anti-aliasing or soft brushes: hard pixels only.
+- Colours from the game palette (see above).
 - Everything faces **right**. The game mirrors it for the opponent.
 - Draw your own outline. The 1-pixel dark outline is only added to placeholders.
 
@@ -102,8 +110,11 @@ in `src/core/catalog.ts`.
 
 | What | Where |
 |---|---|
-| Interface colours, fonts, spacing | The variables at the top of `src/style.css` (`--sodium`, `--asphalt`...) |
-| Skin tones, hair colours, outfit colours, class colours | `src/ui/palette.ts` |
+| Every colour (interface, icons, sprites, arena) | `PAL` in `src/ui/theme.ts`. Change one there and it changes everywhere. |
+| Which palette colour each interface part uses (`--paper`, `--ink`, `--yellow`...) | `CSS_COLORS` in `src/ui/theme.ts` |
+| How big pixels are on screen (small / normal / big) | `PIXEL` in `src/ui/theme.ts` |
+| Font, text sizes, spacing, animation speeds | The variables at the top of `src/style.css` (`--t-m`, `--step`, `--fast`...) |
+| Which skin, hair, outfit and class colours exist | `src/ui/palette.ts` |
 | Placeholder fight background (skyline, street) | `drawBackground` in `src/fight/ReplayScene.ts` |
 
 Adding a new hair style or more colour choices also needs the option counts in

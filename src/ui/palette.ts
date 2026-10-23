@@ -1,16 +1,19 @@
 import type { ClassId } from '../core';
+import { PAL } from './theme';
 
-export const SKIN_TONES = ['#f6d7b8', '#e8b98f', '#c68b59', '#a0673f', '#7a4a2a', '#4f2f1c'];
-export const HAIR_COLORS = ['#1b1b1b', '#5a3a1e', '#a8642a', '#e3c06a', '#c43c3c', '#6a5acd'];
-export const OUTFIT_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#eab308', '#a855f7', '#f97316', '#14b8a6', '#e5e7eb'];
+// Colours the player can pick for a fighter, and the colour of each class.
+// They all come from the game palette in theme.ts.
+export const SKIN_TONES = [PAL.skin1, PAL.skin2, PAL.skin3, PAL.skin4, PAL.skin5, PAL.skin6];
+export const HAIR_COLORS = [PAL.night, PAL.brownDark, PAL.wood, PAL.sand, PAL.crimson, PAL.violet];
+export const OUTFIT_COLORS = [PAL.blue, PAL.red, PAL.green, PAL.yellow, PAL.purple, PAL.orange, PAL.teal, PAL.mist];
 export const HAIR_STYLE_NAMES = ['Short', 'Mohawk', 'Long', 'Bald'];
 
 export const CLASS_COLORS: Record<ClassId, string> = {
-  brawler: '#ff6b5b',
-  parkour: '#4fd1e8',
-  bouncer: '#c3c7d4',
-  tamer: '#9fd356',
-  mystic: '#b388ff',
+  brawler: PAL.coral,
+  parkour: PAL.teal,
+  bouncer: PAL.mist,
+  tamer: PAL.lime,
+  mystic: PAL.purple,
 };
 
 /** Darkens (negative) or lightens (positive) a #rrggbb color by an amount in [-1, 1]. */

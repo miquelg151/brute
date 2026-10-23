@@ -1,24 +1,29 @@
-/* Design tokens: change the look of the whole game here.
-   The idea: posters and stickers taped to a neighbourhood wall at night. */
+/* Design tokens: the look of the whole game.
+   The idea: posters and stickers taped to a neighbourhood wall at night.
+   Colours (--wall, --paper, --ink, --yellow...) are NOT set here: they come from the
+   palette in src/ui/theme.ts, so the interface, icons, sprites and arena always match. */
 :root {
-  --wall: #2a2830; /* page background */
-  --wall-text: #efe8d8; /* text written straight on the wall */
-  --wall-dim: #a9a2b3;
-  --paper: #f0e9da; /* cards */
-  --paper-2: #e2d9c6; /* insets, slots, inputs */
-  --paper-edge: #cfc4ae;
-  --ink: #26232c; /* text on paper */
-  --ink-soft: #6c6575;
-  --yellow: #ffd23f; /* spray paint: main actions */
-  --pink: #ff5d8f; /* spray paint: selection, highlights */
-  --teal: #2ec4b6; /* spray paint: progress */
-  --good: #1f8a4c;
-  --bad: #c23b3b;
-
   /* One hand-drawn family for everything; headings just use a heavier weight. */
   --font: 'Shantell Sans Variable', 'Comic Sans MS', system-ui, sans-serif;
   --heavy: 780;
+
+  /* Text sizes. Only use these. */
+  --t-xs: 13px; /* tags, small labels */
+  --t-s: 14px; /* descriptions */
+  --t-m: 16px; /* normal text */
+  --t-l: 18px; /* buttons, card titles */
+  --t-xl: clamp(19px, 5.6vw, 22px); /* section headings */
+  --t-xxl: clamp(24px, 7.5vw, 30px); /* screen titles, big numbers, the main button */
+
   --step: 8px; /* spacing unit */
+
+  /* Motion. Only use these durations and curves. */
+  --fast: 90ms; /* press feedback */
+  --med: 220ms; /* things appearing, screens changing */
+  --slow: 400ms; /* celebrations */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
   /* Wobbly, hand-drawn corners. */
   --rough: 255px 14px 225px 14px / 14px 225px 14px 255px;
   --rough-2: 14px 225px 14px 255px / 255px 14px 225px 14px;
@@ -33,11 +38,24 @@ body {
   margin: 0;
   color: var(--wall-text);
   font-family: var(--font);
-  font-size: 16px;
+  font-size: var(--t-m);
   line-height: 1.45;
   /* Slightly informal and bouncy, like hand lettering. */
   font-variation-settings: 'INFM' 40, 'BNCE' 20;
   -webkit-tap-highlight-color: transparent;
+  /* No double-tap zoom and no rubber-band bounce: it should feel like an app. */
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+/* Tapping or long-pressing a control must not select its text or open a menu. */
+button,
+.btn,
+.choice,
+.chip-toggle {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Wall: base colour plus a faint grain, so it reads as a surface, not a flat screen. */
@@ -45,6 +63,7 @@ body {
   background-color: var(--wall);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   min-height: 100vh;
+  min-height: 100dvh; /* the real visible height on phones */
 }
 
 #app {
@@ -56,7 +75,7 @@ body {
 h1 {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 30px;
+  font-size: var(--t-xxl);
   line-height: 1.15;
   margin: var(--step) 0;
 }
@@ -64,7 +83,7 @@ h1 {
 h2 {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 21px;
+  font-size: var(--t-xl);
   line-height: 1.2;
   margin: calc(var(--step) * 3) 0 var(--step);
 }
@@ -93,7 +112,7 @@ a {
 }
 
 .small {
-  font-size: 14px;
+  font-size: var(--t-s);
 }
 
 .lede {
@@ -147,9 +166,9 @@ a {
   width: 72px;
   height: 20px;
   margin-left: -36px;
-  background: rgba(240, 233, 218, 0.55);
-  border-left: 1px dashed rgba(38, 35, 44, 0.25);
-  border-right: 1px dashed rgba(38, 35, 44, 0.25);
+  background: color-mix(in srgb, var(--paper) 55%, transparent);
+  border-left: 1px dashed color-mix(in srgb, var(--ink) 25%, transparent);
+  border-right: 1px dashed color-mix(in srgb, var(--ink) 25%, transparent);
   transform: rotate(-3deg);
 }
 
@@ -157,7 +176,7 @@ a {
 .btn {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 17px;
+  font-size: var(--t-l);
   line-height: 1.2;
   color: var(--ink);
   background: var(--paper);
@@ -167,7 +186,7 @@ a {
   cursor: pointer;
   text-decoration: none;
   text-align: center;
-  transition: transform 80ms ease-out;
+  transition: transform var(--fast) var(--ease-out);
 }
 
 .btn:active:not(:disabled) {
@@ -184,7 +203,7 @@ a {
 }
 
 .btn-big {
-  font-size: 26px;
+  font-size: var(--t-xxl);
   padding: 14px;
   margin-top: var(--step);
   transform: rotate(-0.8deg);
@@ -195,7 +214,7 @@ a {
 }
 
 .btn-small {
-  font-size: 15px;
+  font-size: var(--t-s);
   padding: 6px 12px;
 }
 
@@ -217,7 +236,7 @@ a {
   flex-shrink: 0;
   padding: var(--step) calc(var(--step) * 2) 0;
   background: radial-gradient(ellipse 55% 16% at 50% 95%, rgba(0, 0, 0, 0.35), transparent 70%),
-    radial-gradient(ellipse 70% 85% at 50% 15%, rgba(255, 210, 63, 0.16), transparent 70%);
+    radial-gradient(ellipse 70% 85% at 50% 15%, color-mix(in srgb, var(--yellow) 16%, transparent), transparent 70%);
 }
 
 .spot-big {
@@ -228,7 +247,7 @@ a {
 .name-input {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 22px;
+  font-size: var(--t-xl);
   padding: 10px 14px;
   background: var(--paper);
   color: var(--ink);
@@ -268,7 +287,7 @@ a {
 
 .choice {
   font-family: var(--font);
-  font-size: 16px;
+  font-size: var(--t-m);
   text-align: left;
   padding: 10px 12px 12px;
   cursor: pointer;
@@ -276,7 +295,7 @@ a {
   flex-direction: column;
   gap: 4px;
   box-shadow: inset 0 5px 0 var(--accent, transparent);
-  transition: transform 80ms ease-out;
+  transition: transform var(--fast) var(--ease-out);
 }
 
 .choice-grid > .choice:nth-child(odd) {
@@ -291,23 +310,23 @@ a {
 .choice.selected {
   outline: 3px solid var(--pink);
   outline-offset: 2px;
-  background: #fff6e4;
+  background: var(--paper-lit);
 }
 
 .choice-title {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 19px;
+  font-size: var(--t-l);
   line-height: 1.15;
 }
 
 .choice-desc {
   color: var(--ink-soft);
-  font-size: 14px;
+  font-size: var(--t-s);
 }
 
 .choice-stats {
-  font-size: 13px;
+  font-size: var(--t-xs);
   color: var(--ink-soft);
   margin-top: 2px;
 }
@@ -332,7 +351,7 @@ a {
 }
 
 .tag {
-  font-size: 13px;
+  font-size: var(--t-xs);
   font-weight: 700;
   color: var(--tag, var(--ink-soft));
 }
@@ -391,14 +410,14 @@ a {
 .stat-value {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 26px;
+  font-size: var(--t-xxl);
   line-height: 1;
   display: block;
   margin-bottom: 4px;
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: var(--t-xs);
   color: var(--ink-soft);
 }
 
@@ -415,7 +434,7 @@ a {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: var(--t-xs);
   text-align: center;
   color: var(--wall-dim);
 }
@@ -453,12 +472,12 @@ a {
 .skill-list strong {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 18px;
+  font-size: var(--t-l);
 }
 
 .skill-list span {
   color: var(--wall-dim);
-  font-size: 14px;
+  font-size: var(--t-s);
 }
 
 /* Daily fights as tally marks */
@@ -479,7 +498,7 @@ a {
   width: 6px;
   height: 22px;
   border-radius: 3px;
-  background: rgba(239, 232, 216, 0.2);
+  background: color-mix(in srgb, var(--wall-text) 20%, transparent);
   transform: rotate(4deg);
 }
 
@@ -499,7 +518,7 @@ a {
   align-items: end;
   padding: var(--step) 0 calc(var(--step) * 1.5);
   transform: rotate(-0.6deg);
-  background: var(--paper) linear-gradient(180deg, #3b3646 0 62%, transparent 62%);
+  background: var(--paper) linear-gradient(180deg, var(--poster-sky) 0 62%, transparent 62%);
 }
 
 .poster-side {
@@ -512,13 +531,13 @@ a {
 
 .poster .spot {
   background: radial-gradient(ellipse 60% 14% at 50% 96%, rgba(0, 0, 0, 0.45), transparent 70%),
-    radial-gradient(ellipse 70% 85% at 50% 15%, rgba(255, 210, 63, 0.22), transparent 70%);
+    radial-gradient(ellipse 70% 85% at 50% 15%, color-mix(in srgb, var(--yellow) 22%, transparent), transparent 70%);
 }
 
 .poster-name {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 19px;
+  font-size: var(--t-l);
   overflow-wrap: anywhere;
   text-align: center;
   margin-top: 6px;
@@ -527,7 +546,7 @@ a {
 .vs {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 34px;
+  font-size: calc(var(--t-xxl) * 1.15);
   color: var(--pink);
   align-self: center;
   transform: rotate(-8deg);
@@ -551,7 +570,7 @@ a {
 
 .chip-toggle {
   font-family: var(--font);
-  font-size: 15px;
+  font-size: var(--t-s);
   color: var(--ink);
   background: var(--paper);
   border: 2px solid var(--ink);
@@ -567,7 +586,7 @@ a {
 .chip-toggle.selected {
   outline: 3px solid var(--pink);
   outline-offset: 2px;
-  background: #fff6e4;
+  background: var(--paper-lit);
 }
 
 /* Strategy options */
@@ -585,19 +604,19 @@ a {
 }
 
 .cols-3 .choice-title {
-  font-size: 16px;
+  font-size: var(--t-m);
 }
 
 .cols-3 .effects,
 .cols-3 .strong-vs {
-  font-size: 12px;
+  font-size: var(--t-xs);
 }
 
 .effects {
   list-style: none;
   margin: 0;
   padding: 0;
-  font-size: 14px;
+  font-size: var(--t-s);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -616,7 +635,7 @@ a {
 }
 
 .strong-vs {
-  font-size: 13px;
+  font-size: var(--t-xs);
   color: var(--ink-soft);
   margin-top: auto;
   padding-top: 6px;
@@ -627,7 +646,7 @@ a {
 .strong-vs.match {
   color: var(--ink);
   font-weight: 700;
-  background: linear-gradient(transparent 55%, rgba(255, 93, 143, 0.45) 55%);
+  background: linear-gradient(transparent 55%, color-mix(in srgb, var(--pink) 45%, transparent) 55%);
 }
 
 .traits {
@@ -641,7 +660,7 @@ a {
 
 .trait {
   font-weight: 700;
-  background: linear-gradient(transparent 55%, rgba(255, 210, 63, 0.7) 55%);
+  background: linear-gradient(transparent 55%, color-mix(in srgb, var(--yellow) 70%, transparent) 55%);
 }
 
 /* Fight */
@@ -651,7 +670,7 @@ a {
   aspect-ratio: 320 / 200;
   border: 3px solid var(--ink);
   border-radius: 6px 3px 7px 4px;
-  background: #0b0c10;
+  background: var(--arena);
   overflow: hidden;
   box-shadow: 0 0 0 4px var(--paper);
   margin: 4px 0 var(--step);
@@ -679,7 +698,7 @@ a {
 .result {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 26px;
+  font-size: var(--t-xxl);
   line-height: 1.15;
 }
 
@@ -711,25 +730,25 @@ a {
 }
 
 .overlay.timing {
-  background: rgba(20, 18, 26, 0.5);
+  background: color-mix(in srgb, var(--outline) 50%, transparent);
   cursor: pointer;
 }
 
 .timing-label {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 22px;
+  font-size: var(--t-xl);
   line-height: 1.2;
   color: var(--yellow);
   text-align: center;
-  text-shadow: 2px 2px 0 #000;
+  text-shadow: 2px 2px 0 var(--outline);
 }
 
 .timing-bar {
   position: relative;
   width: 90%;
   height: 24px;
-  background: #111;
+  background: var(--outline);
   border: 3px solid var(--paper);
   border-radius: 10px 4px 10px 4px;
 }
@@ -740,7 +759,7 @@ a {
   right: 14%;
   top: 0;
   bottom: 0;
-  background: rgba(255, 210, 63, 0.35);
+  background: color-mix(in srgb, var(--yellow) 35%, transparent);
 }
 
 .timing-perfect {
@@ -760,7 +779,7 @@ a {
   margin-left: -2px;
   background: var(--paper);
   border-radius: 3px;
-  box-shadow: 0 0 0 2px #000;
+  box-shadow: 0 0 0 2px var(--outline);
 }
 
 .overlay.warmup {
@@ -773,7 +792,7 @@ a {
 .warmup-status {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: 26px;
+  font-size: var(--t-xxl);
 }
 
 .warmup-field {
@@ -840,7 +859,7 @@ a {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--t-s);
 }
 
 .gallery-tile figcaption {
@@ -862,6 +881,36 @@ a {
   background: var(--paper);
   border: 2px solid var(--ink);
   border-radius: var(--rough);
+}
+
+/* Palette swatches in the gallery */
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: var(--step);
+}
+
+.swatch {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--t-xs);
+  line-height: 1.2;
+}
+
+.swatch figcaption {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.swatch-color {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--outline);
+  border-radius: var(--rough-2);
 }
 
 /* Icons */
@@ -930,18 +979,6 @@ a {
   overflow-x: clip;
 }
 
-h1 {
-  font-size: clamp(25px, 7.5vw, 32px);
-}
-
-h2 {
-  font-size: clamp(19px, 5.6vw, 22px);
-}
-
-.btn-big {
-  font-size: clamp(22px, 7vw, 28px);
-}
-
 /* Comfortable touch targets. */
 .btn,
 .choice,
@@ -968,7 +1005,7 @@ h2 {
   }
 
   .stat-value {
-    font-size: 20px;
+    font-size: var(--t-xl);
   }
 }
 
@@ -983,19 +1020,19 @@ h2 {
   }
 
   .cols-3 .choice-title {
-    font-size: 18px;
+    font-size: var(--t-l);
   }
 
   .cols-3 .effects,
   .cols-3 .strong-vs {
-    font-size: 14px;
+    font-size: var(--t-s);
   }
 }
 
 /* Phone held sideways: keep the whole arena on screen. */
 @media (orientation: landscape) and (max-height: 500px) {
   .arena {
-    max-width: calc((100vh - 120px) * 1.6);
+    max-width: calc((100dvh - 120px) * 1.6);
     margin-left: auto;
     margin-right: auto;
   }
