@@ -498,11 +498,12 @@ export class ReplayScene extends Phaser.Scene {
     v.weapon = null;
     v.sprite.setTint(num(PAL.smoke));
     if (v.isMain) {
-      // Knock-out: a hard shake and a slow, bouncy fall.
-      this.cameras.main.shake(220, 0.018);
+      // Knock-out: one heavy fall, a small bump on landing and a light shake.
       v.sprite.setOrigin(0.5, 0.9);
-      await this.tween({ targets: v.sprite, angle: -90 * v.dir, duration: 700, ease: 'Bounce.easeOut' });
+      await this.tween({ targets: v.sprite, angle: -90 * v.dir, duration: 450, ease: 'Quad.easeIn' });
+      this.cameras.main.shake(150, 0.006);
       this.dust(v.sprite.x, v.homeY);
+      await this.tween({ targets: v.sprite, angle: -84 * v.dir, duration: 90, yoyo: true, ease: 'Quad.easeOut' });
     } else {
       await this.tween({ targets: v.sprite, alpha: 0, y: v.sprite.y + 4, duration: 350 });
     }
