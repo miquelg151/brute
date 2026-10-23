@@ -78,7 +78,7 @@ Original plan:
   (portrait, standalone, wall background) so it can be "installed" on iOS and Android.
 - A short title screen (logo + fighter + "tap to start") shown on first open only.
 
-### Phase 2 — One icon family · medium
+### Phase 2 — One icon family · medium · DONE (7 × 7 grid instead of 9 × 9, so icons in text stay small)
 
 - Redraw all icons in `icons.ts` on the same **9×9 grid**, only palette colours, same
   1 px dark outline as sprites, same light direction (top-left).
