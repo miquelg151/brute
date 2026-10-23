@@ -37,8 +37,10 @@ import {
   runFight,
   xpToNext,
   type Appearance,
+  type FightEvent,
   type FightLog,
   type SaveData,
+  type TeamOptions,
 } from './index';
 
 const look: Appearance = { skinTone: 0, hairStyle: 0, hairColor: 0, outfitColor: 0 };
@@ -573,5 +575,112 @@ describe('starting cards', () => {
     // Overcharge costs 4, so it is played at tick 4; look at spells after that.
     const firstSpell = (l: FightLog) => l.events.slice(l.events.findIndex((e) => e.t === 'tick' && e.n === 4)).find((e) => e.t === 'hit' && e.kind === 'spell' && e.actor === 0);
     expect((firstSpell(log) as { damage: number }).damage).toBeGreaterThan((firstSpell(plain) as { damage: number }).damage);
+  });
+});
+
+describe('level-up cards', () => {
+  const me = generateOpponent(12, new Rng(61), 'brawler');
+  const foe = generateOpponent(12, new Rng(62), 'bouncer');
+  // A fighter starts with 3 energy and gains 1 every 4 ticks, so a card costing c can first be played at tick 4 * (c - 3).
+  const run = (c: Character, card: string, tick: number, opts: Partial<TeamOptions> = {}) =>
+    runFight(c, foe, 5, { a: { interactive: true, deck: { [card]: 1 }, plays: [{ tick, card }], breaks: [], ...opts }, b: { deck: {} } });
+  const cardIndex = (log: FightLog, card: string) => log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0);
+  const evAfter = (log: FightLog, card: string) => {
+    const i = cardIndex(log, card);
+    expect(i).toBeGreaterThanOrEqual(0);
+    return log.events.slice(i + 1);
+  };
+  const isStrike = (e: FightEvent) => e.t === 'hit' || e.t === 'dodge' || e.t === 'block';
+
+  it('Patch Up heals', () => {
+    const log = run(me, 'patch_up', 4);
+    expect(evAfter(log, 'patch_up')[0]).toMatchObject({ t: 'heal', actor: 0 });
+  });
+
+  it('Hurl throws the weapon in hand at once', () => {
+    const armed = { ...me, weapons: ['bat'] };
+    const log = runFight(armed, foe, 5, { a: { interactive: true, deck: { hurl: 1 }, plays: [{ tick: 30, card: 'hurl' }], breaks: [], weaponStyle: 'keep' }, b: { deck: {} } });
+    const i = cardIndex(log, 'hurl');
+    expect(i).toBeGreaterThanOrEqual(0);
+    const holding = log.events.slice(0, i).some((e) => e.t === 'draw' && e.actor === 0);
+    // Armed: the very next event is the thrown weapon landing. Unarmed: a plain shove.
+    expect(log.events[i + 1]).toMatchObject({ t: 'hit', actor: 0, kind: holding ? 'throw' : 'melee' });
+    expect(holding).toBe(true);
+  });
+
+  it('Rush makes the fighter act on this tick', () => {
+    const log = run(me, 'rush', 0);
+    const i = cardIndex(log, 'rush');
+    expect(i).toBeGreaterThanOrEqual(0);
+    const nextTick = log.events.findIndex((e, k) => k > i && e.t === 'tick');
+    expect(log.events.slice(i + 1, nextTick).some((e) => 'actor' in e && e.actor === 0 && e.t !== 'energy' && e.t !== 'res')).toBe(true);
+  });
+
+  it("Feint makes the enemy's next attack miss", () => {
+    const log = run(me, 'feint', 0);
+    const first = evAfter(log, 'feint').find((e) => (isStrike(e) || e.t === 'miss') && e.actor !== 0 && 'target' in e && e.target === 0);
+    expect(first?.t).toBe('miss');
+  });
+
+  it('Second Breath gives stamina', () => {
+    // Played at tick 24, when the fighter has already spent some stamina.
+    const firstRes = (plays: CardPlay[]) => {
+      const log = runFight(me, foe, 5, { a: { interactive: true, deck: { second_breath: 1 }, plays, breaks: [] }, b: { deck: {} } });
+      const from = log.events.findIndex((e) => e.t === 'tick' && e.n === 24);
+      const res = log.events.slice(from).find((e) => e.t === 'res' && e.actor === 0);
+      return (res as { stamina: number }).stamina;
+    };
+    expect(firstRes([{ tick: 24, card: 'second_breath' }])).toBeGreaterThan(firstRes([]));
+  });
+
+  it("Haymaker's hit can't be dodged", () => {
+    const log = run(me, 'haymaker', 4);
+    const first = evAfter(log, 'haymaker').find((e) => isStrike(e) && e.actor === 0);
+    expect(first?.t).not.toBe('dodge');
+    expect(first).toBeDefined();
+  });
+
+  it('Flurry strikes 3 times on the next turn', () => {
+    const p = generateOpponent(12, new Rng(63), 'parkour');
+    const log = run(p, 'flurry', 8);
+    const mine = evAfter(log, 'flurry').filter((e) => isStrike(e) && e.actor === 0);
+    expect(mine.length).toBeGreaterThanOrEqual(3);
+    expect(mine.slice(0, 3).every((e) => 'kind' in e && e.kind === 'double')).toBe(true);
+  });
+
+  it('Body Slam hits and pushes the enemy turn back', () => {
+    const b = generateOpponent(12, new Rng(64), 'bouncer');
+    const log = run(b, 'body_slam', 8);
+    expect(evAfter(log, 'body_slam')[0]).toMatchObject({ actor: 0 });
+  });
+
+  it('Stray Dog joins until the round ends', () => {
+    const t = generateOpponent(12, new Rng(65), 'tamer');
+    const log = run(t, 'stray_dog', 12);
+    const dog = log.roster.findIndex((u) => u.name === 'Stray Dog');
+    expect(dog).toBeGreaterThanOrEqual(0);
+    expect(evAfter(log, 'stray_dog')[0]).toMatchObject({ t: 'summon', actor: dog });
+  });
+
+  it("Bolt can't be dodged", () => {
+    const m = generateOpponent(12, new Rng(66), 'mystic');
+    const log = run(m, 'bolt', 8);
+    const first = evAfter(log, 'bolt').find((e) => e.t === 'cast' || e.t === 'hit' || e.t === 'dodge');
+    expect(first?.t).toBe('cast');
+    expect(evAfter(log, 'bolt').find((e) => e.t === 'hit' || e.t === 'dodge')?.t).toBe('hit');
+  });
+
+  it('bots heal when low and defend against Rage', () => {
+    const bot = { ...generateOpponent(12, new Rng(67), 'bouncer'), cards: ['special', 'wall', 'patch_up'] };
+    let healed = 0;
+    let walled = 0;
+    for (let seed = 0; seed < 40; seed++) {
+      const log = runFight(me, bot, seed, { a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: 12, card: 'rage' }], breaks: [] } });
+      const mine = log.events.findIndex((e) => e.t === 'card' && e.actor === 0);
+      if (log.events.slice(mine).some((e) => e.t === 'card' && e.actor !== 0 && e.card === 'wall')) walled++;
+      if (log.events.some((e) => e.t === 'card' && e.card === 'patch_up')) healed++;
+    }
+    expect(walled).toBeGreaterThan(0);
+    expect(healed).toBeGreaterThan(0);
   });
 });

@@ -214,6 +214,9 @@ interface Unit {
   nextHitSure: boolean;
   /** Overcharge card: bonus (%) for the next spell. */
   spellBonusPct: number;
+  /** Flurry card: strikes left on the next turn, and each one's damage change (%). */
+  flurryHits: number;
+  flurryPct: number;
   breaks: readonly BreakChoice[] | undefined;
   lastRes: string;
 }
@@ -267,6 +270,8 @@ function applyPlan(u: Unit, plan: Plan): void {
   u.drawChance = style.drawChance;
   u.armorPierce = style.armorPierce;
 }
+
+const deckHas = (opts: TeamOptions, c: Character, id: string) => (opts.deck ?? defaultDeck(c))[id] !== undefined;
 
 function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInfo[], units: Unit[]): void {
   const cls = CLASSES[c.classId];
@@ -343,6 +348,8 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     nextHitPct: 0,
     nextHitSure: false,
     spellBonusPct: 0,
+    flurryHits: 0,
+    flurryPct: 0,
     breaks: opts.breaks,
     lastRes: '',
   };
@@ -406,6 +413,12 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
       8,
       6,
     );
+  }
+  if (deckHas(opts, c, 'stray_dog')) {
+    const dog = PETS.dog!;
+    const level = (opts.deck ?? defaultDeck(c)).stray_dog!;
+    const hp = scaled(dog.maxHp, level);
+    companion({ team, isMain: false, name: 'Stray Dog', defId: 'dog', maxHp: hp, maxStamina: 0, maxMana: 0, summoned: true }, hp, dog.damage, dog.agility, dog.speed);
   }
 }
 
@@ -573,12 +586,12 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
   };
 
   /** Magic damage: dodgeable, ignores armor and shields, reduced by magic resistance. */
-  const magicAttack = (att: Unit, def: Unit, base: number): { survived: boolean; dealt: number } => {
+  const magicAttack = (att: Unit, def: Unit, base: number, sure = false): { survived: boolean; dealt: number } => {
     // The Overcharge bonus is used up by the next spell, whether it hits, is dodged or misses.
     const bonusPct = att.spellBonusPct;
     att.spellBonusPct = 0;
     if (missesBlind(att, def)) return { survived: true, dealt: 0 };
-    if (rng.chance(dodgeChance(att, def, true))) {
+    if (!sure && rng.chance(dodgeChance(att, def, true))) {
       events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind: 'spell' });
       return { survived: true, dealt: 0 };
     }
@@ -596,7 +609,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const has = (id: string) => u.spells.includes(id) && u.mana >= SPELLS[id]!.mana;
     const foe = enemyMainOf(u);
     const hpPct = (u.hp * 100) / u.maxHp;
-    const spirit = units.find((s) => s.owner === u.idx && roster[s.idx]!.summoned);
+    const spirit = units.find((s) => s.owner === u.idx && roster[s.idx]!.summoned && roster[s.idx]!.defId === 'spirit');
     let spell: string | null = null;
     if (has('mend') && hpPct < 40) spell = 'mend';
     else if (has('ward') && u.ward === 0 && hpPct < 75) spell = 'ward';
@@ -709,16 +722,83 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         u.mana = Math.min(u.maxMana, u.mana + scaled(30, level));
         u.spellBonusPct = scaled(50, level);
         break;
+      case 'patch_up': {
+        const amount = Math.floor((u.maxHp * scaled(15, level)) / 100);
+        u.hp = Math.min(u.maxHp, u.hp + amount);
+        events.push({ t: 'heal', actor: u.idx, amount, hp: u.hp });
+        break;
+      }
+      case 'hurl': {
+        const target = enemyMainOf(u);
+        if (u.weapon) {
+          u.nextHitPct = scaled(200, level) - 150; // a normal throw is already +50%
+          u.thrown.add(u.weapon);
+          attack(u, target, 'throw');
+          u.weapon = null;
+        } else attack(u, target, 'melee');
+        break;
+      }
+      case 'rush':
+        u.gauge = Math.max(u.gauge, GAUGE_FULL);
+        u.nextHitPct += 10 * (level - 1);
+        break;
+      case 'feint':
+        enemyMainOf(u).blinded = true;
+        u.nextHitPct += scaled(20, level);
+        break;
+      case 'second_breath':
+        u.stamina = Math.min(u.maxStamina, u.stamina + scaled(40, level));
+        break;
+      case 'haymaker':
+        u.nextHitPct += scaled(80, level);
+        u.nextHitSure = true;
+        break;
+      case 'flurry':
+        u.flurryHits = 3;
+        u.flurryPct = scaled(70, level) - 100;
+        break;
+      case 'body_slam': {
+        const foe = enemyMainOf(u);
+        u.nextHitPct += scaled(40, level);
+        if (attack(u, foe, 'melee')) foe.gauge -= 50;
+        break;
+      }
+      case 'stray_dog': {
+        const dog = units.find((s) => s.owner === u.idx && roster[s.idx]!.name === 'Stray Dog');
+        if (dog && !alive(dog)) {
+          dog.hp = dog.maxHp;
+          dog.gauge = 50;
+          events.push({ t: 'summon', actor: dog.idx, owner: u.idx, hp: dog.hp });
+        }
+        break;
+      }
+      case 'bolt': {
+        events.push({ t: 'cast', actor: u.idx, spell: 'bolt', target: enemyMainOf(u).idx });
+        u.spellBonusPct += scaled(50, level);
+        magicAttack(u, enemyMainOf(u), 4 + u.magic, true);
+        break;
+      }
     }
   };
 
-  /** A bot's choice for this tick: a card id and, for the special strike, its quality. */
-  const botChoice = (u: Unit, _tick: number): { card: string; quality?: number } | null => {
-    const affordable = Object.keys(u.deck).filter((id) => CARDS[id] && u.energy >= CARDS[id]!.cost);
-    if (affordable.length === 0) return null;
+  const OFFENSIVE = new Set(['rage', 'haymaker', 'flurry', 'special']);
+  const DEFENSIVE = ['wall', 'roll', 'feint'];
+
+  /** A bot's choice for this tick, from what it can see: its own state and the enemy's last card. */
+  const botChoice = (u: Unit, tick: number): { card: string; quality?: number } | null => {
+    const can = (id: string) => u.deck[id] !== undefined && CARDS[id] !== undefined && u.energy >= CARDS[id]!.cost;
+    const pick = (id: string) => (id === 'special' ? { card: id, quality: u.specialQuality ?? rng.int(40, 91) } : { card: id });
+    if (u.hp * 100 < u.maxHp * 35 && can('patch_up')) return pick('patch_up');
+    const enemyLast = lastCard[u.team === 0 ? 1 : 0];
+    if (enemyLast && tick - enemyLast.tick <= ENERGY_EVERY && OFFENSIVE.has(enemyLast.card)) {
+      const defence = DEFENSIVE.find(can);
+      if (defence) return pick(defence);
+    }
     if (u.energy >= BOT_SPEND_AT) {
-      const card = affordable.sort((x, y) => CARDS[y]!.cost - CARDS[x]!.cost || x.localeCompare(y))[0]!;
-      return card === 'special' ? { card, quality: u.specialQuality ?? rng.int(40, 91) } : { card };
+      const affordable = Object.keys(u.deck).filter(can);
+      // Dearest first; equal costs go by id with a plain comparison (the same on every device).
+      const order = (x: string, y: string) => CARDS[y]!.cost - CARDS[x]!.cost || (x < y ? -1 : x > y ? 1 : 0);
+      if (affordable.length) return pick(affordable.sort(order)[0]!);
     }
     return null;
   };
@@ -748,6 +828,17 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     }
     if (trySpecial(u)) return;
     if (u.isMain && trySpell(u)) return;
+    if (u.flurryHits > 0) {
+      const target = pickTarget(u);
+      for (; u.flurryHits > 0; u.flurryHits--) {
+        u.nextHitPct += u.flurryPct;
+        if (!attack(u, target, 'double') || winner !== null || !alive(u)) {
+          u.flurryHits = 0;
+          break;
+        }
+      }
+      return;
+    }
 
     const target = pickTarget(u);
     if (u.isMain && u.undrawn.length > 0 && rng.chance(u.weapon === null ? u.drawChance : 15)) {
