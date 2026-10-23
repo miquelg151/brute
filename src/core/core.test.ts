@@ -534,15 +534,28 @@ describe('starting cards', () => {
   });
 
   it('Roll dodges the next 2 attacks for sure', () => {
-    const log = runFight(parkour, brawler, 9, { a: { interactive: true, deck: deckOf('roll'), plays: [{ tick: 0, card: 'roll' }], breaks: [] }, b: { deck: {} } });
-    const aimedAtMe = after(log, 'roll').filter((e) => (e.t === 'hit' || e.t === 'dodge' || e.t === 'block') && e.actor !== 0 && 'target' in e && e.target === 0);
-    expect(aimedAtMe.slice(0, 2).every((e) => e.t === 'dodge')).toBe(true);
+    const firstTwo = (plays: CardPlay[]) => {
+      const log = runFight(parkour, brawler, 9, { a: { interactive: true, deck: deckOf('roll'), plays, breaks: [] }, b: { deck: {} } });
+      const from = plays.length > 0 ? after(log, 'roll') : log.events;
+      return from.filter((e) => (e.t === 'hit' || e.t === 'dodge' || e.t === 'block') && e.actor !== 0 && 'target' in e && e.target === 0).slice(0, 2);
+    };
+    const withCard = firstTwo([{ tick: 0, card: 'roll' }]);
+    expect(withCard).toHaveLength(2);
+    expect(withCard.every((e) => e.t === 'dodge')).toBe(true);
+    expect(firstTwo([]).every((e) => e.t === 'dodge')).toBe(false);
   });
 
   it('Wall blocks the next 3 hits for sure', () => {
-    const log = runFight(bouncer, brawler, 9, { a: { interactive: true, deck: deckOf('wall'), plays: [{ tick: 0, card: 'wall' }], breaks: [] }, b: { deck: {} } });
-    const landed = after(log, 'wall').filter((e) => (e.t === 'hit' || e.t === 'block') && e.actor !== 0 && e.target === 0 && e.kind !== 'spell');
-    expect(landed.slice(0, 3).every((e) => e.t === 'block')).toBe(true);
+    const firstThree = (plays: CardPlay[]) => {
+      const log = runFight(bouncer, brawler, 9, { a: { interactive: true, deck: deckOf('wall'), plays, breaks: [] }, b: { deck: {} } });
+      // Wall costs 4, so it is played at tick 4; the control run looks from the same tick.
+      const from = plays.length > 0 ? after(log, 'wall') : log.events.slice(log.events.findIndex((e) => e.t === 'tick' && e.n === 4));
+      return from.filter((e) => (e.t === 'hit' || e.t === 'block') && e.actor !== 0 && e.target === 0 && e.kind !== 'spell').slice(0, 3);
+    };
+    const withCard = firstThree([{ tick: 4, card: 'wall' }]);
+    expect(withCard).toHaveLength(3);
+    expect(withCard.every((e) => e.t === 'block')).toBe(true);
+    expect(firstThree([]).every((e) => e.t === 'block')).toBe(false);
   });
 
   it("Sic 'em makes every pet attack at once", () => {
@@ -550,6 +563,7 @@ describe('starting cards', () => {
     const i = log.events.findIndex((e) => e.t === 'card' && e.card === 'sic_em');
     const pets = log.roster.map((u, idx) => (u.team === 0 && !u.isMain ? idx : -1)).filter((idx) => idx >= 0);
     const next = log.events.slice(i + 1, i + 1 + pets.length);
+    expect(pets.length).toBeGreaterThan(0);
     for (const e of next) expect(pets).toContain('actor' in e ? e.actor : -1);
   });
 

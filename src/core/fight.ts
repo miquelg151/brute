@@ -478,8 +478,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     return magic && def.plan.stance !== 'agile' ? Math.floor((capped * 60) / 100) : capped;
   };
 
-  const baseDamage = (att: Unit, kind: HitKind, quality: number, specialBonus = SPECIAL_MAX_BONUS): number => {
-    if (!att.isMain) return Math.floor((att.power * (100 + att.nextHitPct)) / 100);
+  const baseDamage = (att: Unit, kind: HitKind, quality: number, specialBonus = SPECIAL_MAX_BONUS, nextHitPct = 0): number => {
+    if (!att.isMain) return Math.floor((att.power * (100 + nextHitPct)) / 100);
     const weapon = att.weapon ? WEAPONS[att.weapon] : undefined;
     let dmg = att.power + (weapon ? weapon.damage : FISTS_DAMAGE + (att.skills.has('iron_fists') ? 4 : 0));
     if (weapon?.heavy && att.skills.has('heavy_hands')) dmg = Math.floor((dmg * 125) / 100);
@@ -487,7 +487,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (kind === 'special') dmg = Math.floor((dmg * (100 + (quality * specialBonus) / 100)) / 100);
     if (att.skills.has('fury') && att.hp * 100 < att.maxHp * 30) dmg = Math.floor((dmg * 130) / 100);
     if (tired(att)) dmg = Math.floor((dmg * 75) / 100);
-    const cardBonus = (att.rageTurns > 0 ? att.ragePct : 0) + att.nextHitPct;
+    const cardBonus = (att.rageTurns > 0 ? att.ragePct : 0) + nextHitPct;
     if (cardBonus) dmg = Math.floor((dmg * (100 + cardBonus)) / 100);
     return Math.floor((dmg * att.damagePct) / 100);
   };
@@ -530,8 +530,13 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
 
   /** Resolves one physical attack. Returns true if the target survived. Specials and throws cannot be dodged. */
   const attack = (att: Unit, def: Unit, kind: HitKind, quality = 0, specialBonus = SPECIAL_MAX_BONUS): boolean => {
+    // The one-hit card bonus belongs to this attack only, even if it misses or is dodged.
+    const nextHitPct = att.nextHitPct;
+    const nextHitSure = att.nextHitSure;
+    att.nextHitPct = 0;
+    att.nextHitSure = false;
     if (missesBlind(att, def)) return true;
-    const sure = kind === 'special' || kind === 'throw' || att.nextHitSure;
+    const sure = kind === 'special' || kind === 'throw' || nextHitSure;
     if (!sure && def.sureDodges > 0) {
       def.sureDodges--;
       events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
@@ -551,7 +556,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const quickHit = kind === 'double' || kind === 'counter';
     const fullArmor = Math.max(0, def.armor - (att.weapon && kind !== 'throw' ? att.armorPierce : 0));
     const armor = att.isMain && !quickHit ? fullArmor : Math.floor(fullArmor / 2);
-    let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality, specialBonus) * roll) / 100) - armor);
+    let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality, specialBonus, nextHitPct) * roll) / 100) - armor);
     if (!def.isMain) damage = Math.max(1, Math.floor((damage * TARGETS[att.plan.target].petDamagePct) / 100));
     let blocked = false;
     if (def.sureBlocks > 0) {
@@ -559,8 +564,6 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       blocked = true;
     } else blocked = def.skills.has('shield') && rng.chance(SHIELD_BLOCK);
     if (blocked) damage = Math.max(1, Math.floor(damage / 4));
-    att.nextHitPct = 0;
-    att.nextHitSure = false;
     const survived = land(att, def, kind, damage, blocked);
     if (survived && att.skills.has('disarm') && def.weapon && rng.chance(15)) {
       events.push({ t: 'disarm', actor: att.idx, target: def.idx, weapon: def.weapon });
@@ -571,14 +574,16 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
 
   /** Magic damage: dodgeable, ignores armor and shields, reduced by magic resistance. */
   const magicAttack = (att: Unit, def: Unit, base: number): { survived: boolean; dealt: number } => {
+    // The Overcharge bonus is used up by the next spell, whether it hits, is dodged or misses.
+    const bonusPct = att.spellBonusPct;
+    att.spellBonusPct = 0;
     if (missesBlind(att, def)) return { survived: true, dealt: 0 };
     if (rng.chance(dodgeChance(att, def, true))) {
       events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind: 'spell' });
       return { survived: true, dealt: 0 };
     }
     const roll = rng.int(85, 116);
-    const raw = Math.floor((base * roll * att.damagePct * (100 + att.spellBonusPct)) / 1000000);
-    att.spellBonusPct = 0;
+    const raw = Math.floor((base * roll * att.damagePct * (100 + bonusPct)) / 1000000);
     const damage = Math.max(1, Math.floor((raw * (100 - def.magicResist)) / 100));
     const before = def.hp;
     const survived = land(att, def, 'spell', damage, false);
@@ -677,7 +682,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     return true;
   };
 
-  /** What each card does. Task 3 only has the Special Strike; Tasks 5 and 6 add the rest. */
+  /** What each card does. */
   const applyCard = (u: Unit, id: string, level: number, quality: number): void => {
     switch (id) {
       case 'special':
