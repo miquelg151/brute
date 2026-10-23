@@ -133,7 +133,14 @@ Original plan:
   in the font with palette colours, dust puffs, KO slow-motion.
 - Break panel as a bottom sheet over the arena instead of a long page below it.
 
-### Phase 5 — Motion · medium
+### Phase 5 — Motion · medium · DONE
+
+Done: screens slide up; stickers slap on one after another (`src/ui/motion.ts` picks
+which, CSS "Motion" section has the movements); level-up cards are dealt, the chosen one
+stamped, the rest fall; the XP bar fills; result card slaps on; title screen before the
+first fighter, with the fighter breathing. All of it is off with "reduce motion".
+
+Original plan:
 
 - Screen transitions: the new screen is a poster sliding in and settling with a tiny
   rotation (220 ms); going back slides the other way.

@@ -2,12 +2,22 @@ import { CLASSES, GEAR, SPELLS, UPGRADES_BY_ID, type SaveData } from '../../core
 import { upgradeDetail, upgradeKindLabel } from '../describe';
 import { h } from '../dom';
 import { icon, type IconName } from '../icons';
+import { pause } from '../motion';
 import { CLASS_COLORS } from '../palette';
 import { drawPet, drawWeapon } from '../sprites';
 import { slot } from '../widgets';
 
 export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgradeId: string) => void): void {
   const c = save.character;
+  let picked = false;
+  // The chosen card gets stamped, the others fall away, then the game moves on.
+  const pick = async (id: string, card: HTMLElement) => {
+    if (picked) return;
+    picked = true;
+    cards.forEach((other) => other.classList.add(other === card ? 'stamped' : 'dropped'));
+    await pause(450);
+    onPick(id);
+  };
   const cards = (save.offer ?? []).map((id) => {
     const u = UPGRADES_BY_ID[id]!;
     const classPool = u.pool === 'general' ? null : u.pool;
@@ -25,7 +35,7 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
     const picture = art ? slot(art, '') : h('div', { class: 'slot' }, h('div', { class: 'slot-art' }, icon(mainStat, u.name, 'normal')));
     return h(
       'button',
-      { class: 'choice upgrade', onclick: () => onPick(id) },
+      { class: 'choice upgrade', onclick: (e: Event) => void pick(id, e.currentTarget as HTMLElement) },
       picture,
       h(
         'div',

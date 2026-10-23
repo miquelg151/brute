@@ -1787,3 +1787,131 @@ details.more[open] summary::after {
     animation: none;
   }
 }
+
+/* --- Motion -------------------------------------------------------------------
+   Entrances: the screen slides up, then stickers slap on one after another (the order
+   is set in src/ui/motion.ts). Speeds come from --fast / --med / --slow at the top. */
+.screen {
+  animation: screen-in var(--med) var(--ease-out) backwards;
+}
+
+.slap {
+  animation: slap 280ms var(--ease-bounce) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms + 60ms);
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@keyframes slap {
+  0% {
+    opacity: 0;
+    transform: scale(1.15) rotate(-3deg);
+  }
+  60% {
+    opacity: 1;
+  }
+}
+
+/* Level-up cards are dealt from the bottom; the chosen one is stamped, the rest fall. */
+.levelup .upgrade.slap {
+  animation-name: deal;
+  animation-duration: 380ms;
+  animation-delay: calc(var(--i, 0) * 110ms + 120ms);
+}
+
+.levelup .upgrade.stamped {
+  animation: stamp 320ms var(--ease-bounce) forwards;
+  outline: 3px solid var(--pink);
+  outline-offset: 2px;
+}
+
+.levelup .upgrade.dropped {
+  animation: drop 320ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes deal {
+  0% {
+    opacity: 0;
+    transform: translateY(80px) rotate(8deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-4px) rotate(-1deg);
+  }
+}
+
+@keyframes stamp {
+  40% {
+    transform: scale(1.07) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1.03) rotate(-1deg);
+  }
+}
+
+@keyframes drop {
+  to {
+    opacity: 0;
+    transform: translateY(140px) rotate(10deg);
+  }
+}
+
+/* The experience bar fills up when the home screen opens. */
+.bar-fill {
+  transform-origin: left;
+  animation: fill-in var(--slow) var(--ease-out) 300ms backwards;
+}
+
+@keyframes fill-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Title screen */
+.title {
+  justify-content: center;
+  min-height: calc(100dvh - var(--step) * 7 - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+/* Auto margins above the logo and under the tagline keep them in the middle. */
+.title .logo {
+  margin-top: auto;
+  transform: rotate(-4deg) scale(1.15);
+}
+
+.title .spot canvas {
+  animation: bob 1.6s ease-in-out infinite;
+}
+
+.title-tagline {
+  font-size: var(--t-l);
+  font-weight: 700;
+  margin: var(--step) 0 auto;
+  padding-bottom: 6vh;
+}
+
+/* Breathing on the spot, two art pixels up and down. */
+@keyframes bob {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen,
+  .slap,
+  .bar-fill,
+  .title .spot canvas,
+  .levelup .upgrade.stamped,
+  .levelup .upgrade.dropped {
+    animation: none !important;
+  }
+}

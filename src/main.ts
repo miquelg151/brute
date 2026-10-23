@@ -2,6 +2,7 @@ import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
 import { chooseUpgrade, dayNumber, prepareFight, recordWarmup, startFight, type SaveData } from './core';
 import { loadArt } from './ui/art';
+import { animateIn } from './ui/motion';
 import { applyTheme } from './ui/theme';
 import { renderCreate } from './ui/screens/create';
 import { renderFight } from './ui/screens/fight';
@@ -9,17 +10,34 @@ import { renderGallery } from './ui/screens/gallery';
 import { renderHome } from './ui/screens/home';
 import { renderLevelUp } from './ui/screens/levelup';
 import { renderPrefight } from './ui/screens/prefight';
+import { renderTitle } from './ui/screens/title';
 import { clearSave, loadSave, storeSave } from './ui/storage';
 
 applyTheme();
 
 const root = document.getElementById('app')!;
 let save: SaveData | null = loadSave();
+/** The title screen is shown once, before creating the first fighter. */
+let titleShown = false;
 
+/** Draws the screen that fits the current save, with its entrance animation. */
 function show(): void {
   root.replaceChildren();
   window.scrollTo(0, 0);
+  render();
+  animateIn(root);
+}
+
+function render(): void {
   const current = save;
+
+  if (!current && !titleShown) {
+    renderTitle(root, () => {
+      titleShown = true;
+      show();
+    });
+    return;
+  }
 
   if (!current) {
     renderCreate(root, (created) => {

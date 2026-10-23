@@ -202,8 +202,10 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
         h('div', { class: 'dim' }, iconValue('xp', 'Experience', `+${result.xpGained}`), result.levelsGained > 0 ? ' Level up!' : ''),
       );
       controls.classList.add('hidden');
-      summary.classList.remove('hidden');
-      continueBtn.classList.remove('hidden');
+      for (const el of [summary, continueBtn]) {
+        el.classList.remove('hidden');
+        el.classList.add('slap');
+      }
     },
   });
   const game = new Phaser.Game({
