@@ -1,7 +1,8 @@
 import { CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, type Appearance, type ClassId, type SaveData } from '../../core';
 import { h, pixelArt } from '../dom';
-import { CLASS_COLORS, HAIR_STYLE_NAMES } from '../palette';
-import { statRow } from '../icons';
+import { icon, statRow } from '../icons';
+import { logo } from '../logo';
+import { CLASS_COLORS, HAIR_COLORS, HAIR_STYLE_NAMES, OUTFIT_COLORS, SKIN_TONES } from '../palette';
 import { drawFighter } from '../sprites';
 
 const LOOK_ROWS: { key: keyof Appearance; label: string }[] = [
@@ -10,6 +11,13 @@ const LOOK_ROWS: { key: keyof Appearance; label: string }[] = [
   { key: 'hairColor', label: 'Hair color' },
   { key: 'outfitColor', label: 'Outfit' },
 ];
+
+/** Look options that are colours, shown as a swatch instead of a number. */
+const LOOK_COLORS: Partial<Record<keyof Appearance, string[]>> = {
+  skinTone: SKIN_TONES,
+  hairColor: HAIR_COLORS,
+  outfitColor: OUTFIT_COLORS,
+};
 
 function randomLook(): Appearance {
   const r = (n: number) => Math.floor(Math.random() * n);
@@ -41,7 +49,11 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
     preview.replaceChildren(pixelArt(drawFighter(look, classId), 'big'));
     for (const row of LOOK_ROWS) {
       const v = look[row.key];
-      lookValues.get(row.key)!.textContent = row.key === 'hairStyle' ? HAIR_STYLE_NAMES[v] ?? '' : `${v + 1}`;
+      const el = lookValues.get(row.key)!;
+      const colors = LOOK_COLORS[row.key];
+      // Colours show as a swatch; the hair style shows its name.
+      if (colors) el.replaceChildren(h('span', { class: 'look-swatch', style: `background:${colors[v]}`, role: 'img', 'aria-label': `${row.label} ${v + 1}` }));
+      else el.textContent = HAIR_STYLE_NAMES[v] ?? '';
     }
   };
 
@@ -57,9 +69,9 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
       'div',
       { class: 'look-row' },
       h('span', { class: 'look-label' }, label),
-      h('button', { class: 'btn btn-small', onclick: step(-1), 'aria-label': `Previous ${label}` }, '<'),
+      h('button', { class: 'btn btn-small btn-icon', onclick: step(-1), 'aria-label': `Previous ${label}` }, icon('left', 'Previous', 'normal')),
       value,
-      h('button', { class: 'btn btn-small', onclick: step(1), 'aria-label': `Next ${label}` }, '>'),
+      h('button', { class: 'btn btn-small btn-icon', onclick: step(1), 'aria-label': `Next ${label}` }, icon('right', 'Next', 'normal')),
     );
   };
 
@@ -115,6 +127,7 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
     h(
       'main',
       { class: 'screen create' },
+      logo(),
       h('h1', {}, 'New fighter'),
       h('p', { class: 'lede' }, 'Pick a look, a fighting style and where you grew up.'),
       preview,
@@ -124,7 +137,12 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
         'section',
         { class: 'card' },
         ...LOOK_ROWS.map((r) => lookRow(r.key, r.label)),
-        h('button', { class: 'btn btn-small', onclick: () => (Object.assign(look, randomLook()), refreshPreview()) }, 'Random look'),
+        h(
+          'button',
+          { class: 'btn btn-small btn-with-icon', onclick: () => (Object.assign(look, randomLook()), refreshPreview()) },
+          icon('dice', 'Random', 'normal'),
+          'Random look',
+        ),
       ),
       h('h2', {}, 'Class'),
       h('p', { class: 'lede small' }, 'Sets your starting stats and skill, and which upgrades you see most.'),

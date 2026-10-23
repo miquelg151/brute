@@ -3,6 +3,7 @@
 // Custom art can replace any icon: list it under "icons" in public/art/manifest.json.
 import { artImage, artManifest, imageToCanvas } from './art';
 import { h, pixelArt } from './dom';
+import { FIST } from './fist';
 import { sprite } from './sprites';
 import { PAL, type PixelSize } from './theme';
 
@@ -111,6 +112,19 @@ const ICONS = {
   counter: {
     rows: ['...T...', '..TT...', '.TTTTT.', '..TT..T', '...T..T', '......T', '.TTTTT.'],
     colors: { T: PAL.teal },
+  },
+  fist: FIST,
+  left: {
+    rows: ['...W', '..WW', '.WWW', 'WWWW', '.WWW', '..WW', '...W'],
+    colors: { W: PAL.pink },
+  },
+  right: {
+    rows: ['W...', 'WW..', 'WWW.', 'WWWW', 'WWW.', 'WW..', 'W...'],
+    colors: { W: PAL.pink },
+  },
+  dice: {
+    rows: ['WWWWWWW', 'WKWWWKW', 'WWWWWWW', 'WWWKWWW', 'WWWWWWW', 'WKWWWKW', 'WWWWWWW'],
+    colors: { W: PAL.white, K: PAL.ink },
   },
 } satisfies Record<string, IconDef>;
 

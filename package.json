@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "balance": "tsx tools/balance.ts"
+    "balance": "tsx tools/balance.ts",
+    "icons": "tsx tools/make-icons.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

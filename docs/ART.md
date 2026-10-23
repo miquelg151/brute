@@ -106,6 +106,16 @@ designs are in `src/ui/icons.ts`; icons are about 7 × 7 pixels.
 You only need the entries you have art for. Ids (like `traffic_sign`) are the ones
 in `src/core/catalog.ts`.
 
+## Logo and app icon
+
+The fist next to the word BRUTE (and the app icon on the phone's home screen) is drawn
+in `src/ui/fist.ts`, in the same format as the icons. After changing it, run
+`npm run icons`: it rebuilds the PNGs in `public/icons/` (app icons for iPhone and
+Android, and the browser tab icon). You can also draw those PNGs yourself and simply
+not run the command: keep the same file names and sizes (192, 512 and 180 px squares,
+plus a 64 px favicon; `maskable-512.png` needs the art inside the middle 60%, because
+Android may cut it into a circle).
+
 ## Changing the look of the interface
 
 | What | Where |

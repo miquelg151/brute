@@ -1224,3 +1224,58 @@ h2.section-icon:not(.card h2) {
 .btn-small:not(.btn-ghost) {
   -webkit-text-stroke-width: var(--sticker-outline-sm);
 }
+
+/* Logo: the fist sticker and BRUTE in sticker lettering. */
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--step) * 1.5);
+  margin: var(--step) 0 calc(var(--step) * 2);
+  transform: rotate(-3deg);
+}
+
+.logo-mark canvas {
+  filter: drop-shadow(3px 0 0 var(--paper-lit)) drop-shadow(-3px 0 0 var(--paper-lit)) drop-shadow(0 3px 0 var(--paper-lit))
+    drop-shadow(0 -3px 0 var(--paper-lit)) drop-shadow(3px 4px 0 var(--pink));
+}
+
+.logo-word {
+  font-weight: 800;
+  font-size: clamp(46px, 15vw, 64px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--yellow);
+  -webkit-text-stroke: var(--sticker-outline) var(--sticker-ink);
+  paint-order: stroke fill;
+  text-shadow: none;
+  font-variation-settings: 'INFM' 80, 'BNCE' 60;
+  filter: drop-shadow(0.06em 0.07em 0 var(--sticker-shadow));
+}
+
+/* Buttons that show an icon. */
+.btn-icon,
+.btn-with-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--step);
+}
+
+.btn-icon {
+  padding: 6px 10px;
+}
+
+/* A colour option in the look editor. */
+.look-value {
+  display: flex;
+  justify-content: center;
+}
+
+.look-swatch {
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--outline);
+  border-radius: var(--rough-2);
+  box-shadow: 0 0 0 2px var(--paper-lit), 2px 3px 0 2px rgba(0, 0, 0, 0.25);
+}
