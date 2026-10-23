@@ -3,6 +3,8 @@
 Mobile-first pixel-art auto-battler inspired by El Bruto: build a fighter, read your
 opponent, pick a stance and land special strikes in daily fights.
 
+**Play it:** https://miquelg151.github.io/brute/ (updates automatically on every push to `main`).
+
 ## Commands
 
 | Command | What it does |
