@@ -723,15 +723,17 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         u.spellBonusPct = scaled(50, level);
         break;
       case 'patch_up': {
-        const amount = Math.floor((u.maxHp * scaled(15, level)) / 100);
-        u.hp = Math.min(u.maxHp, u.hp + amount);
-        events.push({ t: 'heal', actor: u.idx, amount, hp: u.hp });
+        const before = u.hp;
+        u.hp = Math.min(u.maxHp, u.hp + Math.floor((u.maxHp * scaled(15, level)) / 100));
+        events.push({ t: 'heal', actor: u.idx, amount: u.hp - before, hp: u.hp });
         break;
       }
       case 'hurl': {
         const target = enemyMainOf(u);
         if (u.weapon) {
-          u.nextHitPct = scaled(200, level) - 150; // a normal throw is already +50%
+          // A throw already multiplies damage (x1.5, x2 with Thrower); the bonus tops it up to the card's total.
+          const throwPct = u.skills.has('thrower') ? 200 : 150;
+          u.nextHitPct = Math.round((scaled(200, level) * 100) / throwPct) - 100;
           u.thrown.add(u.weapon);
           attack(u, target, 'throw');
           u.weapon = null;
@@ -760,7 +762,10 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       case 'body_slam': {
         const foe = enemyMainOf(u);
         u.nextHitPct += scaled(40, level);
-        if (attack(u, foe, 'melee')) foe.gauge -= 50;
+        const seen = events.length;
+        attack(u, foe, 'melee');
+        // Only a hit that landed (even blocked) pushes their turn back; a dodge or a blinded miss doesn't.
+        if (events.slice(seen).some((e) => (e.t === 'hit' || e.t === 'block') && e.actor === u.idx)) foe.gauge -= 50;
         break;
       }
       case 'stray_dog': {

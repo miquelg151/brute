@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   CARDS,
+  CLASSES,
+  WEAPONS,
+  addStats,
   CLASS_IDS,
   DEFAULT_PLAN,
   Rng,
@@ -594,7 +597,13 @@ describe('level-up cards', () => {
 
   it('Patch Up heals', () => {
     const log = run(me, 'patch_up', 4);
-    expect(evAfter(log, 'patch_up')[0]).toMatchObject({ t: 'heal', actor: 0 });
+    const heal = evAfter(log, 'patch_up')[0] as { t: 'heal'; amount: number; hp: number };
+    expect(heal).toMatchObject({ t: 'heal', actor: 0 });
+    // The reported amount is the health really gained, never more than the missing health.
+    const before = log.events.slice(0, cardIndex(log, 'patch_up')).reverse().find((e) => (e.t === 'hit' || e.t === 'block') && e.target === 0) as { hp: number } | undefined;
+    const hpBefore = before ? before.hp : log.roster[0]!.maxHp;
+    expect(heal.hp - hpBefore).toBe(heal.amount);
+    expect(heal.hp).toBeLessThanOrEqual(log.roster[0]!.maxHp);
   });
 
   it('Hurl throws the weapon in hand at once', () => {
@@ -609,11 +618,15 @@ describe('level-up cards', () => {
   });
 
   it('Rush makes the fighter act on this tick', () => {
+    const actsBeforeTick1 = (l: FightLog) => {
+      const end = l.events.findIndex((e) => e.t === 'tick' && e.n === 1);
+      return l.events.slice(0, end).some((e) => 'actor' in e && e.actor === 0 && e.t !== 'energy' && e.t !== 'res' && e.t !== 'card');
+    };
     const log = run(me, 'rush', 0);
-    const i = cardIndex(log, 'rush');
-    expect(i).toBeGreaterThanOrEqual(0);
-    const nextTick = log.events.findIndex((e, k) => k > i && e.t === 'tick');
-    expect(log.events.slice(i + 1, nextTick).some((e) => 'actor' in e && e.actor === 0 && e.t !== 'energy' && e.t !== 'res')).toBe(true);
+    expect(cardIndex(log, 'rush')).toBeGreaterThanOrEqual(0);
+    expect(actsBeforeTick1(log)).toBe(true);
+    // Without the card the same fighter has no turn yet at tick 0.
+    expect(actsBeforeTick1(run(me, 'rush', 0, { plays: [] }))).toBe(false);
   });
 
   it("Feint makes the enemy's next attack miss", () => {
@@ -633,11 +646,23 @@ describe('level-up cards', () => {
     expect(firstRes([{ tick: 24, card: 'second_breath' }])).toBeGreaterThan(firstRes([]));
   });
 
+  // A defender who dodges a lot, to show that a "can't be dodged" card really changes something.
+  const dodger = { ...generateOpponent(12, new Rng(68), 'parkour'), skills: ['sixth_sense'] };
+  const dodgesOver = (seeds: number, a: Character, card: string, tick: number, played: boolean, spell = false) => {
+    let dodged = 0;
+    for (let seed = 0; seed < seeds; seed++) {
+      const log = runFight(a, dodger, seed, { a: { interactive: true, deck: { [card]: 1 }, plays: played ? [{ tick, card }] : [], breaks: [] }, b: { deck: {} } });
+      const from = played ? cardIndex(log, card) : log.events.findIndex((e) => e.t === 'tick' && e.n === tick);
+      expect(from).toBeGreaterThanOrEqual(0);
+      const first = log.events.slice(from).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.actor === 0 && (spell ? e.kind === 'spell' : e.kind !== 'spell'));
+      if (first?.t === 'dodge') dodged++;
+    }
+    return dodged;
+  };
+
   it("Haymaker's hit can't be dodged", () => {
-    const log = run(me, 'haymaker', 4);
-    const first = evAfter(log, 'haymaker').find((e) => isStrike(e) && e.actor === 0);
-    expect(first?.t).not.toBe('dodge');
-    expect(first).toBeDefined();
+    expect(dodgesOver(40, me, 'haymaker', 4, false)).toBeGreaterThan(0);
+    expect(dodgesOver(40, me, 'haymaker', 4, true)).toBe(0);
   });
 
   it('Flurry strikes 3 times on the next turn', () => {
@@ -651,7 +676,18 @@ describe('level-up cards', () => {
   it('Body Slam hits and pushes the enemy turn back', () => {
     const b = generateOpponent(12, new Rng(64), 'bouncer');
     const log = run(b, 'body_slam', 8);
-    expect(evAfter(log, 'body_slam')[0]).toMatchObject({ actor: 0 });
+    expect(evAfter(log, 'body_slam')[0]).toMatchObject({ actor: 0, kind: 'melee' });
+    expect(['hit', 'block']).toContain(evAfter(log, 'body_slam')[0]!.t);
+    // The tick of the enemy's first action from tick 8 on: later with the card than without it.
+    const enemyActsAt = (l: FightLog) => {
+      let tick = -1;
+      for (const e of l.events) {
+        if (e.t === 'tick') tick = e.n;
+        else if (tick >= 8 && 'actor' in e && e.actor === 1 && e.t !== 'energy' && e.t !== 'res') return tick;
+      }
+      return Infinity;
+    };
+    expect(enemyActsAt(log)).toBeGreaterThan(enemyActsAt(run(b, 'body_slam', 8, { plays: [] })));
   });
 
   it('Stray Dog joins until the round ends', () => {
@@ -664,10 +700,30 @@ describe('level-up cards', () => {
 
   it("Bolt can't be dodged", () => {
     const m = generateOpponent(12, new Rng(66), 'mystic');
-    const log = run(m, 'bolt', 8);
-    const first = evAfter(log, 'bolt').find((e) => e.t === 'cast' || e.t === 'hit' || e.t === 'dodge');
-    expect(first?.t).toBe('cast');
-    expect(evAfter(log, 'bolt').find((e) => e.t === 'hit' || e.t === 'dodge')?.t).toBe('hit');
+    expect(dodgesOver(60, m, 'bolt', 8, false, true)).toBeGreaterThan(0);
+    expect(dodgesOver(60, m, 'bolt', 8, true, true)).toBe(0);
+  });
+
+  it('Hurl does exactly the card damage multiplier', () => {
+    // With no armor, no gear and no skills on the target, a hit is floor(floor(base * 2) * roll / 100), roll 80-120.
+    // The wrong (stacked) multiplier would be x2.25, whose top rolls go well above x2.4.
+    const target = { ...foe, gear: [], skills: [], pets: [], originId: 'port' };
+    const base = (c: Character) => addStats(CLASSES[c.classId].baseStats, c.bonusStats).strength + WEAPONS.bat!.damage;
+    for (const skills of [[], ['thrower']]) {
+      const thrower = { ...me, weapons: ['bat'], gear: [], skills, pets: [] };
+      const doubled = base(thrower) * 2;
+      let seen = 0;
+      for (let seed = 0; seed < 60; seed++) {
+        const log = runFight(thrower, target, seed, { a: { interactive: true, deck: { hurl: 1 }, plays: [{ tick: 30, card: 'hurl' }], breaks: [], weaponStyle: 'keep' }, b: { deck: {} } });
+        const i = cardIndex(log, 'hurl');
+        const hit = log.events[i + 1];
+        if (!log.events.slice(0, i).some((e) => e.t === 'draw' && e.actor === 0) || hit?.t !== 'hit' || hit.kind !== 'throw') continue;
+        seen++;
+        expect(hit.damage).toBeGreaterThanOrEqual(Math.floor((doubled * 80) / 100));
+        expect(hit.damage).toBeLessThanOrEqual(Math.floor((doubled * 120) / 100));
+      }
+      expect(seen).toBeGreaterThan(10);
+    }
   });
 
   it('bots heal when low and defend against Rage', () => {
