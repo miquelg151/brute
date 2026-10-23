@@ -8,6 +8,8 @@ timing of special strikes and the choices made at each break.
 
 - A fight has **3 rounds** of `ROUND_TICKS` ticks each (about 10–15 seconds at x1).
 - On every tick each unit's initiative gauge grows by `10 + 2 × speed`; at 100 it acts.
+  Speed above 8 counts half (`10 + 2 × speed − (speed − 8)`), so very fast fighters
+  don't get endless turns at high levels.
 - A fight ends when a main fighter is knocked out. If both are standing after round 3,
   the higher health percentage wins (an exact tie goes to the defender).
 - Summoned spirits vanish at the end of each round.

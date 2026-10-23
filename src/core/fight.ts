@@ -117,6 +117,13 @@ const RECOVER_GAUGE = -40;
 const MAGIC_RESIST_CAP = 60;
 const GAUGE_FULL = 100;
 const DODGE_CAP = 40;
+/** Speed above this counts half, so very fast fighters don't get endless turns. */
+const SPEED_SOFT_CAP = 8;
+
+/** How much a unit's turn gauge fills each tick. */
+function gaugeGain(speed: number): number {
+  return 10 + 2 * speed - Math.max(0, speed - SPEED_SOFT_CAP);
+}
 
 interface Unit {
   idx: number;
@@ -637,7 +644,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     events.push({ t: 'round', round });
     for (const u of units) u.roundTurns = 0;
     for (let tick = 0; tick < ROUND_TICKS; tick++) {
-      for (const u of units) if (alive(u)) u.gauge += 10 + 2 * u.speed;
+      for (const u of units) if (alive(u)) u.gauge += gaugeGain(u.speed);
       const ready = units.filter((u) => alive(u) && u.gauge >= GAUGE_FULL).sort((x, y) => y.gauge - x.gauge || x.tieBreak - y.tieBreak);
       for (const u of ready) {
         if (winner !== null || waiting) break;

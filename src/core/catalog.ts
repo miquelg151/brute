@@ -247,7 +247,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('gear', 'general', 'sneakers'),
   ref('gear', 'general', 'charm'),
   // Brawler
-  stat('brawler_strength', 'brawler', '+1 Strength, +1 Health', { strength: 1, health: 1 }),
+  stat('brawler_strength', 'brawler', '+1 Strength, +2 Health', { strength: 1, health: 2 }),
   stat('brawler_health', 'brawler', '+3 Health', { health: 3 }),
   ref('skill', 'brawler', 'iron_fists'),
   ref('skill', 'brawler', 'fury'),
