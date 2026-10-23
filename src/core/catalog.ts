@@ -193,7 +193,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: 'tamer',
     name: 'Tamer',
     description: 'Fights alongside animals. Starts with a dog.',
-    baseStats: { health: 4, strength: 3, agility: 4, speed: 3, magic: 0 },
+    baseStats: { health: 5, strength: 3, agility: 4, speed: 3, magic: 0 },
     startSkill: 'pack_leader',
     startPet: 'dog',
     mana: 0,

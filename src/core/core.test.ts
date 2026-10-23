@@ -254,7 +254,7 @@ describe('game', () => {
     save.character.cardUses.rage = 2;
     prepareFight(save);
     startFight(save, DEFAULT_PLAN, []);
-    recordPlay(save, { tick: 4, card: 'rage' });
+    recordPlay(save, { tick: 5, card: 'rage' });
     for (let log = simulateFight(save); log.winner === null; log = simulateFight(save)) recordBreak(save, keep([]));
     const result = finishFight(save);
     expect(result.cardsPlayed.rage).toBe(1);
@@ -281,14 +281,14 @@ describe('energy and cards', () => {
   const b = generateOpponent(10, new Rng(12), 'bouncer');
   const energyOf = (log: FightLog, actor: number) => log.events.filter((e) => e.t === 'energy' && e.actor === actor).map((e) => (e.t === 'energy' ? e.energy : 0));
 
-  it('energy starts at 3, fills one point every 4 ticks and never passes 10', () => {
+  it('energy starts at 3, fills one point every 5 ticks and never passes 10', () => {
     const { log } = playThrough(a, b, 42);
     const first = log.events.find((e) => e.t === 'energy' && e.actor === 0);
     expect(first).toEqual({ t: 'energy', actor: 0, energy: 3 });
     expect(Math.max(...energyOf(log, 0))).toBeLessThanOrEqual(10);
-    const tick8 = log.events.findIndex((e) => e.t === 'tick' && e.n === 8);
-    const at8 = log.events.slice(0, tick8 + 2).filter((e) => e.t === 'energy' && e.actor === 0).at(-1);
-    expect(at8).toMatchObject({ energy: 5 });
+    const tick10 = log.events.findIndex((e) => e.t === 'tick' && e.n === 10);
+    const at10 = log.events.slice(0, tick10 + 2).filter((e) => e.t === 'energy' && e.actor === 0).at(-1);
+    expect(at10).toMatchObject({ energy: 5 });
   });
 
   it('a play is applied at its tick and leaves earlier events identical', () => {
@@ -307,7 +307,7 @@ describe('energy and cards', () => {
   });
 
   it('the special strike card makes the next attack an undodgeable special', () => {
-    const { log } = playThrough(a, b, 42, [{ tick: 8, card: 'special', quality: 90 }]);
+    const { log } = playThrough(a, b, 42, [{ tick: 10, card: 'special', quality: 90 }]);
     const i = log.events.findIndex((e) => e.t === 'special' && e.actor === 0);
     expect(i).toBeGreaterThanOrEqual(0);
     expect(log.events[i]).toEqual({ t: 'special', actor: 0, quality: 90 });
@@ -316,7 +316,7 @@ describe('energy and cards', () => {
   });
 
   it('a failed special strike plays a normal turn', () => {
-    const { log } = playThrough(a, b, 42, [{ tick: 8, card: 'special', quality: 0 }]);
+    const { log } = playThrough(a, b, 42, [{ tick: 10, card: 'special', quality: 0 }]);
     expect(log.events.some((e) => (e.t === 'hit' || e.t === 'block') && e.kind === 'special' && e.actor === 0)).toBe(false);
   });
 
@@ -528,13 +528,13 @@ describe('starting cards', () => {
   const after = (log: FightLog, card: string) => log.events.slice(log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0));
 
   it('Rage adds damage to the next 3 turns', () => {
-    // Rage costs 4 and a fighter starts with 3 energy, so it is played at tick 4, when the 4th point arrives.
+    // Rage costs 4 and a fighter starts with 3 energy, so it is played at tick 5, when the 4th point arrives.
     const hits = (plays: CardPlay[]) => {
       const log = runFight(brawler, bouncer, 7, { a: { interactive: true, deck: deckOf('rage'), plays, breaks: [] }, b: { deck: {} } });
-      return log.events.slice(log.events.findIndex((e) => e.t === 'tick' && e.n === 4)).filter((e) => e.t === 'hit' && e.actor === 0).slice(0, 3).map((e) => (e.t === 'hit' ? e.damage : 0));
+      return log.events.slice(log.events.findIndex((e) => e.t === 'tick' && e.n === 5)).filter((e) => e.t === 'hit' && e.actor === 0).slice(0, 3).map((e) => (e.t === 'hit' ? e.damage : 0));
     };
     const normal = hits([]);
-    const raged = hits([{ tick: 4, card: 'rage' }]);
+    const raged = hits([{ tick: 5, card: 'rage' }]);
     expect(raged.reduce((s, d) => s + d, 0)).toBeGreaterThan(normal.reduce((s, d) => s + d, 0));
   });
 
@@ -550,17 +550,17 @@ describe('starting cards', () => {
     expect(firstTwo([]).every((e) => e.t === 'dodge')).toBe(false);
   });
 
-  it('Wall blocks the next 3 hits for sure', () => {
-    const firstThree = (plays: CardPlay[]) => {
+  it('Wall blocks the next 2 hits for sure', () => {
+    const firstTwo = (plays: CardPlay[]) => {
       const log = runFight(bouncer, brawler, 9, { a: { interactive: true, deck: deckOf('wall'), plays, breaks: [] }, b: { deck: {} } });
-      // Wall costs 4, so it is played at tick 4; the control run looks from the same tick.
-      const from = plays.length > 0 ? after(log, 'wall') : log.events.slice(log.events.findIndex((e) => e.t === 'tick' && e.n === 4));
-      return from.filter((e) => (e.t === 'hit' || e.t === 'block') && e.actor !== 0 && e.target === 0 && e.kind !== 'spell').slice(0, 3);
+      // Wall costs 5, so it is played at tick 10; the control run looks from the same tick.
+      const from = plays.length > 0 ? after(log, 'wall') : log.events.slice(log.events.findIndex((e) => e.t === 'tick' && e.n === 10));
+      return from.filter((e) => (e.t === 'hit' || e.t === 'block') && e.actor !== 0 && e.target === 0 && e.kind !== 'spell').slice(0, 2);
     };
-    const withCard = firstThree([{ tick: 4, card: 'wall' }]);
-    expect(withCard).toHaveLength(3);
+    const withCard = firstTwo([{ tick: 10, card: 'wall' }]);
+    expect(withCard).toHaveLength(2);
     expect(withCard.every((e) => e.t === 'block')).toBe(true);
-    expect(firstThree([]).every((e) => e.t === 'block')).toBe(false);
+    expect(firstTwo([]).every((e) => e.t === 'block')).toBe(false);
   });
 
   it("Sic 'em makes every pet attack at once", () => {
@@ -573,10 +573,10 @@ describe('starting cards', () => {
   });
 
   it('Overcharge gives mana and boosts the next spell', () => {
-    const log = runFight(mystic, brawler, 2, { a: { interactive: true, deck: deckOf('overcharge'), plays: [{ tick: 4, card: 'overcharge' }], breaks: [] }, b: { deck: {} } });
+    const log = runFight(mystic, brawler, 2, { a: { interactive: true, deck: deckOf('overcharge'), plays: [{ tick: 5, card: 'overcharge' }], breaks: [] }, b: { deck: {} } });
     const plain = runFight(mystic, brawler, 2, { a: { interactive: true, deck: deckOf('overcharge'), plays: [], breaks: [] }, b: { deck: {} } });
-    // Overcharge costs 4, so it is played at tick 4; look at spells after that.
-    const firstSpell = (l: FightLog) => l.events.slice(l.events.findIndex((e) => e.t === 'tick' && e.n === 4)).find((e) => e.t === 'hit' && e.kind === 'spell' && e.actor === 0);
+    // Overcharge costs 4, so it is played at tick 5; look at spells after that.
+    const firstSpell = (l: FightLog) => l.events.slice(l.events.findIndex((e) => e.t === 'tick' && e.n === 5)).find((e) => e.t === 'hit' && e.kind === 'spell' && e.actor === 0);
     expect((firstSpell(log) as { damage: number }).damage).toBeGreaterThan((firstSpell(plain) as { damage: number }).damage);
   });
 });
@@ -584,7 +584,7 @@ describe('starting cards', () => {
 describe('level-up cards', () => {
   const me = generateOpponent(12, new Rng(61), 'brawler');
   const foe = generateOpponent(12, new Rng(62), 'bouncer');
-  // A fighter starts with 3 energy and gains 1 every 4 ticks, so a card costing c can first be played at tick 4 * (c - 3).
+  // A fighter starts with 3 energy and gains 1 every 5 ticks, so a card costing c can first be played at tick 5 * (c - 3).
   const run = (c: Character, card: string, tick: number, opts: Partial<TeamOptions> = {}) =>
     runFight(c, foe, 5, { a: { interactive: true, deck: { [card]: 1 }, plays: [{ tick, card }], breaks: [], ...opts }, b: { deck: {} } });
   const cardIndex = (log: FightLog, card: string) => log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0);
@@ -596,7 +596,7 @@ describe('level-up cards', () => {
   const isStrike = (e: FightEvent) => e.t === 'hit' || e.t === 'dodge' || e.t === 'block';
 
   it('Patch Up heals', () => {
-    const log = run(me, 'patch_up', 4);
+    const log = run(me, 'patch_up', 5);
     const heal = evAfter(log, 'patch_up')[0] as { t: 'heal'; amount: number; hp: number };
     expect(heal).toMatchObject({ t: 'heal', actor: 0 });
     // The reported amount is the health really gained, never more than the missing health.
@@ -661,13 +661,13 @@ describe('level-up cards', () => {
   };
 
   it("Haymaker's hit can't be dodged", () => {
-    expect(dodgesOver(40, me, 'haymaker', 4, false)).toBeGreaterThan(0);
-    expect(dodgesOver(40, me, 'haymaker', 4, true)).toBe(0);
+    expect(dodgesOver(40, me, 'haymaker', 5, false)).toBeGreaterThan(0);
+    expect(dodgesOver(40, me, 'haymaker', 5, true)).toBe(0);
   });
 
   it('Flurry strikes 3 times on the next turn', () => {
     const p = generateOpponent(12, new Rng(63), 'parkour');
-    const log = run(p, 'flurry', 8);
+    const log = run(p, 'flurry', 10);
     const mine = evAfter(log, 'flurry').filter((e) => isStrike(e) && e.actor === 0);
     expect(mine.length).toBeGreaterThanOrEqual(3);
     expect(mine.slice(0, 3).every((e) => 'kind' in e && e.kind === 'double')).toBe(true);
@@ -675,24 +675,24 @@ describe('level-up cards', () => {
 
   it('Body Slam hits and pushes the enemy turn back', () => {
     const b = generateOpponent(12, new Rng(64), 'bouncer');
-    const log = run(b, 'body_slam', 8);
+    const log = run(b, 'body_slam', 10);
     expect(evAfter(log, 'body_slam')[0]).toMatchObject({ actor: 0, kind: 'melee' });
     expect(['hit', 'block']).toContain(evAfter(log, 'body_slam')[0]!.t);
-    // The tick of the enemy's first action from tick 8 on: later with the card than without it.
+    // The tick of the enemy's first action from tick 10 on: later with the card than without it.
     const enemyActsAt = (l: FightLog) => {
       let tick = -1;
       for (const e of l.events) {
         if (e.t === 'tick') tick = e.n;
-        else if (tick >= 8 && 'actor' in e && e.actor === 1 && e.t !== 'energy' && e.t !== 'res') return tick;
+        else if (tick >= 10 && 'actor' in e && e.actor === 1 && e.t !== 'energy' && e.t !== 'res') return tick;
       }
       return Infinity;
     };
-    expect(enemyActsAt(log)).toBeGreaterThan(enemyActsAt(run(b, 'body_slam', 8, { plays: [] })));
+    expect(enemyActsAt(log)).toBeGreaterThan(enemyActsAt(run(b, 'body_slam', 10, { plays: [] })));
   });
 
   it('Stray Dog joins until the round ends', () => {
     const t = generateOpponent(12, new Rng(65), 'tamer');
-    const log = run(t, 'stray_dog', 12);
+    const log = run(t, 'stray_dog', 15);
     const dog = log.roster.findIndex((u) => u.name === 'Stray Dog');
     expect(dog).toBeGreaterThanOrEqual(0);
     expect(evAfter(log, 'stray_dog')[0]).toMatchObject({ t: 'summon', actor: dog });
@@ -700,8 +700,8 @@ describe('level-up cards', () => {
 
   it("Bolt can't be dodged", () => {
     const m = generateOpponent(12, new Rng(66), 'mystic');
-    expect(dodgesOver(60, m, 'bolt', 8, false, true)).toBeGreaterThan(0);
-    expect(dodgesOver(60, m, 'bolt', 8, true, true)).toBe(0);
+    expect(dodgesOver(60, m, 'bolt', 10, false, true)).toBeGreaterThan(0);
+    expect(dodgesOver(60, m, 'bolt', 10, true, true)).toBe(0);
   });
 
   it('Hurl does exactly the card damage multiplier', () => {

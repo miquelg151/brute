@@ -115,7 +115,7 @@ export const SPECIAL_MAX_BONUS = 60;
 export const MAX_ENERGY = 10;
 export const START_ENERGY = 3;
 /** One energy point every this many ticks. */
-export const ENERGY_EVERY = 4;
+export const ENERGY_EVERY = 5;
 /** Bots play a card when their energy reaches this (unless a rule fires earlier). */
 const BOT_SPEND_AT = 8;
 
@@ -140,7 +140,7 @@ const SHIELD_BLOCK = 25;
 /** Casters' class mana grows by this much per level (less at the start, more later). */
 const MANA_PER_LEVEL = 1;
 /** A fighter's speed above this counts half, so very fast fighters don't get endless turns. Pets are not capped. */
-const SPEED_SOFT_CAP = 6;
+const SPEED_SOFT_CAP = 8;
 
 /** How much a unit's turn gauge fills each tick. */
 function gaugeGain(speed: number, isMain: boolean): number {
@@ -200,6 +200,8 @@ interface Unit {
   deck: Record<string, number>;
   plays: readonly CardPlay[];
   specialQuality: number | undefined;
+  /** How many times each card was played this fight (bots rotate through their deck). */
+  timesPlayed: Record<string, number>;
   /** Special Strike waiting for this unit's next turn: its quality and max bonus. */
   pendingSpecial: { quality: number; bonus: number } | null;
   lastEnergy: number;
@@ -339,6 +341,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     deck: opts.deck ?? defaultDeck(c),
     plays: opts.plays ?? [],
     specialQuality: opts.specialQuality,
+    timesPlayed: {},
     pendingSpecial: null,
     lastEnergy: -1,
     rageTurns: 0,
@@ -688,10 +691,12 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const def = CARDS[id];
     if (!def || level === undefined || u.energy < def.cost || !alive(u) || winner !== null) return false;
     u.energy -= def.cost;
+    // The energy is shown before the card's effect: nothing may follow a knockout.
+    emitEnergy();
     events.push({ t: 'card', actor: u.idx, card: id, level });
     lastCard[u.team] = { card: id, tick };
+    u.timesPlayed[id] = (u.timesPlayed[id] ?? 0) + 1;
     applyCard(u, id, level, quality ?? 0);
-    emitEnergy();
     return true;
   };
 
@@ -709,22 +714,22 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         u.sureDodges += scaledCount(2, level);
         break;
       case 'wall':
-        u.sureBlocks += scaledCount(3, level);
+        u.sureBlocks += scaledCount(2, level);
         break;
       case 'sic_em':
         for (const pet of units.filter((p) => p.team === u.team && !p.isMain && alive(p))) {
-          pet.nextHitPct = scaled(50, level);
+          pet.nextHitPct = scaled(100, level);
           attack(pet, pickTarget(pet), 'melee');
           if (winner !== null) break;
         }
         break;
       case 'overcharge':
-        u.mana = Math.min(u.maxMana, u.mana + scaled(30, level));
+        u.mana = Math.min(u.maxMana, u.mana + scaled(15, level));
         u.spellBonusPct = scaled(50, level);
         break;
       case 'patch_up': {
         const before = u.hp;
-        u.hp = Math.min(u.maxHp, u.hp + Math.floor((u.maxHp * scaled(15, level)) / 100));
+        u.hp = Math.min(u.maxHp, u.hp + Math.floor((u.maxHp * scaled(10, level)) / 100));
         events.push({ t: 'heal', actor: u.idx, amount: u.hp - before, hp: u.hp });
         break;
       }
@@ -757,7 +762,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         break;
       case 'flurry':
         u.flurryHits = 3;
-        u.flurryPct = scaled(70, level) - 100;
+        u.flurryPct = scaled(90, level) - 100;
         break;
       case 'body_slam': {
         const foe = enemyMainOf(u);
@@ -801,8 +806,10 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     }
     if (u.energy >= BOT_SPEND_AT) {
       const affordable = Object.keys(u.deck).filter(can);
-      // Dearest first; equal costs go by id with a plain comparison (the same on every device).
-      const order = (x: string, y: string) => CARDS[y]!.cost - CARDS[x]!.cost || (x < y ? -1 : x > y ? 1 : 0);
+      // The card played least so far, so the whole deck gets used; then the dearest;
+      // then by id with a plain comparison (the same on every device).
+      const times = (id: string) => u.timesPlayed[id] ?? 0;
+      const order = (x: string, y: string) => times(x) - times(y) || CARDS[y]!.cost - CARDS[x]!.cost || (x < y ? -1 : x > y ? 1 : 0);
       if (affordable.length) return pick(affordable.sort(order)[0]!);
     }
     return null;
