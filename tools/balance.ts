@@ -170,6 +170,18 @@ const CARD_MIN = 0.5;
 const CARD_MAX = 0.62;
 
 if (section('cards')) {
+  // Pace: how many cards a bot plays per round, with its default deck, against random fighters.
+  let plays = 0;
+  let rounds = 0;
+  for (let i = 0; i < FIGHTS; i++) {
+    const rng = new Rng(mixSeed(5151, i));
+    const ca = generateOpponent(SKILL_LEVEL, rng);
+    const cb = generateOpponent(SKILL_LEVEL, rng);
+    const log = runFight(ca, cb, rng.next());
+    plays += log.events.filter((e) => e.t === 'card').length;
+    rounds += log.events.filter((e) => e.t === 'round').length;
+  }
+  console.log(`\nPace at level ${SKILL_LEVEL}: bots play ${(plays / Math.max(1, rounds) / 2).toFixed(2)} cards per round each`);
   console.log(`\nCards at level ${SKILL_LEVEL}: win rate with the card vs the same fighter without it, and how often it gets played`);
   for (const card of Object.values(CARDS)) {
     const classes = card.pool === 'general' ? CLASS_IDS : [card.pool];

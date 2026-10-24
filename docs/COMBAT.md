@@ -18,7 +18,7 @@ the choices made at each break.
 ## Energy and cards
 
 - Each fighter has **energy**, from 0 to 10. It starts at 3 and fills one point every
-  7 ticks. It is carried over from round to round.
+  5 ticks. It is carried over from round to round.
 - Each fighter brings a deck of up to 4 cards. Playing a card spends its energy cost.
   A card played on a tick takes effect at the start of the next tick (the play is
   recorded at "current tick + 1"), before anyone acts on that tick.

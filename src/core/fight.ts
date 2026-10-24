@@ -115,7 +115,7 @@ export const SPECIAL_MAX_BONUS = 60;
 export const MAX_ENERGY = 10;
 export const START_ENERGY = 3;
 /** One energy point every this many ticks. */
-export const ENERGY_EVERY = 7;
+export const ENERGY_EVERY = 5;
 /** Bots play a card when their energy reaches this (unless a rule fires earlier). */
 const BOT_SPEND_AT = 8;
 /** Bots answer an enemy attack card played within this many ticks. */
