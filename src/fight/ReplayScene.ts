@@ -383,6 +383,12 @@ export class ReplayScene extends Phaser.Scene {
         return this.onCard(e.actor, e.card);
       case 'special':
         return this.onSpecial(e.actor, e.quality, this.specialLanded(index, e.actor));
+      case 'scrap':
+        return this.onScrap(e.actor, e.absorbed);
+      case 'poison':
+        return this.onPoison(e.actor, e.damage, e.hp);
+      case 'stunned':
+        return this.onStunned(e.actor);
       case 'death':
         this.hooks.onUnitAlive(e.actor, false);
         return this.onDeath(e.actor);
@@ -537,6 +543,32 @@ export class ReplayScene extends Phaser.Scene {
     if (absorbed === 0) this.floatText(v.sprite.x, this.headY(v), 'WARD', PAL.cyan);
     else this.floatText(v.sprite.x + 10, this.headY(v) + 8, `-${absorbed}`, PAL.cyan);
     await this.wait(absorbed === 0 ? 250 : 120);
+  }
+
+  /** Scrap Shield: raised (absorbed is 0) or soaking up a hit. */
+  private async onScrap(actor: number, absorbed: number): Promise<void> {
+    const v = this.view(actor);
+    if (absorbed === 0) this.floatText(v.sprite.x, this.headY(v), 'SCRAP SHIELD', PAL.orange);
+    else this.floatText(v.sprite.x + 10, this.headY(v) + 8, `-${absorbed}`, PAL.orange);
+    await this.wait(absorbed === 0 ? 250 : 120);
+  }
+
+  /** Toxic Spit hurts at the start of the poisoned fighter's turn. */
+  private async onPoison(actor: number, damage: number, hp: number): Promise<void> {
+    const v = this.view(actor);
+    v.sprite.setTint(num(PAL.lime));
+    this.floatText(v.sprite.x, this.headY(v), `-${damage}`, PAL.lime);
+    v.hp = hp;
+    this.drawBars(v);
+    await this.wait(350);
+    v.sprite.clearTint();
+  }
+
+  /** Power Surge: the fighter loses this turn. */
+  private async onStunned(actor: number): Promise<void> {
+    const v = this.view(actor);
+    this.floatText(v.sprite.x, this.headY(v), 'STUNNED', PAL.yellow);
+    await this.tween({ targets: v.sprite, x: v.homeX + v.dir * 6, duration: 120, yoyo: true });
   }
 
   private async onSummon(actor: number, hp: number): Promise<void> {

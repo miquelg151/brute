@@ -938,3 +938,99 @@ describe('ranks', () => {
     expect(rankOf(37).id).toBe('legend');
   });
 });
+
+describe('origin cards', () => {
+  const deckOf = (...ids: string[]) => Object.fromEntries(ids.map((id) => [id, 1]));
+  const brawler = generateOpponent(10, new Rng(71), 'brawler', 'port');
+  const parkour = generateOpponent(10, new Rng(72), 'parkour', 'rooftops');
+  const tamer = generateOpponent(10, new Rng(73), 'tamer', 'metro');
+  const bouncer = generateOpponent(10, new Rng(74), 'bouncer', 'industrial');
+  const mystic = generateOpponent(10, new Rng(75), 'mystic', 'sewers');
+  const robot = generateOpponent(10, new Rng(76), 'brawler', 'scrapyard');
+  const foe = generateOpponent(10, new Rng(77), 'brawler', 'metro');
+  const play = (me: Character, card: string, tick: number, seed: number, other: Character = foe) =>
+    runFight(me, other, seed, { a: { interactive: true, deck: deckOf(card), plays: [{ tick, card }], breaks: [] }, b: { deck: {} } });
+  const noPlay = (me: Character, card: string, seed: number, other: Character = foe) =>
+    runFight(me, other, seed, { a: { interactive: true, deck: deckOf(card), plays: [], breaks: [] }, b: { deck: {} } });
+  const cardIndex = (log: FightLog, card: string) => log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0);
+  const tickIndex = (log: FightLog, n: number) => log.events.findIndex((e) => e.t === 'tick' && e.n === n);
+  const damageTo0 = (log: FightLog, from: number, count: number) =>
+    log.events
+      .slice(from)
+      .filter((e) => (e.t === 'hit' || e.t === 'block') && e.target === 0 && e.damage > 0)
+      .slice(0, count)
+      .map((e) => (e.t === 'hit' || e.t === 'block' ? e.damage : 0));
+
+  it('Weather the Wave makes the next 2 hits taken weaker', () => {
+    // Costs 3: playable at tick 0. The card uses no randomness, so both runs roll the same hits.
+    const soft = damageTo0(play(brawler, 'weather_wave', 0, 5), 0, 2);
+    const plain = damageTo0(noPlay(brawler, 'weather_wave', 5), 0, 2);
+    expect(soft).toHaveLength(2);
+    expect(soft.reduce((s, d) => s + d, 0)).toBeLessThan(plain.reduce((s, d) => s + d, 0));
+  });
+
+  it('Leap dodges the next attack and strikes back at once', () => {
+    const log = play(parkour, 'leap', 0, 9);
+    const from = cardIndex(log, 'leap');
+    const i = log.events.findIndex((e, k) => k > from && (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.target === 0);
+    expect(log.events[i]!.t).toBe('dodge');
+    const next = log.events.slice(i + 1).find((e) => e.t === 'hit' || e.t === 'block' || e.t === 'dodge');
+    expect(next).toMatchObject({ actor: 0, kind: 'counter' });
+  });
+
+  it('Last Train gives more turns early in the round', () => {
+    // A turn starts with exactly one of these from the fighter (extra double/combo hits are not counted).
+    const turns = (log: FightLog) =>
+      log.events
+        .slice(0, tickIndex(log, 20))
+        .filter((e) => (e.t === 'rest' && e.actor === 0) || ((e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.actor === 0 && (e.kind === 'melee' || e.kind === 'throw'))).length;
+    expect(turns(play(tamer, 'last_train', 0, 3))).toBeGreaterThan(turns(noPlay(tamer, 'last_train', 3)));
+  });
+
+  it('Scrap Shield stops physical damage until the round ends', () => {
+    // Costs 4: playable at tick 5.
+    const log = play(bouncer, 'scrap_shield', 5, 4);
+    const from = cardIndex(log, 'scrap_shield');
+    const scraps = log.events.slice(from).filter((e) => e.t === 'scrap' && e.actor === 0);
+    expect(scraps[0]).toMatchObject({ absorbed: 0, left: 15 });
+    expect(scraps.some((e) => e.t === 'scrap' && e.absorbed > 0)).toBe(true);
+    const round2 = log.events.findIndex((e) => e.t === 'round' && e.round === 2);
+    if (round2 >= 0) expect(log.events.slice(round2).some((e) => e.t === 'scrap')).toBe(false);
+  });
+
+  it('Toxic Spit poisons the enemy for 3 turns, ignoring armor', () => {
+    const log = play(mystic, 'toxic_spit', 5, 6, bouncer);
+    const poison = log.events.filter((e) => e.t === 'poison');
+    expect(poison).toHaveLength(3);
+    for (const e of poison) expect(e).toMatchObject({ actor: 1, damage: 4 });
+  });
+
+  it('Power Surge makes the enemy lose their next turn when it lands', () => {
+    // Costs 5: playable at tick 10.
+    const log = play(robot, 'power_surge', 10, 2, bouncer);
+    const from = cardIndex(log, 'power_surge');
+    const strike = log.events.slice(from).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.actor === 0)!;
+    expect(strike.t).not.toBe('dodge');
+    const after = log.events.slice(log.events.indexOf(strike) + 1);
+    const stunned = after.findIndex((e) => e.t === 'stunned' && e.actor === 1);
+    expect(stunned).toBeGreaterThanOrEqual(0);
+    // Before losing that turn, the enemy did not act.
+    expect(after.slice(0, stunned).some((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge' || e.t === 'rest') && e.actor === 1)).toBe(false);
+  });
+
+  it('Sewers fighters heal 1 health at the start of their turns', () => {
+    const log = noPlay(mystic, 'toxic_spit', 8, brawler);
+    expect(log.events.some((e) => e.t === 'heal' && e.actor === 0 && e.amount === 1)).toBe(true);
+  });
+
+  it('Scrapyard fighters take less magic damage', () => {
+    // The same bouncer from two origins; spells ignore armor, so only magic resistance differs.
+    const caster = generateOpponent(10, new Rng(78), 'mystic', 'port');
+    const base = generateOpponent(10, new Rng(79), 'bouncer', 'industrial');
+    const spellDamage = (originId: string) => {
+      const log = runFight(caster, { ...base, originId }, 12, { a: { deck: {} }, b: { deck: {} } });
+      return log.events.filter((e) => e.t === 'hit' && e.kind === 'spell' && e.actor === 0).slice(0, 5).reduce((s, e) => s + (e.t === 'hit' ? e.damage : 0), 0);
+    };
+    expect(spellDamage('scrapyard')).toBeLessThan(spellDamage('industrial'));
+  });
+});

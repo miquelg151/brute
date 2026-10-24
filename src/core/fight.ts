@@ -1,6 +1,6 @@
 // The fight simulation. See docs/COMBAT.md for the rules in plain words.
 import { CLASSES, FISTS_DAMAGE, GEAR, LEARNED_MANA, LOADOUT_SIZE, ORIGINS, PETS, SPELLS, WEAPONS, type GearDef } from './catalog';
-import { CARDS, DECK_SIZE, botCardLevel, scaled, scaledCount } from './cards';
+import { CARDS, DECK_SIZE, botCardLevel, scaled, scaledCount, weatherWavePct } from './cards';
 import { maxHpFor } from './character';
 import { Rng } from './rng';
 import { DEFAULT_PLAN, STANCES, TARGETS, WEAPON_STYLES, type Plan } from './tactics';
@@ -21,6 +21,9 @@ export interface UnitInfo {
   appearance?: Appearance;
   /** Summoned units start hidden and appear with a 'summon' event. */
   summoned?: boolean;
+  /** Main fighters: where they grew up and their level (for their look). */
+  originId?: string;
+  level?: number;
 }
 
 export type HitKind = 'melee' | 'double' | 'combo' | 'counter' | 'throw' | 'special' | 'spell';
@@ -64,6 +67,12 @@ export type FightEvent =
   | { t: 'card'; actor: number; card: string; level: number }
   /** A special strike from the Special Strike card, with its timing quality. */
   | { t: 'special'; actor: number; quality: number }
+  /** Scrap Shield stopped physical damage (or was raised, when absorbed is 0). */
+  | { t: 'scrap'; actor: number; absorbed: number; left: number }
+  /** Poison from Toxic Spit hurt a fighter at the start of their turn. */
+  | { t: 'poison'; actor: number; damage: number; hp: number }
+  /** A fighter lost a turn to Power Surge. */
+  | { t: 'stunned'; actor: number }
   | { t: 'death'; actor: number };
 
 export interface FightLog {
@@ -229,6 +238,24 @@ interface Unit {
   /** Flurry card: strikes left on the next turn, and each one's damage change (%). */
   flurryHits: number;
   flurryPct: number;
+  /** Origin passive (Sewers): health healed at the start of each turn. */
+  hpRegen: number;
+  /** Weather the Wave: hits left that are softened, and by how much (%). */
+  waveHits: number;
+  wavePct: number;
+  /** Leap: ready while above 0; the counter's damage bonus (%). */
+  leapPct: number;
+  /** Last Train: turns left that come sooner, and the gauge each one gives back. */
+  trainTurns: number;
+  trainGauge: number;
+  /** Scrap Shield: physical damage it can still stop this round. */
+  scrap: number;
+  /** Toxic Spit on this unit: turns left, damage per turn, and who spat. */
+  poisonTurns: number;
+  poisonDamage: number;
+  poisonBy: number;
+  /** Power Surge: this unit loses its next turn. */
+  stunned: boolean;
   breaks: readonly BreakChoice[] | undefined;
   lastRes: string;
 }
@@ -298,7 +325,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
   const maxMana = maxManaFor(c, gear);
   const owned = [...c.weapons];
 
-  roster.push({ team, isMain: true, name: c.name, defId: c.classId, maxHp, maxStamina: MAX_STAMINA, maxMana, appearance: { ...c.appearance } });
+  roster.push({ team, isMain: true, name: c.name, defId: c.classId, maxHp, maxStamina: MAX_STAMINA, maxMana, appearance: { ...c.appearance }, originId: c.originId, level: c.level });
   const main: Unit = {
     idx: units.length,
     team,
@@ -320,7 +347,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     dodgeCap: DODGE_CAP,
     damagePct: 100,
     staminaPct: 100,
-    magicResist: Math.min(MAGIC_RESIST_CAP, cls.magicResist + sum('magicResist')),
+    magicResist: Math.min(MAGIC_RESIST_CAP, cls.magicResist + origin.magicResist + sum('magicResist')),
     startGauge: origin.initiative + (skills.has('quick_start') ? 50 : 0),
     gauge: 0,
     tieBreak: 0,
@@ -363,6 +390,17 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     spellBonusPct: 0,
     flurryHits: 0,
     flurryPct: 0,
+    hpRegen: origin.hpRegen,
+    waveHits: 0,
+    wavePct: 0,
+    leapPct: 0,
+    trainTurns: 0,
+    trainGauge: 0,
+    scrap: 0,
+    poisonTurns: 0,
+    poisonDamage: 0,
+    poisonBy: 0,
+    stunned: false,
     breaks: opts.breaks,
     lastRes: '',
   };
@@ -398,6 +436,8 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
       deck: {},
       plays: [],
       breaks: undefined,
+      // Companions don't share their owner's origin passive.
+      hpRegen: 0,
     };
     applyPlan(u, main.plan);
     units.push(u);
@@ -538,6 +578,11 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
 
   /** Applies damage through any ward, emits the hit, handles death and second wind. Returns true if the target survived. */
   const land = (att: Unit, def: Unit, kind: HitKind, damage: number, blocked: boolean): boolean => {
+    // Weather the Wave: the next hits taken do less damage.
+    if (def.waveHits > 0 && damage > 0) {
+      def.waveHits--;
+      damage = Math.floor((damage * (100 - def.wavePct)) / 100);
+    }
     if (def.ward > 0) {
       const absorbed = Math.min(def.ward, damage);
       def.ward -= absorbed;
@@ -576,6 +621,15 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     att.nextHitSure = false;
     if (missesBlind(att, def)) return true;
     const sure = kind === 'special' || kind === 'throw' || nextHitSure;
+    // Leap: this attack is dodged for sure, then the defender strikes back at once.
+    if (!sure && def.leapPct > 0) {
+      const bonus = def.leapPct;
+      def.leapPct = 0;
+      events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
+      def.nextHitPct += bonus;
+      attack(def, att, 'counter');
+      return true;
+    }
     if (!sure && def.sureDodges > 0) {
       def.sureDodges--;
       events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
@@ -603,6 +657,13 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       blocked = true;
     } else blocked = def.skills.has('shield') && rng.chance(SHIELD_BLOCK);
     if (blocked) damage = Math.max(1, Math.floor(damage / 4));
+    // Scrap Shield soaks up physical damage first.
+    if (def.scrap > 0) {
+      const absorbed = Math.min(def.scrap, damage);
+      def.scrap -= absorbed;
+      damage -= absorbed;
+      events.push({ t: 'scrap', actor: def.idx, absorbed, left: def.scrap });
+    }
     const survived = land(att, def, kind, damage, blocked);
     if (survived && att.skills.has('disarm') && def.weapon && rng.chance(15)) {
       events.push({ t: 'disarm', actor: att.idx, target: def.idx, weapon: def.weapon });
@@ -835,11 +896,44 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         magicAttack(u, enemyMainOf(u), 4 + u.magic, true);
         break;
       }
+      case 'weather_wave':
+        u.waveHits = scaledCount(2, level);
+        u.wavePct = weatherWavePct(level);
+        break;
+      case 'leap':
+        u.leapPct = Math.max(u.leapPct, scaled(20, level));
+        break;
+      case 'last_train':
+        u.trainTurns = scaledCount(2, level);
+        u.trainGauge = scaled(40, level);
+        break;
+      case 'scrap_shield':
+        u.scrap += scaled(15, level);
+        events.push({ t: 'scrap', actor: u.idx, absorbed: 0, left: u.scrap });
+        break;
+      case 'toxic_spit': {
+        const foe = enemyMainOf(u);
+        // A new spit restarts the 3 turns; a stronger one replaces a weaker poison.
+        foe.poisonDamage = foe.poisonTurns > 0 ? Math.max(foe.poisonDamage, scaled(4, level)) : scaled(4, level);
+        foe.poisonTurns = 3;
+        foe.poisonBy = u.idx;
+        break;
+      }
+      case 'power_surge': {
+        const foe = enemyMainOf(u);
+        u.nextHitPct += 10 * (level - 1);
+        const seen = events.length;
+        attack(u, foe, 'melee');
+        // Only a hit that landed (even blocked) stuns; a dodge or a blinded miss doesn't.
+        const landed = events.slice(seen).some((e) => (e.t === 'hit' || e.t === 'block') && e.actor === u.idx && e.target === foe.idx);
+        if (landed && alive(foe)) foe.stunned = true;
+        break;
+      }
     }
   };
 
   const OFFENSIVE = new Set(['rage', 'haymaker', 'flurry', 'special']);
-  const DEFENSIVE = ['wall', 'roll', 'feint'];
+  const DEFENSIVE = ['wall', 'roll', 'feint', 'weather_wave', 'leap', 'scrap_shield'];
 
   /** A bot's choice for this tick, from what it can see: its own state and the enemy's last card. */
   const botChoice = (u: Unit, tick: number): { card: string; quality?: number } | null => {
@@ -848,8 +942,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (u.hp * 100 < u.maxHp * 35 && can('patch_up')) return pick('patch_up');
     const enemyLast = seenLastCard[u.team === 0 ? 1 : 0];
     if (enemyLast && tick - enemyLast.tick <= BOT_REACTION_TICKS && OFFENSIVE.has(enemyLast.card)) {
-      // A Special Strike can't be dodged, so Roll does not answer it.
-      const defence = DEFENSIVE.find((id) => can(id) && (enemyLast.card !== 'special' || id !== 'roll'));
+      // A Special Strike can't be dodged, so Roll and Leap do not answer it.
+      const defence = DEFENSIVE.find((id) => can(id) && (enemyLast.card !== 'special' || (id !== 'roll' && id !== 'leap')));
       if (defence) return pick(defence);
     }
     if (u.energy >= BOT_SPEND_AT) {
@@ -889,6 +983,11 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (u.isMain) {
       u.stamina = Math.min(u.maxStamina, u.stamina + u.staminaRegen);
       if (u.maxMana > 0) u.mana = Math.min(u.maxMana, u.mana + MANA_REGEN);
+      if (u.hpRegen > 0 && u.hp < u.maxHp) {
+        const before = u.hp;
+        u.hp = Math.min(u.maxHp, u.hp + u.hpRegen);
+        events.push({ t: 'heal', actor: u.idx, amount: u.hp - before, hp: u.hp });
+      }
     }
     if (trySpecial(u)) return;
     if (u.isMain && trySpell(u)) return;
@@ -945,8 +1044,28 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
   };
 
   const takeTurn = (u: Unit) => {
+    // Toxic Spit hurts at the start of the turn, before anything else.
+    if (u.poisonTurns > 0) {
+      u.poisonTurns--;
+      u.hp = Math.max(0, u.hp - u.poisonDamage);
+      events.push({ t: 'poison', actor: u.idx, damage: u.poisonDamage, hp: u.hp });
+      if (u.hp === 0) {
+        kill(u, units[u.poisonBy]!);
+        return;
+      }
+    }
+    // Power Surge: this turn is lost.
+    if (u.stunned) {
+      u.stunned = false;
+      events.push({ t: 'stunned', actor: u.idx });
+      return;
+    }
     takeTurnBody(u);
     if (u.rageTurns > 0) u.rageTurns--;
+    if (u.trainTurns > 0) {
+      u.trainTurns--;
+      u.gauge += u.trainGauge;
+    }
   };
 
   const applyBreak = (u: Unit, choice: BreakChoice, c: Character) => {
@@ -987,6 +1106,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       }
     }
     for (const m of mains) m.summonedThisRound = false;
+    // Scrap Shield lasts until the end of the round.
+    for (const m of mains) m.scrap = 0;
     if (round === ROUNDS) break;
 
     // Break: automatic sides decide first, so a player can see their choice (async fights).
