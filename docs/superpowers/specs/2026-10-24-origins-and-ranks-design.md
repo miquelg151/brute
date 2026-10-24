@@ -31,6 +31,8 @@ their origin.
 | `sewers` | The Sewers (strange) | Mutants: greenish skin patches, glowing eyes, pointed ears | Heal 1 health per turn | Toxic Spit (`toxic_spit`, 4) | Poison: the enemy fighter loses 4 (*scaled*) health at the start of each of their next 3 turns; ignores armor |
 | `scrapyard` | The Scrapyard (strange) | Half-robots: metal plate on the jaw or arm, an LED eye | +1 armor and +10% magic resistance | Power Surge (`power_surge`, 5) | An electric hit (normal damage) that makes the enemy fighter skip their next turn |
 
+Numbers above are the first proposal; the tuned values live in docs/COMBAT.md (Origins section).
+
 Rules:
 
 - Origin cards are starting cards: every fighter starts with three cards — Special Strike,

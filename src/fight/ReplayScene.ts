@@ -610,12 +610,14 @@ export class ReplayScene extends Phaser.Scene {
 
   private async onHeal(actor: number, amount: number, hp: number): Promise<void> {
     const v = this.view(actor);
-    v.sprite.setTint(num(PAL.lime));
+    // A tiny heal (like the Sewers +1 every turn) must not slow the replay: no tint, almost no wait.
+    const tiny = amount <= 1;
+    if (!tiny) v.sprite.setTint(num(PAL.lime));
     this.floatText(v.sprite.x, this.headY(v), `+${amount}`, PAL.lime);
     v.hp = hp;
     this.drawBars(v);
-    await this.wait(350);
-    v.sprite.clearTint();
+    await this.wait(tiny ? 80 : 350);
+    if (!tiny) v.sprite.clearTint();
   }
 
   private async onDeath(actor: number): Promise<void> {

@@ -2,7 +2,7 @@
 // style.css for "Motion"); this file only says which elements play them and in what order.
 
 /** Things that "slap on" like stickers when a screen appears, one after another. */
-const STICKERS = '.logo, .spot, .stats, .poster, .card, .choice, .carousel, .trait-chip, .segments, .option-detail, .rank-up, .action-bar';
+const STICKERS = '.logo, .spot, .stats, .poster, .card, .choice, .carousel, .trait-chip, .segments, .option-detail, .rank-up h2, .action-bar';
 /** After this many, the rest appear together (so long screens don't take ages). */
 const MAX_STAGGER = 8;
 

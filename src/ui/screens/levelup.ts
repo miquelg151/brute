@@ -57,7 +57,7 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
   const reached = c.level - save.pendingLevelUps + 1;
   const rank = rankOf(reached);
   // A new rank gets a small celebration: the fighter with their new look, and its name.
-  // It slaps on with the screen's entrance (`.rank-up` is in the sticker list in motion.ts).
+  // It slaps on with the screen's entrance (the `.spot` and `.rank-up h2` are in the sticker list in motion.ts).
   const rankUp =
     rank.id !== rankOf(reached - 1).id
       ? h(

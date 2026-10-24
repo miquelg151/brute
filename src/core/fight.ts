@@ -1106,8 +1106,11 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       }
     }
     for (const m of mains) m.summonedThisRound = false;
-    // Scrap Shield lasts until the end of the round.
-    for (const m of mains) m.scrap = 0;
+    // Scrap Shield and a stun last until the end of the round.
+    for (const m of mains) {
+      m.scrap = 0;
+      m.stunned = false;
+    }
     if (round === ROUNDS) break;
 
     // Break: automatic sides decide first, so a player can see their choice (async fights).

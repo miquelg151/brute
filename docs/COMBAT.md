@@ -88,7 +88,7 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
 - A stunned fighter (Power Surge) loses that turn entirely: no attack and no stamina,
   mana or health regeneration that turn.
 - Leap and Last Train carry over to the next round if they are not used up; Scrap Shield
-  ends with the round.
+  and a stun (Power Surge) end with the round.
 - Leap can be used up by an enemy pet's attack, like Roll.
 - Pets and spirits don't get their owner's origin passive.
 - **Ranks** (rookie, regular, veteran, champion, legend) only change how a fighter looks
