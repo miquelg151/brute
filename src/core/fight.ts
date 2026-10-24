@@ -124,16 +124,18 @@ export const ENERGY_EVERY = 5;
 const BOT_SPEND_AT = 8;
 /** Bots answer an enemy attack card played within this many ticks. */
 const BOT_REACTION_TICKS = 5;
+/** Bots only play Second Breath when their stamina is below this. */
+const BOT_BREATH_BELOW = 50;
 
 export const MAX_STAMINA = 100;
 /** Base stamina cost of each kind of action, before stance and gear. */
 export const STAMINA_COST = { melee: 7, heavy: 9, extra: 5, throw: 8, counter: 4, special: 20 } as const;
-export const STAMINA_REGEN = 5;
-export const MANA_REGEN = 4;
+export const STAMINA_REGEN = 2;
+export const MANA_REGEN = 2;
 /** Below this much stamina a fighter is tired. */
 export const TIRED_BELOW = 25;
 const REST_STAMINA = 25;
-const BREAK_STAMINA = 35;
+const BREAK_STAMINA = 30;
 const RECOVER_STAMINA = 70;
 const BREAK_MANA = 25;
 const RECOVER_MANA = 50;
@@ -646,7 +648,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     events.push({ t: 'cast', actor: u.idx, spell, target: offensive ? foe.idx : null });
     switch (spell) {
       case 'spark':
-        magicAttack(u, foe, 4 + u.magic);
+        magicAttack(u, foe, 5 + u.magic);
         break;
       case 'drain': {
         const { dealt } = magicAttack(u, foe, 3 + u.magic);
@@ -849,7 +851,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       if (defence) return pick(defence);
     }
     if (u.energy >= BOT_SPEND_AT) {
-      const affordable = Object.keys(u.deck).filter(can);
+      // Second Breath is kept for when the fighter is getting tired.
+      const affordable = Object.keys(u.deck).filter((id) => can(id) && (id !== 'second_breath' || u.stamina < BOT_BREATH_BELOW));
       // The card played least so far, so the whole deck gets used; then the dearest;
       // then by id with a plain comparison (the same on every device).
       const times = (id: string) => u.timesPlayed[id] ?? 0;

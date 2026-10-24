@@ -63,7 +63,8 @@ the choices made at each break.
      defence (Wall, Roll or Feint) if they have one. Roll is not used against a Special
      Strike, which can't be dodged.
   3. Energy 8 or more: the card they have played least this fight; among those, the
-     most expensive they can afford. A bot's Special Strike timing is rolled (40–90%).
+     most expensive they can afford. Second Breath only counts while their stamina is
+     below 50. A bot's Special Strike timing is rolled (40–90%).
   4. Otherwise they wait.
 
 ## Breaks
@@ -81,8 +82,8 @@ connected players, both choose at the same time and neither sees the other's pla
 
 ## Stamina (body)
 
-- Everyone has 100 stamina (gear can change it). It regenerates a little every turn
-  and a lot at breaks.
+- Everyone has 100 stamina (gear can change it). It regenerates 2 every turn,
+  30 at a break and 70 when the fighter chooses to recover.
 - Physical actions cost stamina: attacks, extra combo/double hits, throws, counters and
   special strikes. Heavy weapons cost more.
 - Stance multiplies the cost: Aggressive ×1.3, Defensive ×0.7.
@@ -91,8 +92,9 @@ connected players, both choose at the same time and neither sees the other's pla
 
 ## Mana and magic
 
-- Only fighters who know spells have mana. It regenerates slowly and at breaks.
-- The Mystic's mana grows with level (60 + 1 per level); other fighters who learn a
+- Only fighters who know spells have mana. It regenerates 2 every turn, 25 at a
+  break and 50 when the fighter chooses to recover.
+- The Mystic's mana grows with level (50 + 1 per level); other fighters who learn a
   spell get a fixed 40.
 - Spells cost mana, not stamina.
 - Magic damage **ignores armor and shields** and is reduced by **magic resistance**

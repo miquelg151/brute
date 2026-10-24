@@ -116,7 +116,7 @@ export const SKILLS: Record<string, SkillDef> = {
   thrower: { id: 'thrower', name: 'Thrower', description: 'Throw weapons more often, for double damage.' },
   sixth_sense: { id: 'sixth_sense', name: 'Sixth Sense', description: '+6% dodge.' },
   // Spells
-  spark: { id: 'spark', name: 'Spark', description: 'Magic bolt: 4 + magic damage. 12 mana.' },
+  spark: { id: 'spark', name: 'Spark', description: 'Magic bolt: 5 + magic damage. 12 mana.' },
   ward: { id: 'ward', name: 'Ward', description: 'A rune barrier that absorbs 10 + magic damage. 20 mana.' },
   drain: { id: 'drain', name: 'Drain', description: 'Magic hit of 3 + magic that heals you for half. 18 mana.' },
   spirit: { id: 'spirit', name: 'Spirit', description: 'Summons a spirit that fights for you until the round ends. 30 mana.' },
@@ -206,7 +206,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     baseStats: { health: 5, strength: 2, agility: 5, speed: 4, magic: 6 },
     startSkill: 'spark',
     /** Plus 1 per level. */
-    mana: 60,
+    mana: 50,
     magicResist: 10,
   },
 };
@@ -262,7 +262,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('gear', 'brawler', 'gloves'),
   ref('card', 'brawler', 'haymaker'),
   // Parkour
-  stat('parkour_agility', 'parkour', '+2 Agility', { agility: 2 }),
+  stat('parkour_agility', 'parkour', '+3 Agility', { agility: 3 }),
   stat('parkour_speed', 'parkour', '+2 Speed, +1 Strength', { speed: 2, strength: 1 }),
   ref('skill', 'parkour', 'double_strike'),
   ref('skill', 'parkour', 'quick_start'),
@@ -270,7 +270,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('gear', 'parkour', 'tracksuit'),
   ref('card', 'parkour', 'flurry'),
   // Bouncer
-  stat('bouncer_health', 'bouncer', '+5 Health', { health: 5 }),
+  stat('bouncer_health', 'bouncer', '+4 Health', { health: 4 }),
   stat('bouncer_strength', 'bouncer', '+2 Strength, +1 Health', { strength: 2, health: 1 }),
   ref('skill', 'bouncer', 'heavy_hands'),
   ref('skill', 'bouncer', 'iron_skin'),
@@ -287,7 +287,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('gear', 'tamer', 'treat_bag'),
   ref('card', 'tamer', 'stray_dog'),
   // Mystic
-  stat('mystic_magic', 'mystic', '+2 Magic', { magic: 2 }),
+  stat('mystic_magic', 'mystic', '+3 Magic', { magic: 3 }),
   stat('mystic_health', 'mystic', '+2 Health, +1 Agility', { health: 2, agility: 1 }),
   ref('skill', 'mystic', 'ward'),
   ref('skill', 'mystic', 'drain'),
