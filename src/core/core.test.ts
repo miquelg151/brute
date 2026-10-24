@@ -7,6 +7,7 @@ import {
   CLASS_IDS,
   DEFAULT_PLAN,
   Rng,
+  START_STAMINA,
   UPGRADES,
   UPGRADES_BY_ID,
   eligibleUpgrades,
@@ -406,11 +407,11 @@ describe('rounds', () => {
   });
 
   it('an aggressive stance burns more stamina', () => {
-    // Stamina left after the first action, which costs the same base amount in both fights.
+    // Stamina left after the first action (below the starting stamina), which costs the same base amount in both fights.
     const afterFirst = (stance: 'aggressive' | 'defensive') => {
       const log = runFight(a, b, 9, { a: { stance } });
-      const res = log.events.find((e) => e.t === 'res' && e.actor === 0 && e.stamina < 100);
-      return res && res.t === 'res' ? res.stamina : 100;
+      const res = log.events.find((e) => e.t === 'res' && e.actor === 0 && e.stamina < START_STAMINA);
+      return res && res.t === 'res' ? res.stamina : START_STAMINA;
     };
     expect(afterFirst('aggressive')).toBeLessThan(afterFirst('defensive'));
   });

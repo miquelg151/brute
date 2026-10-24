@@ -5,6 +5,7 @@ import {
   START_ENERGY,
   STANCES,
   TARGETS,
+  TIRED_BELOW,
   WEAPON_STYLES,
   finishFight,
   lastPlayTick,
@@ -29,8 +30,6 @@ const SKIP_SPEED = 40;
 const ROUNDS = 3;
 /** How long the enemy's card sticker stays up (ms). */
 const ENEMY_CARD_MS = 1500;
-/** Below this much stamina the bar turns orange. */
-const LOW_STAMINA = 25;
 
 const planText = (c: BreakChoice) =>
   `${STANCES[c.stance].name}, ${TARGETS[c.target].name.toLowerCase()}, ${WEAPON_STYLES[c.weaponStyle].name.toLowerCase()} weapons${c.recover ? ', and they will recover' : ''}.`;
@@ -55,7 +54,8 @@ function fighterHud(side: 'left' | 'right') {
     hp.style.width = percent(f.hp, f.maxHp);
     hpMeter.setAttribute('aria-label', `${f.name}: ${Math.max(0, f.hp)} of ${f.maxHp} health`);
     stamina.style.width = percent(f.stamina, f.maxStamina);
-    staminaMeter.classList.toggle('low', f.stamina < LOW_STAMINA);
+    // The bar turns orange when the fighter is tired.
+    staminaMeter.classList.toggle('low', f.stamina < TIRED_BELOW);
     staminaMeter.setAttribute('aria-label', `Stamina ${f.stamina}`);
     manaMeter.classList.toggle('hidden', f.maxMana <= 0);
     mana.style.width = percent(f.mana, f.maxMana);

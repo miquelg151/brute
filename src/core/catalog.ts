@@ -116,7 +116,7 @@ export const SKILLS: Record<string, SkillDef> = {
   thrower: { id: 'thrower', name: 'Thrower', description: 'Throw weapons more often, for double damage.' },
   sixth_sense: { id: 'sixth_sense', name: 'Sixth Sense', description: '+6% dodge.' },
   // Spells
-  spark: { id: 'spark', name: 'Spark', description: 'Magic bolt: 5 + magic damage. 12 mana.' },
+  spark: { id: 'spark', name: 'Spark', description: 'Magic bolt: 4 + magic damage. 12 mana.' },
   ward: { id: 'ward', name: 'Ward', description: 'A rune barrier that absorbs 10 + magic damage. 20 mana.' },
   drain: { id: 'drain', name: 'Drain', description: 'Magic hit of 3 + magic that heals you for half. 18 mana.' },
   spirit: { id: 'spirit', name: 'Spirit', description: 'Summons a spirit that fights for you until the round ends. 30 mana.' },
@@ -263,7 +263,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('card', 'brawler', 'haymaker'),
   // Parkour
   stat('parkour_agility', 'parkour', '+3 Agility', { agility: 3 }),
-  stat('parkour_speed', 'parkour', '+2 Speed, +1 Strength', { speed: 2, strength: 1 }),
+  stat('parkour_speed', 'parkour', '+2 Speed, +2 Strength', { speed: 2, strength: 2 }),
   ref('skill', 'parkour', 'double_strike'),
   ref('skill', 'parkour', 'quick_start'),
   ref('skill', 'parkour', 'disarm'),

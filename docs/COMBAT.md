@@ -82,12 +82,12 @@ connected players, both choose at the same time and neither sees the other's pla
 
 ## Stamina (body)
 
-- Everyone has 100 stamina (gear can change it). It regenerates 2 every turn,
+- Everyone has up to 100 stamina and starts each fight with 80. It regenerates 2 every turn,
   30 at a break and 70 when the fighter chooses to recover.
 - Physical actions cost stamina: attacks, extra combo/double hits, throws, counters and
   special strikes. Heavy weapons cost more.
-- Stance multiplies the cost: Aggressive ×1.3, Defensive ×0.7.
-- Below 25 stamina the fighter is **tired**: −25% damage, −10% dodge.
+- Stance multiplies the cost: Aggressive ×1.2, Defensive ×0.7 (Agile ×1).
+- Below 40 stamina the fighter is **tired**: −25% damage, −10% dodge.
 - If it can't pay for an attack, the fighter spends the turn catching its breath.
 
 ## Mana and magic

@@ -88,9 +88,9 @@ const withEffect = (def: StanceDef, effect: Effect): StanceDef => ({ ...def, eff
 
 export const STANCES: Record<Stance, StanceDef> = {
   balanced: stance('balanced', 'Balanced', 0, 0, 0, 100, null),
-  aggressive: stance('aggressive', 'Aggressive', 20, 0, -5, 130, 'tough'),
+  aggressive: stance('aggressive', 'Aggressive', 20, 0, -5, 120, 'tough'),
   defensive: stance('defensive', 'Defensive', -15, 2, 0, 70, 'many_hits'),
-  agile: withEffect(stance('agile', 'Agile', -5, 0, 15, 110, 'magic_user'), { text: 'Dodges spells as well as hits', good: true }),
+  agile: withEffect(stance('agile', 'Agile', -5, 0, 15, 100, 'magic_user'), { text: 'Dodges spells as well as hits', good: true }),
 };
 
 // --- Target -----------------------------------------------------------------

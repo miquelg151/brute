@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CARDS, Rng, SKILLS, type CardPlay, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
+import { CARDS, Rng, SKILLS, START_STAMINA, type CardPlay, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
 import { artImage, artManifest } from '../ui/art';
 import { drawPet, drawWeapon, fighterAnimation, fighterFrames, type Pose } from '../ui/sprites';
 import { PAL, num } from '../ui/theme';
@@ -193,7 +193,8 @@ export class ReplayScene extends Phaser.Scene {
         isMain: info.isMain,
         hp: info.summoned ? 0 : info.maxHp,
         maxHp: info.maxHp,
-        stamina: info.maxStamina,
+        // Fighters start below full stamina; the first 'res' event confirms the exact value.
+        stamina: Math.min(START_STAMINA, info.maxStamina),
         maxStamina: info.maxStamina,
         mana: info.maxMana,
         maxMana: info.maxMana,

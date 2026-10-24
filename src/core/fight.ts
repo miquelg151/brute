@@ -128,12 +128,14 @@ const BOT_REACTION_TICKS = 5;
 const BOT_BREATH_BELOW = 50;
 
 export const MAX_STAMINA = 100;
+/** Fighters start a fight with this much stamina, so breaks and cards can still top it up. */
+export const START_STAMINA = 80;
 /** Base stamina cost of each kind of action, before stance and gear. */
 export const STAMINA_COST = { melee: 7, heavy: 9, extra: 5, throw: 8, counter: 4, special: 20 } as const;
 export const STAMINA_REGEN = 2;
 export const MANA_REGEN = 2;
 /** Below this much stamina a fighter is tired. */
-export const TIRED_BELOW = 25;
+export const TIRED_BELOW = 40;
 const REST_STAMINA = 25;
 const BREAK_STAMINA = 30;
 const RECOVER_STAMINA = 70;
@@ -333,7 +335,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     throwChance: 0,
     drawChance: 0,
     armorPierce: 0,
-    stamina: MAX_STAMINA,
+    stamina: START_STAMINA,
     maxStamina: MAX_STAMINA,
     staminaRegen: STAMINA_REGEN + sum('staminaRegen'),
     mana: maxMana,
@@ -453,7 +455,7 @@ function autoBreak(me: Unit, foe: Unit): BreakChoice {
   let stance = me.plan.stance;
   if (mine + 0.15 < theirs) stance = foe.spells.length > 0 ? 'agile' : 'defensive';
   else if (mine > theirs + 0.15) stance = 'aggressive';
-  return { ...me.plan, stance, weapons: [...me.undrawn, ...(me.weapon ? [me.weapon] : [])], recover: me.stamina < 35 };
+  return { ...me.plan, stance, weapons: [...me.undrawn, ...(me.weapon ? [me.weapon] : [])], recover: me.stamina < TIRED_BELOW };
 }
 
 /**
@@ -648,7 +650,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     events.push({ t: 'cast', actor: u.idx, spell, target: offensive ? foe.idx : null });
     switch (spell) {
       case 'spark':
-        magicAttack(u, foe, 5 + u.magic);
+        magicAttack(u, foe, 4 + u.magic);
         break;
       case 'drain': {
         const { dealt } = magicAttack(u, foe, 3 + u.magic);
