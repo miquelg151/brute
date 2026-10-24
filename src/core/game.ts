@@ -203,6 +203,16 @@ export function finishFight(save: SaveData): FightResult {
   return { opponent: fight.opponent, log, won, xpGained, levelsGained, cardsPlayed, cardLevelUps };
 }
 
+/**
+ * Gets the level-up choice ready when level-ups are waiting but nothing is on offer yet
+ * (for example an older save). Returns true if there is an offer to choose from.
+ */
+export function prepareLevelUp(save: SaveData): boolean {
+  if (save.pendingLevelUps <= 0) return false;
+  save.offer ??= offerFor(save);
+  return true;
+}
+
 export function chooseUpgrade(save: SaveData, upgradeId: string): void {
   if (!save.offer || !save.offer.includes(upgradeId)) throw new Error(`'${upgradeId}' is not on offer`);
   applyUpgrade(save.character, upgradeId);

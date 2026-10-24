@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { CARDS, Rng, SKILLS, START_STAMINA, rankOf, type CardPlay, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
+import { CARDS, SKILLS, START_STAMINA, rankOf, type CardPlay, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
 import { artImage, artManifest } from '../ui/art';
 import { drawPet, drawWeapon, fighterAnimation, fighterFrames, type Pose } from '../ui/sprites';
+import { paintStreet } from '../ui/street';
 import { PAL, num } from '../ui/theme';
 
 /** Size of the arena in art pixels. Narrow and tall, so fighters look big on a phone. */
@@ -139,23 +140,7 @@ export class ReplayScene extends Phaser.Scene {
       return;
     }
     const g = this.add.graphics();
-    g.fillStyle(num(PAL.wall)).fillRect(0, 0, ARENA_W, GROUND_Y);
-    // City skyline, seeded by the fight so a replay always looks the same.
-    const rng = new Rng(this.log.seed);
-    for (let x = -10; x < ARENA_W; ) {
-      const w = rng.int(24, 48);
-      const top = rng.int(40, 120);
-      g.fillStyle(num(PAL.night)).fillRect(x, top, w, GROUND_Y - top);
-      g.fillStyle(num(PAL.amber));
-      for (let wy = top + 6; wy < GROUND_Y - 14; wy += 9) {
-        for (let wx = x + 4; wx < x + w - 4; wx += 7) if (rng.chance(25)) g.fillRect(wx, wy, 3, 4);
-      }
-      x += w + rng.int(2, 8);
-    }
-    g.fillStyle(num(PAL.asphalt)).fillRect(0, GROUND_Y, ARENA_W, ARENA_H - GROUND_Y);
-    g.fillStyle(num(PAL.stone)).fillRect(0, GROUND_Y, ARENA_W, 3);
-    g.fillStyle(num(PAL.stone));
-    for (let x = 8; x < ARENA_W; x += 32) g.fillRect(x, GROUND_Y + 20, 16, 2);
+    paintStreet((x, y, w, h, color) => g.fillStyle(num(color)).fillRect(x, y, w, h), this.log.seed);
   }
 
   private createUnits(): void {

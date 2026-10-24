@@ -172,25 +172,35 @@ a {
   transform: rotate(-3deg);
 }
 
-/* Buttons: stickers. */
+/* Buttons: chunky stickers stuck on a card. The darker bottom edge is the card underneath;
+   pressing pushes the sticker down onto it. --btn-face is the button's colour. */
 .btn {
+  --btn-face: var(--paper);
+  --btn-edge: color-mix(in srgb, var(--btn-face) 55%, var(--outline));
   font-family: var(--font);
   font-weight: var(--heavy);
   font-size: var(--t-l);
   line-height: 1.2;
   color: var(--ink);
-  background: var(--paper);
+  background: var(--btn-face);
   border: 2px solid var(--ink);
   border-radius: var(--rough-2);
   padding: 10px 18px;
+  margin-bottom: 4px; /* room for the bottom edge */
+  box-shadow: 0 4px 0 var(--btn-edge);
   cursor: pointer;
   text-decoration: none;
   text-align: center;
-  transition: transform var(--fast) var(--ease-out);
+  transition:
+    transform 80ms var(--ease-out),
+    box-shadow 80ms var(--ease-out),
+    background-color 80ms;
 }
 
 .btn:active:not(:disabled) {
-  transform: scale(0.97) rotate(-1deg);
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--btn-edge);
+  background-color: color-mix(in srgb, var(--btn-face) 88%, var(--outline));
 }
 
 .btn:disabled {
@@ -199,7 +209,7 @@ a {
 }
 
 .btn-primary {
-  background: var(--yellow);
+  --btn-face: var(--yellow);
 }
 
 .btn-big {
@@ -210,7 +220,19 @@ a {
 }
 
 .btn-big:active:not(:disabled) {
-  transform: scale(0.97) rotate(-1.6deg);
+  transform: translateY(3px) rotate(-0.8deg);
+}
+
+/* Less motion: the press only changes the colour. */
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled) {
+    transform: none;
+    box-shadow: 0 4px 0 var(--btn-edge);
+  }
+
+  .btn-big:active:not(:disabled) {
+    transform: rotate(-0.8deg);
+  }
 }
 
 .btn-small {
@@ -220,12 +242,18 @@ a {
 
 .btn-ghost {
   background: transparent;
+  box-shadow: none;
   border-color: transparent;
   color: var(--wall-dim);
   align-self: center;
   margin-top: calc(var(--step) * 2);
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+
+.btn-ghost:active:not(:disabled) {
+  background-color: transparent;
+  box-shadow: none;
 }
 
 /* A fighter shown as a die-cut sticker: a paper outline around the pixel art,
@@ -2068,5 +2096,329 @@ details.more[open] summary::after {
 @media (max-width: 389px) {
   .card-row .game-card {
     width: min(78px, 100%);
+  }
+}
+
+/* --- Shell: top bar, the open tab, tab bar ------------------------------------
+   Once a fighter exists the game is one phone-sized frame: nothing scrolls but the
+   Fighter and Cards tabs, inside their own area. */
+#app:has(> .shell) {
+  padding: 0;
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Top bar: a paper strip with the fighter's portrait, name, rank, level and XP. */
+.top-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: calc(8px + env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left));
+  padding: 6px 12px 6px 6px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough);
+  text-shadow: none;
+  transform: rotate(-0.6deg);
+}
+
+/* Head and shoulders of the fighter, in a little window. */
+.top-portrait {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 3px;
+  overflow: hidden;
+  background: var(--arena);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough-2);
+}
+
+.top-portrait.legend {
+  border-color: var(--yellow);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--amber) 60%, transparent);
+}
+
+.top-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.top-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.top-name {
+  font-size: var(--t-l);
+  line-height: 1.2;
+  color: var(--sticker-fill);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-bar .rank-badge {
+  font-size: var(--t-xs);
+  white-space: nowrap;
+}
+
+.top-level {
+  font-size: var(--t-xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.bar.top-xp {
+  flex: 1;
+  height: 10px;
+  margin: 0;
+  background: var(--paper-2);
+  border-color: var(--ink);
+}
+
+.top-xp-text {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* The open tab fills the space between the bars. */
+.shell-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(var(--step) * 2) max(clamp(12px, 4vw, 16px), env(safe-area-inset-right)) calc(var(--step) * 3)
+    max(clamp(12px, 4vw, 16px), env(safe-area-inset-left));
+}
+
+.shell-body[data-tab='fight'] {
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step);
+}
+
+/* Tab bar: three stickers on a dark strip; Fight is in the middle, bigger and raised. */
+.tab-bar {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  align-items: end;
+  gap: 10px;
+  padding: 6px max(14px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: var(--arena);
+  border-top: 2px solid var(--outline);
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: 6px 4px 4px;
+  font: inherit;
+  font-size: var(--t-xs);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--wall-dim);
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: var(--rough-2);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  transition:
+    transform 150ms var(--ease-bounce),
+    background-color 150ms;
+}
+
+.tab-label {
+  -webkit-text-stroke: var(--sticker-outline-sm) var(--sticker-ink);
+  paint-order: stroke fill;
+  text-shadow: none;
+}
+
+.tab:not([aria-current]) .icon {
+  opacity: 0.7;
+}
+
+/* The middle tab always pokes out of the bar as a paper sticker. */
+.tab-fight {
+  min-height: 70px;
+  margin-top: -20px;
+  font-size: var(--t-s);
+  color: var(--sticker-fill);
+  background: var(--paper);
+  border-color: var(--ink);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--paper) 55%, var(--outline));
+}
+
+/* The open tab lifts and takes the accent colour. */
+.tab[aria-current='page'] {
+  color: var(--sticker-fill);
+  background: var(--yellow);
+  border-color: var(--ink);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--yellow) 55%, var(--outline));
+  transform: translateY(-4px) rotate(-2deg);
+}
+
+.tab:active {
+  transform: translateY(1px);
+}
+
+/* Switching tabs: the new content rises in quickly. */
+.tab-in {
+  animation: tab-in 150ms var(--ease-out);
+}
+
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* --- Fight tab ---------------------------------------------------------------- */
+.fight-tab {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The street from the fight, at the same pixel size as in the fight (2 screen pixels per
+   art pixel, 240 x 210 art pixels). On tall phones its sky fades into the wall above:
+   the fade is a 90px gradient laid over the top of the picture (420px - 90px = 330px). */
+.fight-arena {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding-bottom: 56px; /* the fighter stands on the pavement */
+  overflow: hidden;
+  background-color: var(--wall);
+  background-image: linear-gradient(var(--wall), transparent), var(--street);
+  background-repeat: no-repeat;
+  background-size:
+    100% 90px,
+    480px 420px;
+  background-position:
+    center bottom 330px,
+    center bottom;
+  image-rendering: pixelated;
+  border-bottom: 2px solid var(--outline);
+}
+
+.fight-arena .spot canvas {
+  animation: bob 1.6s ease-in-out infinite;
+}
+
+/* The four cards you will bring, small, in one row. */
+.fight-deck {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+  padding: 16px 12px 6px;
+  font: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.fight-deck .game-card {
+  width: 64px;
+}
+
+.fight-deck .game-card:nth-child(odd) {
+  transform: rotate(-2deg);
+}
+
+.fight-deck .game-card:nth-child(even) {
+  transform: rotate(1.5deg);
+}
+
+.card-empty {
+  min-height: 74px;
+  background: transparent;
+  border-color: color-mix(in srgb, var(--wall-text) 30%, transparent);
+}
+
+/* The huge button. */
+.fight-go {
+  flex: none;
+  /* The bottom margin leaves room for the raised Fight tab under it. */
+  margin: 8px max(16px, env(safe-area-inset-right)) 30px max(16px, env(safe-area-inset-left));
+  padding: 12px;
+  font-size: clamp(30px, 10vw, 40px);
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transform: rotate(-1deg);
+}
+
+.fight-go:active:not(:disabled) {
+  transform: translateY(3px) rotate(-1deg);
+}
+
+/* A level-up is waiting: the button turns to progress colour and breathes. */
+.fight-go.level-up {
+  --btn-face: var(--teal);
+  text-transform: none;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.fight-go.level-up:active {
+  animation: none;
+}
+
+@keyframes pulse {
+  50% {
+    transform: rotate(-1deg) scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-in,
+  .fight-arena .spot canvas,
+  .fight-go.level-up {
+    animation: none !important;
+  }
+
+  .tab,
+  .tab[aria-current='page'] {
+    transition: none;
+  }
+
+  .fight-go:active:not(:disabled) {
+    transform: rotate(-1deg);
   }
 }

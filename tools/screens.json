@@ -1,5 +1,31 @@
 [
   {
+    "name": "setup",
+    "helper": true,
+    "steps": [
+      { "save": null },
+      { "click": "text=Start" },
+      { "eval": "const input = document.querySelector('.name-input'); input.value = 'Miquel'; input.dispatchEvent(new Event('input'));" },
+      { "click": "text=Create fighter" }
+    ]
+  },
+  {
+    "name": "level-10",
+    "helper": true,
+    "steps": [
+      { "include": "setup" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 10; s.character.xp = 9; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 }
+    ]
+  },
+  {
+    "name": "no-page-scroll",
+    "helper": true,
+    "steps": [
+      { "eval": "const d = document.documentElement; if (d.scrollHeight > innerHeight || d.scrollWidth > innerWidth) throw new Error(`the page scrolls: ${d.scrollWidth}x${d.scrollHeight} in ${innerWidth}x${innerHeight}`);" }
+    ]
+  },
+  {
     "name": "title",
     "steps": [
       { "save": null },
@@ -15,24 +41,47 @@
     ]
   },
   {
-    "name": "home",
+    "name": "tab-fight",
     "steps": [
-      { "save": null },
-      { "click": "text=Start" },
-      { "eval": "const input = document.querySelector('.name-input'); input.value = 'Miquel'; input.dispatchEvent(new Event('input'));" },
-      { "click": "text=Create fighter" },
-      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 10; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "include": "level-10" },
+      { "include": "no-page-scroll" },
+      { "shot": "tab-fight" }
+    ]
+  },
+  {
+    "name": "tab-fight-levelup",
+    "steps": [
+      { "include": "setup" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.pendingLevelUps = 1; s.offer = null; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
       { "wait": 1500 },
-      { "shot": "home" }
+      { "include": "no-page-scroll" },
+      { "shot": "tab-fight-levelup" },
+      { "click": ".fight-go" },
+      { "shot": "tab-fight-levelup-offer" }
+    ]
+  },
+  {
+    "name": "tab-fighter",
+    "steps": [
+      { "include": "level-10" },
+      { "click": ".tab-fighter" },
+      { "include": "no-page-scroll" },
+      { "shot": "tab-fighter" }
+    ]
+  },
+  {
+    "name": "tab-cards",
+    "steps": [
+      { "include": "level-10" },
+      { "click": ".tab-cards" },
+      { "include": "no-page-scroll" },
+      { "shot": "tab-cards" }
     ]
   },
   {
     "name": "levelup",
     "steps": [
-      { "save": null },
-      { "click": "text=Start" },
-      { "eval": "const input = document.querySelector('.name-input'); input.value = 'Miquel'; input.dispatchEvent(new Event('input'));" },
-      { "click": "text=Create fighter" },
+      { "include": "setup" },
       { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.pendingLevelUps = 1; s.offer = ['card:patch_up', 'card:hurl', 'card:rush']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
       { "wait": 1500 },
       { "shot": "levelup" }
@@ -41,26 +90,16 @@
   {
     "name": "prefight",
     "steps": [
-      { "save": null },
-      { "click": "text=Start" },
-      { "eval": "const input = document.querySelector('.name-input'); input.value = 'Miquel'; input.dispatchEvent(new Event('input'));" },
-      { "click": "text=Create fighter" },
-      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 10; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
-      { "wait": 1500 },
-      { "click": "text=Fight" },
+      { "include": "level-10" },
+      { "click": ".fight-go" },
       { "shot": "prefight" }
     ]
   },
   {
     "name": "fight",
     "steps": [
-      { "save": null },
-      { "click": "text=Start" },
-      { "eval": "const input = document.querySelector('.name-input'); input.value = 'Miquel'; input.dispatchEvent(new Event('input'));" },
-      { "click": "text=Create fighter" },
-      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 10; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
-      { "wait": 1500 },
-      { "click": "text=Fight" },
+      { "include": "level-10" },
+      { "click": ".fight-go" },
       { "click": "text=Start fight" },
       { "wait": 6000 },
       { "shot": "fight" }

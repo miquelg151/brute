@@ -1,16 +1,16 @@
 import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
-import { chooseUpgrade, prepareFight, startFight, type SaveData } from './core';
+import { chooseUpgrade, prepareFight, prepareLevelUp, startFight, type SaveData } from './core';
 import { loadArt } from './ui/art';
 import { animateIn } from './ui/motion';
 import { applyTheme } from './ui/theme';
 import { renderCreate } from './ui/screens/create';
 import { renderFight } from './ui/screens/fight';
 import { renderGallery } from './ui/screens/gallery';
-import { renderHome } from './ui/screens/home';
 import { renderLevelUp } from './ui/screens/levelup';
 import { renderPrefight } from './ui/screens/prefight';
 import { renderTitle } from './ui/screens/title';
+import { renderShell } from './ui/shell';
 import { clearSave, loadSave, storeSave } from './ui/storage';
 
 applyTheme();
@@ -74,9 +74,15 @@ function render(): void {
     return;
   }
 
-  renderHome(root, current, {
+  renderShell(root, current, {
     onFight: () => {
       prepareFight(current);
+      storeSave(current);
+      show();
+    },
+    // Level-ups normally get their offer when the fight ends; this covers a save without one.
+    onLevelUp: () => {
+      prepareLevelUp(current);
       storeSave(current);
       show();
     },
@@ -85,8 +91,20 @@ function render(): void {
       save = null;
       show();
     },
+    onSave: () => storeSave(current),
   });
 }
+
+// Every game button gives a tiny buzz when pressed, on phones that can (iPhones cannot).
+document.addEventListener('pointerdown', (event) => {
+  const button = (event.target as Element | null)?.closest?.('.btn');
+  if (!button || (button as HTMLButtonElement).disabled) return;
+  try {
+    navigator.vibrate?.(8);
+  } catch {
+    // Some browsers refuse; the press still works.
+  }
+});
 
 // Phaser draws text with the game font, so wait for it (briefly) and for custom art before the first render.
 const fontTimeout = new Promise((resolve) => setTimeout(resolve, 1500));

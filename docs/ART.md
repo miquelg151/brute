@@ -45,7 +45,7 @@ and the rest of the art. Skin, hair and outfit colours are picked from the same 
 | Fighter layers | 18 × 26 per frame, 5 frames side by side = 90 × 26 | All layers of a fighter must be the same size. Feet on the bottom row. |
 | Pets | about 13 × 9 (+ outline) | Feet on the bottom row. |
 | Weapons | about 13 × 4 (+ outline) | Drawn lying flat, handle on the left. |
-| Fight background | 240 × 210 exactly | The street (where fighters stand) starts at y = 175. In the arena every sprite is shown 3 times bigger. |
+| Fight background | 240 × 210 exactly | The street (where fighters stand) starts at y = 175. In the arena every sprite is shown 3 times bigger. The Fight tab shows it too, behind your fighter. |
 
 ## Fighters are drawn in layers
 
@@ -145,7 +145,8 @@ Android may cut it into a circle).
 | Sticker lettering (letter colour, outline, pink shadow) | `--sticker-...` variables in `src/style.css` (search "Sticker lettering") |
 | Paper outline around fighters | `--sticker-edge` in `src/style.css` |
 | Which skin, hair, outfit and class colours exist | `src/ui/palette.ts` |
-| Placeholder fight background (skyline, street) | `drawBackground` in `src/fight/ReplayScene.ts` |
+| Placeholder fight background (skyline, street) | `paintStreet` in `src/ui/street.ts` (the fight and the Fight tab both use it) |
+| Buttons' darker bottom edge, the tab bar, the top bar | `.btn`, `.tab-bar`, `.top-bar` in `src/style.css` |
 
 Adding a new hair style or more colour choices also needs the option counts in
 `APPEARANCE_OPTIONS` (`src/core/types.ts`) and, for hair, a name in

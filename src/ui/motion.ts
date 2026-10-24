@@ -23,3 +23,10 @@ export function reducedMotion(): boolean {
 export function pause(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, reducedMotion() ? 0 : ms));
 }
+
+/** Plays the short entrance of a tab's content after switching tabs (CSS: .tab-in). */
+export function tabIn(el: HTMLElement): void {
+  el.classList.remove('tab-in');
+  void el.offsetWidth; // restart the animation if it was still playing
+  el.classList.add('tab-in');
+}

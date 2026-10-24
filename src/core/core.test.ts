@@ -33,6 +33,7 @@ import {
   loadoutFor,
   newGame,
   prepareFight,
+  prepareLevelUp,
   recordPlay,
   lastPlayTick,
   playsInOrder,
@@ -220,6 +221,18 @@ describe('game', () => {
     chooseUpgrade(save, offer[0]!);
     expect(save.offer).toBeNull();
     expect(save.pendingLevelUps).toBe(0);
+  });
+
+  it('prepareLevelUp makes the offer when level-ups wait without one, and keeps an existing offer', () => {
+    const save = newGame('Me', look, 'brawler', 'port', 77);
+    expect(prepareLevelUp(save)).toBe(false);
+    expect(save.offer).toBeNull();
+    save.pendingLevelUps = 1;
+    expect(prepareLevelUp(save)).toBe(true);
+    const offer = save.offer!;
+    expect(offer).toHaveLength(3);
+    expect(prepareLevelUp(save)).toBe(true);
+    expect(save.offer).toBe(offer);
   });
 
   it('a save survives a JSON round trip and stays deterministic', () => {
