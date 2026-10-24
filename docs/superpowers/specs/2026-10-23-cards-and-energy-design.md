@@ -146,7 +146,7 @@ The rules live in one function so they can be tuned from the balance tool.
 - Replay (`src/fight/ReplayScene.ts`): a play is recorded at "current tick + 1", saved with
   the pending fight inputs, and the log is re-simulated; events up to the current tick are
   identical, so the replay continues seamlessly (the same mechanism as today's special).
-- Save format version 5 → 6: add `cards` (Special Strike + class card), `cardUses: {}`;
+- Save format version 4 → 5: add `cards` (Special Strike + class card), `cardUses: {}`;
   drop the daily counter and the warm-up score.
 - The daily limit (`FIGHTS_PER_DAY`, `fightsLeft`, `useFight`) is removed.
 
@@ -158,7 +158,7 @@ The rules live in one function so they can be tuned from the balance tool.
   a perfect card player wins at most 65% against a passive copy.
 - Unit tests: each card's effect, energy gain and spending, card levels from uses, the same
   plays give the same fight, a play recorded mid-fight re-simulates identical earlier
-  events, save migration 5 → 6, level-up offers can contain cards.
+  events, save migration 4 → 5, level-up offers can contain cards.
 
 ## Out of scope here
 

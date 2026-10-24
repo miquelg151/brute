@@ -105,6 +105,9 @@ for fighters looks like this:
 Interface icons (health, strength, skill, pet...) can be replaced the same way, with an
 `"icons": { "health": "icons/health.png" }` entry. The icon names and the placeholder
 designs are in `src/ui/icons.ts`; icons are about 7 × 7 pixels.
+Card stickers have no icons of their own: each card reuses an interface icon, listed in
+`CARD_ICONS` in `src/ui/cardView.ts`. So replacing, for example, `icons/pet.png` also
+changes the Sic 'em and Stray Dog cards.
 
 You only need the entries you have art for. Ids (like `traffic_sign`) are the ones
 in `src/core/catalog.ts`.

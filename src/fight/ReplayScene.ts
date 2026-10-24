@@ -80,6 +80,10 @@ export interface ReplayHooks {
   onEnergy: (team: 0 | 1, energy: number) => void;
   /** A main fighter played a card. */
   onCard: (team: 0 | 1, card: string) => void;
+  /** The replay reached a new tick. */
+  onTick: (tick: number) => void;
+  /** A unit joined the fight (summoned) or left it (knocked out or vanished). */
+  onUnitAlive: (idx: number, alive: boolean) => void;
 }
 
 /**
@@ -359,14 +363,17 @@ export class ReplayScene extends Phaser.Scene {
       case 'ward':
         return this.onWard(e.actor, e.absorbed, e.left);
       case 'summon':
+        this.hooks.onUnitAlive(e.actor, true);
         return this.onSummon(e.actor, e.hp);
       case 'unsummon':
+        this.hooks.onUnitAlive(e.actor, false);
         return this.onUnsummon(e.actor);
       case 'rest':
         return this.onRest(e.actor);
       case 'res':
         return this.onResources(e.actor, e.stamina, e.mana);
       case 'tick':
+        this.hooks.onTick(e.n);
         return Promise.resolve();
       case 'energy':
         this.hooks.onEnergy(this.teamOf(e.actor), e.energy);
@@ -376,6 +383,7 @@ export class ReplayScene extends Phaser.Scene {
       case 'special':
         return this.onSpecial(e.actor, e.quality, this.specialLanded(index, e.actor));
       case 'death':
+        this.hooks.onUnitAlive(e.actor, false);
         return this.onDeath(e.actor);
     }
   }
@@ -509,7 +517,7 @@ export class ReplayScene extends Phaser.Scene {
 
   private async onCast(actor: number, spell: string, target: number | null): Promise<void> {
     const v = this.view(actor);
-    this.floatText(v.sprite.x, this.headY(v) - 6, SKILLS[spell]?.name ?? spell, PAL.lilac);
+    this.floatText(v.sprite.x, this.headY(v) - 6, SKILLS[spell]?.name ?? CARDS[spell]?.name ?? spell, PAL.lilac);
     v.sprite.setTint(num(PAL.lilac));
     await this.tween({ targets: v.sprite, y: v.homeY - 4, duration: 120, yoyo: true });
     v.sprite.clearTint();
@@ -534,8 +542,10 @@ export class ReplayScene extends Phaser.Scene {
     const v = this.view(actor);
     v.hp = hp;
     v.sprite.setPosition(v.homeX, v.homeY).setAngle(0).clearTint();
-    this.floatText(v.homeX, this.headY(v), 'SPIRIT!', PAL.ice);
-    await this.tween({ targets: v.sprite, alpha: 0.85, duration: 300 });
+    // A spirit is see-through; the Stray Dog is a real dog.
+    const dog = this.log.roster[actor]!.defId === 'dog';
+    this.floatText(v.homeX, this.headY(v), dog ? 'STRAY DOG!' : 'SPIRIT!', PAL.ice);
+    await this.tween({ targets: v.sprite, alpha: dog ? 1 : 0.85, duration: 300 });
     this.drawBars(v);
   }
 

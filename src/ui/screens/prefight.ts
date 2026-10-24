@@ -129,7 +129,7 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
       ? h('section', {}, h('h2', {}, `Bring up to ${LOADOUT_SIZE} weapons`), h('p', { class: 'lede small' }, 'Accurate weapons are better against fighters who dodge a lot.'), weaponPicker(me.weapons, loadout))
       : '',
     me.cards.length > DECK_SIZE
-      ? h('section', {}, h('h2', {}, 'Your deck'), h('p', { class: 'lede small' }, 'Bring 4 cards. Cards level up as you play them.'), deckPicker(me.cards, deck, me.cardUses))
+      ? h('section', {}, h('h2', {}, 'Your deck'), h('p', { class: 'lede small' }, `Bring ${DECK_SIZE} cards. Cards level up as you play them.`), deckPicker(me.cards, deck, me.cardUses))
       : h('section', {}, h('h2', {}, 'Your cards'), cardList(me.cards, me.cardUses)),
     me.gear.length > 0 ? h('section', {}, h('h2', {}, 'Gear'), gearPicker(me.gear, worn)) : '',
     actionBar(fightBtn),

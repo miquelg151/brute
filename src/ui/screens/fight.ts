@@ -7,6 +7,7 @@ import {
   TARGETS,
   WEAPON_STYLES,
   finishFight,
+  lastPlayTick,
   recordBreak,
   recordPlay,
   simulateFight,
@@ -191,7 +192,19 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
     return btn;
   });
   const cardRow = h('div', { class: 'card-row' }, ...cardButtons);
-  const refreshCards = () => deck.forEach((id, i) => (cardButtons[i]!.disabled = energy < CARDS[id]!.cost));
+  const firstLog = simulateFight(save);
+  // After a reload the fight is watched again from the start. Until the replay passes the
+  // last saved play, the player has already seen what comes next, so the cards stay off.
+  const rewatchUntil = lastPlayTick(save);
+  let replayTick = -1;
+  // The player's Stray Dog (if the deck has it): its card does nothing while the dog fights.
+  const strayDog = firstLog.roster.findIndex((u) => u.team === 0 && u.summoned && u.name === 'Stray Dog');
+  let dogOut = false;
+  const refreshCards = () =>
+    deck.forEach((id, i) => {
+      const dogBusy = id === 'stray_dog' && dogOut;
+      cardButtons[i]!.disabled = replayTick <= rewatchUntil || energy < CARDS[id]!.cost || dogBusy;
+    });
   const clearQueued = () => cardButtons.forEach((b) => b.classList.remove('queued'));
   refreshCards();
   const summary = h('div', { class: 'card fight-summary hidden' });
@@ -204,6 +217,8 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
     cardRow.classList.add('hidden');
     const quality = await playSpecialStrike(zone);
     cardRow.classList.remove('hidden');
+    // Like after a break: the fight goes on at the chosen speed, even if Skip brought it there.
+    resumeSpeed();
     return quality;
   };
 
@@ -221,7 +236,7 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
   const resumeSpeed = () => scene.setSpeed(SPEEDS[speedIndex]!);
 
   // Created after the arena is in the DOM: Phaser sizes the canvas from its parent.
-  const scene = new ReplayScene(simulateFight(save), {
+  const scene = new ReplayScene(firstLog, {
     requestBreak: async (event, fighters) => {
       const choice = await breakSheet(save, event, fighters);
       recordBreak(save, choice);
@@ -251,6 +266,15 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
         huds[1].el.append(enemyCardSticker(card));
       }
       else clearQueued();
+    },
+    onTick: (tick) => {
+      replayTick = tick;
+      refreshCards();
+    },
+    onUnitAlive: (idx, alive) => {
+      if (idx !== strayDog) return;
+      dogOut = alive;
+      refreshCards();
     },
     onFinished: () => {
       const result = finishFight(save);

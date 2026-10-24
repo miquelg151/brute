@@ -1,7 +1,7 @@
 # Brute
 
 Mobile-first pixel-art auto-battler inspired by El Bruto: build a fighter, read your
-opponent, pick a stance and land special strikes in daily fights.
+opponent, pick a stance, and play cards with your energy in as many fights as you like.
 
 **Play it:** https://miquelg151.github.io/brute/ (updates automatically on every push to `main`).
 

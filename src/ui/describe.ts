@@ -35,7 +35,7 @@ export function upgradeKindLabel(upgradeId: string): string {
   if (!u) return '';
   if (u.kind === 'gear') return GEAR[u.ref]?.slot === 'armor' ? 'Armor' : 'Accessory';
   if (u.kind === 'skill' && SPELLS[u.ref]) return 'Spell';
-  return { stat: 'Stats', weapon: 'Weapon', skill: 'Skill', pet: 'Pet', card: 'Card' }[u.kind];
+  return { stat: 'Stats', weapon: 'Weapon', skill: 'Skill', pet: 'Pet', card: 'New card' }[u.kind];
 }
 
 /** Plain-words list of what a piece of gear changes, e.g. "+3 armor, -2 speed". */
