@@ -1916,10 +1916,34 @@ details.more[open] summary::after {
 }
 
 .card-name {
+  /* The name may use the card's side padding too, and a long word breaks rather than
+     sticking out of the card. */
+  max-width: calc(100% + 4px);
+  margin: 0 -2px;
   font-size: var(--t-xs);
   font-weight: 800;
   line-height: 1.1;
   text-align: center;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* Small cards (in the deck slots) get a smaller name, so words like "Weather" fit. */
+.game-card.small {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+/* The Cards tab's four-across grid makes its cards a little narrower too. */
+.deck-tray .card-name,
+.card-grid .card-name {
+  font-size: 12px;
+  letter-spacing: -0.4px;
+}
+
+.game-card.small .card-name {
+  font-size: 11px;
+  letter-spacing: -0.4px;
 }
 
 .card-stars {
@@ -2960,7 +2984,7 @@ button.game-card {
   margin-bottom: 30px;
 }
 
-/* The opponent's trait stickers in one row (two at most), with the "i" button at the end. */
+/* The opponent's trait stickers in one row. */
 .prefight .traits-box {
   flex: none;
   gap: 4px;
@@ -2986,9 +3010,11 @@ button.game-card {
   padding: 4px;
 }
 
-/* The "i" button always sits at the right end of the last row. */
-.scouting .info-btn {
-  margin-left: auto;
+/* The "i" button is stuck on the poster's top-right corner, half over its edge. */
+.poster .info-btn {
+  position: absolute;
+  top: -8px;
+  right: -6px;
 }
 
 .prefight .trait-info {
@@ -3086,6 +3112,8 @@ button.game-card {
 
 .mini-pane .lede {
   margin: 0;
+  font-size: var(--t-xs);
+  line-height: 1.3;
 }
 
 .mini-pane h2 {
@@ -3115,4 +3143,39 @@ button.game-card {
 
 .mini-pane .card-box .pick-item {
   padding: 4px 1px;
+}
+
+/* Short phones: everything above the mini tabs a little tighter, so the Plan tab shows
+   both Stance and Target without scrolling. The fighters are drawn a size smaller too
+   (see fighterSize in prefight.ts). */
+@media (max-height: 700px) {
+  .screen.prefight {
+    gap: 8px;
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+
+  .prefight .poster {
+    padding: 2px 0 6px;
+  }
+
+  .prefight .poster-name {
+    font-size: var(--t-m);
+  }
+
+  .prefight .vs {
+    font-size: var(--t-xxl);
+    margin-bottom: 24px;
+  }
+
+  .prefight .mini-pane {
+    gap: 6px;
+  }
+
+  .prefight .mini-pane h2 {
+    margin-top: 2px;
+  }
+
+  .prefight .option-detail {
+    padding: 6px 10px;
+  }
 }

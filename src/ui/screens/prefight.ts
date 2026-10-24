@@ -27,6 +27,7 @@ import {
 import { cardList } from '../cardView';
 import { maxHpOf, maxManaOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
+import type { PixelSize } from '../theme';
 import { TRAIT_ICONS, icon, iconValue, statRow, type IconName } from '../icons';
 import { CLASS_COLORS } from '../palette';
 import { deckPicker, gearPicker, planEditor, weaponPicker } from '../plan';
@@ -77,12 +78,14 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
       h('div', { class: 'poster-level small' }, `Lv ${level} `, rankBadge(level)),
     );
 
+  // On short phones the fighters are drawn a size smaller, so the mini tabs get more room.
+  const fighterSize: PixelSize = window.matchMedia('(max-height: 700px)').matches ? 'small' : 'normal';
   const poster = h(
     'div',
     { class: 'poster taped' },
-    side(pixelArt(drawFighter(me), 'normal'), me.name, me.level),
+    side(pixelArt(drawFighter(me), fighterSize), me.name, me.level),
     h('div', { class: 'vs' }, 'VS'),
-    side(pixelArt(drawFighter(foe), 'normal', true), foe.name, foe.level),
+    side(pixelArt(drawFighter(foe), fighterSize, true), foe.name, foe.level),
   );
 
   // ---- Everything about the opponent, in a sheet opened by the "i" button ----
@@ -133,10 +136,16 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
       h('div', { class: 'sheet-actions' }, closeBtn),
     );
     const backdrop = h('div', { class: 'sheet-backdrop' }, sheet);
+    // If the screen is replaced while the sheet is open, the sheet goes away with it.
+    const watch = new MutationObserver(() => {
+      if (!screen.isConnected) close();
+    });
     const close = () => {
+      watch.disconnect();
       backdrop.remove();
       document.body.classList.remove('sheet-open');
     };
+    watch.observe(root, { childList: true });
     closeBtn.addEventListener('click', close);
     // Tapping the dark area around the sheet closes it too.
     backdrop.addEventListener('click', (event) => {
@@ -148,12 +157,14 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
 
   const infoBtn = h('button', { class: 'info-btn', 'aria-label': `Everything about ${foe.name}`, title: `Everything about ${foe.name}` }, 'i');
   infoBtn.addEventListener('click', openFoeSheet);
+  // Stuck on the poster's top-right corner, next to the opponent.
+  poster.append(infoBtn);
 
   // ---- What stands out about the opponent, as stickers: tap one to read what it means ----
 
-  // With many traits the stickers show only their icon, so they never take more than two rows.
-  const iconsOnly = foeTraits.length > 3;
-  const info = h('p', { class: 'trait-info small' }, foeTraits.length ? 'Tap a sticker to see what it means.' : 'Nothing stands out.');
+  // With three or more traits the stickers show only their icon, so they stay on one row.
+  const iconsOnly = foeTraits.length >= 3;
+  const info = h('p', { class: 'trait-info small' }, foeTraits.length ? 'Tap a sticker to learn more.' : 'Nothing stands out.');
   const chips = foeTraits.map((t) => {
     const trait = TRAITS[t];
     const chip = h(
@@ -168,14 +179,14 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
     });
     return chip;
   });
-  const scouting = h('div', { class: 'traits-box' }, h('div', { class: 'scouting' }, ...chips, infoBtn), info);
+  const scouting = h('div', { class: 'traits-box' }, h('div', { class: 'scouting' }, ...chips), info);
 
   // ---- The three mini tabs and what each one shows ----
 
   const planPane = h(
     'div',
     { class: 'mini-pane' },
-    h('p', { class: 'lede small' }, '✓ = strong against this opponent. You can change your plan at each break.'),
+    h('p', { class: 'lede small' }, '✓ = strong vs this foe. Change it at each break.'),
     ...planEditor(plan, foeTraits),
   );
 
