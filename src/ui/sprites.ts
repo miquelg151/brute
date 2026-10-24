@@ -1,7 +1,7 @@
 // Sprites for fighters, pets and weapons. Hand-made art from public/art is used when
 // present (see art.ts); otherwise a placeholder drawn in code.
 // Every sprite faces right; the replay flips it for the right-hand team.
-import type { Appearance, ClassId } from '../core';
+import { rankOf, type Appearance, type ClassId } from '../core';
 import { artImage, artManifest, imageToCanvas } from './art';
 import { HAIR_COLORS, OUTFIT_COLORS, SKIN_TONES, shade } from './palette';
 import { PAL } from './theme';
@@ -10,6 +10,16 @@ type Px = (x: number, y: number, color: string) => void;
 type Rect = (x: number, y: number, w: number, h: number, color: string) => void;
 
 const OUTLINE = PAL.black;
+
+/** Everything that decides how a fighter looks. A Character has all of it. */
+export interface FighterLook {
+  appearance: Appearance;
+  classId: ClassId;
+  /** Where they grew up: adds the origin layer. */
+  originId?: string;
+  /** Their level: adds the rank layer. */
+  level?: number;
+}
 
 export function sprite(w: number, h: number, draw: (px: Px, rect: Rect) => void): HTMLCanvasElement {
   const grid: (string | null)[][] = Array.from({ length: h }, () => Array<string | null>(w).fill(null));
@@ -209,8 +219,9 @@ function placeholderWeapon(weaponId: string): HTMLCanvasElement {
   }
 }
 
-/** Layered custom fighter: body, outfit, hair (tinted), then untinted class details. */
-function customFighter(look: Appearance, classId: ClassId): HTMLCanvasElement | null {
+/** Layered custom fighter: body, outfit, hair (tinted), then untinted class details, origin and rank. */
+function customFighter(fighter: FighterLook): HTMLCanvasElement | null {
+  const { appearance: look, classId } = fighter;
   const f = artManifest().fighter;
   const body = artImage(f?.body);
   if (!f || !body) return null;
@@ -224,15 +235,19 @@ function customFighter(look: Appearance, classId: ClassId): HTMLCanvasElement | 
   if (hair) imageToCanvas(hair, HAIR_COLORS[look.hairColor], canvas);
   const extra = artImage(f.extra?.[classId]);
   if (extra) imageToCanvas(extra, undefined, canvas);
+  const origin = fighter.originId ? artImage(f.origin?.[fighter.originId]) : null;
+  if (origin) imageToCanvas(origin, undefined, canvas);
+  const rank = artImage(f.rank?.[rankOf(fighter.level ?? 1).id]);
+  if (rank) imageToCanvas(rank, undefined, canvas);
   return canvas;
 }
 
 export type Pose = 'idle' | 'attack' | 'hurt';
 
 /** Every animation frame of a fighter, cut from the layer strips (just one without custom art). */
-export function fighterFrames(look: Appearance, classId: ClassId): HTMLCanvasElement[] {
-  const sheet = customFighter(look, classId);
-  if (!sheet) return [placeholderFighter(look, classId)];
+export function fighterFrames(f: FighterLook): HTMLCanvasElement[] {
+  const sheet = customFighter(f);
+  if (!sheet) return [placeholderFighter(f.appearance, f.classId)];
   const w = artManifest().fighter?.frameWidth ?? sheet.width;
   const count = Math.max(1, Math.floor(sheet.width / w));
   return Array.from({ length: count }, (_, i) => {
@@ -251,8 +266,8 @@ export function fighterAnimation(pose: Pose): number[] {
 }
 
 /** A fighter standing still (the first frame). */
-export function drawFighter(look: Appearance, classId: ClassId): HTMLCanvasElement {
-  return fighterFrames(look, classId)[0]!;
+export function drawFighter(f: FighterLook): HTMLCanvasElement {
+  return fighterFrames(f)[0]!;
 }
 
 export function drawPet(petId: string): HTMLCanvasElement {

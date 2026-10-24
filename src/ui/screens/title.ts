@@ -13,7 +13,7 @@ export function renderTitle(root: HTMLElement, onStart: () => void): void {
     'main',
     { class: 'screen title' },
     logo(),
-    h('div', { class: 'spot spot-big' }, pixelArt(drawFighter(LOOK, 'brawler'), 'big')),
+    h('div', { class: 'spot spot-big' }, pixelArt(drawFighter({ appearance: LOOK, classId: 'brawler' }), 'big')),
     h('p', { class: 'title-tagline' }, 'Street fights with your friends.'),
     actionBar(startBtn),
   );

@@ -10,8 +10,8 @@ same way (see the end of this page).
 ## Workflow
 
 1. Run the game (`npm run dev`) and open **http://localhost:5199/?gallery**.
-   The gallery shows every sprite. Use **Save PNG** to download one
-   as a size reference.
+   The gallery shows every sprite, including one brawler per origin and one per rank
+   (Regular to Legend). Use **Save PNG** to download one as a size reference.
 2. Draw your sprite. Good tools:
    - **Aseprite** (paid, the standard for pixel art)
    - **LibreSprite** (free, Aseprite's open-source fork)
@@ -58,8 +58,15 @@ fighter is assembled from layers that the game colours in:
 | `outfit` (one per class) | outfit colour | Top: shirt, hoodie, jacket, robe. **Greyscale.** |
 | `hair` (one per hair style) | hair colour | **Greyscale.** Use `null` for "bald". |
 | `extra` (one per class, optional) | not coloured | Real colours: trousers and shoes, plus the class details (headband, cap, sunglasses, hood, runes...). |
+| `origin` (one per origin, optional) | not coloured | Where the fighter grew up: beanie and anchor tattoos (port), hood and scarf (rooftops), headphones (metro), goggles and apron (industrial), mutant ears and eyes (sewers), metal plates and LED eye (scrapyard). Drawn after `extra`. |
+| `rank` (one per rank, optional) | not coloured | How seasoned the fighter is: wrist wraps, chain, medal, gold belt... Drawn last. |
 
-They are drawn in that order, so `extra` covers everything else.
+They are drawn in that order, so `rank` covers everything else.
+
+Ranks come from the fighter's level: **Regular** from level 5, **Veteran** from 10,
+**Champion** from 15 and **Legend** from 20. A **Rookie** (levels 1-4) has no rank layer,
+so there is no file for it. The rank layers don't add up: a Legend only wears the legend
+layer, so draw everything a Legend should show in that one file.
 
 ### Animation frames
 
@@ -97,6 +104,8 @@ for fighters looks like this:
   "hair": ["fighter/hair-short.png", "fighter/hair-mohawk.png", "fighter/hair-long.png", null],
   "outfit": { "brawler": "fighter/outfit-brawler.png", "...": "one per class" },
   "extra": { "brawler": "fighter/extra-brawler.png", "...": "one per class" },
+  "origin": { "port": "fighter/origin-port.png", "...": "one per origin" },
+  "rank": { "regular": "fighter/rank-regular.png", "veteran": "...", "champion": "...", "legend": "..." },
   "frameWidth": 18,
   "animations": { "idle": [0, 1], "attack": [2, 3], "hurt": [4] }
 }

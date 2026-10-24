@@ -43,7 +43,7 @@ export function renderHome(root: HTMLElement, save: SaveData, actions: HomeActio
       h(
         'header',
         { class: 'hero' },
-        h('div', { class: 'spot' }, pixelArt(drawFighter(c.appearance, c.classId), 'big')),
+        h('div', { class: 'spot' }, pixelArt(drawFighter(c), 'big')),
         h(
           'div',
           { class: 'hero-info' },

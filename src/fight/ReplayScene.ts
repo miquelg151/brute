@@ -162,7 +162,7 @@ export class ReplayScene extends Phaser.Scene {
     const sideCount: [number, number] = [0, 0];
     this.log.roster.forEach((info, idx) => {
       const dir: 1 | -1 = info.team === 0 ? 1 : -1;
-      const canvases = info.isMain && info.appearance ? fighterFrames(info.appearance, info.defId as ClassId) : [drawPet(info.defId)];
+      const canvases = info.isMain && info.appearance ? fighterFrames({ appearance: info.appearance, classId: info.defId as ClassId, originId: info.originId, level: info.level }) : [drawPet(info.defId)];
       const frames = canvases.map((canvas, f) => {
         const key = `unit-${idx}-${f}`;
         this.textures.addCanvas(key, canvas);

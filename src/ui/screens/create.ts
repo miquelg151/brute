@@ -47,7 +47,7 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
   const lookValues = new Map<keyof Appearance, HTMLElement>();
 
   const refreshPreview = () => {
-    preview.replaceChildren(pixelArt(drawFighter(look, classId), 'big'));
+    preview.replaceChildren(pixelArt(drawFighter({ appearance: look, classId, originId, level: 1 }), 'big'));
     for (const row of LOOK_ROWS) {
       const v = look[row.key];
       const el = lookValues.get(row.key)!;
@@ -186,7 +186,10 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
       classCarousel(),
       h('h2', {}, 'Origin'),
       h('p', { class: 'lede small' }, 'A small bonus in every fight.'),
-      choiceGrid(ORIGIN_IDS, originCard, (id) => (originId = id), originId),
+      choiceGrid(ORIGIN_IDS, originCard, (id) => {
+        originId = id;
+        refreshPreview();
+      }, originId),
       actionBar(startBtn),
     ),
   );

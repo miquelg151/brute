@@ -1,7 +1,7 @@
 // Art preview page (open the game with ?gallery). Shows every sprite the game can draw,
 // marks which ones come from custom art, and lets you save any of them as a PNG template.
 // It also shows the game palette, which can be saved for Aseprite, LibreSprite or Piskel.
-import { APPEARANCE_OPTIONS, CLASSES, CLASS_IDS, PETS, WEAPONS, type Appearance, type ClassId } from '../../core';
+import { APPEARANCE_OPTIONS, CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, PETS, RANKS, WEAPONS, type Appearance, type ClassId } from '../../core';
 import { artImage, artManifest } from '../art';
 import { h, pixelArt } from '../dom';
 import { ICON_NAMES, drawIcon } from '../icons';
@@ -36,8 +36,8 @@ const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 export function renderGallery(root: HTMLElement): void {
   const m = artManifest();
   const customFighter = !!artImage(m.fighter?.body);
-  const fighter = (look: Appearance, classId: ClassId, label: string, file: string) =>
-    tile(label, drawFighter(look, classId), `${file}.png`, customFighter);
+  const fighter = (look: Appearance, classId: ClassId, label: string, file: string, originId?: string, level?: number) =>
+    tile(label, drawFighter({ appearance: look, classId, originId, level }), `${file}.png`, customFighter);
 
   root.append(
     h(
@@ -59,6 +59,19 @@ export function renderGallery(root: HTMLElement): void {
       ),
       h('h2', {}, 'Classes'),
       h('div', { class: 'gallery-grid' }, ...CLASS_IDS.map((id) => fighter(BASE_LOOK, id, CLASSES[id].name, `fighter-${id}`))),
+      h('h2', {}, 'Origins'),
+      h(
+        'div',
+        { class: 'gallery-grid' },
+        ...ORIGIN_IDS.map((id) => fighter(BASE_LOOK, 'brawler', ORIGINS[id]!.name, `origin-${id}`, id)),
+      ),
+      h('h2', {}, 'Ranks'),
+      h(
+        'div',
+        { class: 'gallery-grid' },
+        // Rookie has no layer, so the ranks start at Regular.
+        ...RANKS.slice(1).map((rank) => fighter(BASE_LOOK, 'brawler', `${rank.name} (level ${rank.from})`, `rank-${rank.id}`, undefined, rank.from)),
+      ),
       h('h2', {}, 'Skin tones'),
       h('div', { class: 'gallery-grid' }, ...range(APPEARANCE_OPTIONS.skinTone).map((i) => fighter({ ...BASE_LOOK, skinTone: i }, 'brawler', `Skin ${i + 1}`, `skin-${i}`))),
       h('h2', {}, 'Hair styles'),

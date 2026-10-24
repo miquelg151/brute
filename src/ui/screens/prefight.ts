@@ -78,10 +78,10 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
     h(
       'div',
       { class: 'poster taped' },
-      side(pixelArt(drawFighter(me.appearance, me.classId), 'normal'), me.name, h('div', { class: 'dim small' }, `Level ${me.level}`)),
+      side(pixelArt(drawFighter(me), 'normal'), me.name, h('div', { class: 'dim small' }, `Level ${me.level}`)),
       h('div', { class: 'vs' }, 'VS'),
       side(
-        pixelArt(drawFighter(foe.appearance, foe.classId), 'normal', true),
+        pixelArt(drawFighter(foe), 'normal', true),
         foe.name,
         h('div', { class: 'small', style: `color:${CLASS_COLORS[foe.classId]}` }, `Level ${foe.level} ${CLASSES[foe.classId].name}`),
       ),

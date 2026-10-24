@@ -1,7 +1,7 @@
 // Optional hand-made pixel art. Files listed in public/art/manifest.json replace the
 // placeholder sprites drawn in code; anything not listed (or missing) keeps the placeholder.
 // See docs/ART.md for the file format.
-import type { ClassId } from '../core';
+import type { ClassId, RankId } from '../core';
 
 export interface ArtManifest {
   fighter?: {
@@ -13,6 +13,10 @@ export interface ArtManifest {
     outfit?: Partial<Record<ClassId, string>>;
     /** Full-colour details per class (headband, cap, glasses...), drawn on top untinted. */
     extra?: Partial<Record<ClassId, string>>;
+    /** One full-colour layer per origin id, drawn after `extra` (tattoos, hood, goggles, metal plates...). */
+    origin?: Record<string, string>;
+    /** One full-colour layer per rank (no file for 'rookie'), drawn last (wraps, chain, medal, belt...). */
+    rank?: Partial<Record<RankId, string>>;
     /** Width of one animation frame: every layer is a strip of frames side by side. Leave it out for a single picture. */
     frameWidth?: number;
     /** Which frames (counting from 0) each pose uses. Idle frames loop; attack frames play in order. */
@@ -39,6 +43,8 @@ function collectPaths(m: ArtManifest): string[] {
     ...(f.hair ?? []),
     ...Object.values(f.outfit ?? {}),
     ...Object.values(f.extra ?? {}),
+    ...Object.values(f.origin ?? {}),
+    ...Object.values(f.rank ?? {}),
     ...Object.values(m.pets ?? {}),
     ...Object.values(m.weapons ?? {}),
     ...Object.values(m.icons ?? {}),

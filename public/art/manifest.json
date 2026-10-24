@@ -21,6 +21,20 @@
       "tamer": "fighter/extra-tamer.png",
       "mystic": "fighter/extra-mystic.png"
     },
+    "origin": {
+      "port": "fighter/origin-port.png",
+      "rooftops": "fighter/origin-rooftops.png",
+      "metro": "fighter/origin-metro.png",
+      "industrial": "fighter/origin-industrial.png",
+      "sewers": "fighter/origin-sewers.png",
+      "scrapyard": "fighter/origin-scrapyard.png"
+    },
+    "rank": {
+      "regular": "fighter/rank-regular.png",
+      "veteran": "fighter/rank-veteran.png",
+      "champion": "fighter/rank-champion.png",
+      "legend": "fighter/rank-legend.png"
+    },
     "frameWidth": 18,
     "animations": {
       "idle": [
