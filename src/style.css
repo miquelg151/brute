@@ -1848,3 +1848,90 @@ details.more[open] summary::after {
     animation: none !important;
   }
 }
+
+/* --- Cards ------------------------------------------------------------------ */
+.game-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 78px;
+  padding: 10px 4px 6px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough-2);
+  box-shadow: inset 0 5px 0 var(--stripe, transparent);
+  text-shadow: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.game-card.small {
+  width: 64px;
+}
+
+.card-cost {
+  position: absolute;
+  top: -10px;
+  left: -8px;
+  min-width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--yellow);
+  border: 2px solid var(--ink);
+  font-weight: 800;
+  color: var(--sticker-fill);
+  -webkit-text-stroke: var(--sticker-outline-sm) var(--sticker-ink);
+  paint-order: stroke fill;
+}
+
+.card-art {
+  height: 34px;
+  display: grid;
+  place-items: center;
+}
+
+.card-name {
+  font-size: var(--t-xs);
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.card-stars {
+  font-size: 10px;
+  color: var(--orange);
+  letter-spacing: -1px;
+}
+
+.card-progress {
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--paper-2);
+  overflow: hidden;
+}
+
+.card-progress > div {
+  height: 100%;
+  background: var(--teal);
+}
+
+.card-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 10px;
+  padding-top: 10px;
+}
+
+.pick-art .game-card {
+  transform: scale(0.8);
+}
+
+.pick-item:has(.game-card) .pick-art {
+  height: auto;
+}

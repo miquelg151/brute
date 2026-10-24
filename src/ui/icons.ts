@@ -115,6 +115,10 @@ const ICONS = {
     rows: ['..L....', '.LT....', 'LTTTTT.', '.TD..T.', '..D..T.', '.....T.', '.TTTTD.'],
     colors: { T: PAL.teal, L: PAL.cyan, D: PAL.forest },
   },
+  rage: {
+    rows: ['...R...', '..RR...', '..RRR.R', '.RRYRRR', 'RRYYYRR', 'RYYWYYR', '.RYYYR.'],
+    colors: { R: PAL.red, Y: PAL.yellow, W: PAL.white },
+  },
   fist: FIST,
   left: {
     rows: ['...W', '..WW', '.WWW', 'WWWW', '.WWW', '..WW', '...W'],

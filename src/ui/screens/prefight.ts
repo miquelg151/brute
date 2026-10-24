@@ -1,5 +1,6 @@
 import {
   CLASSES,
+  DECK_SIZE,
   DEFAULT_PLAN,
   GEAR,
   LOADOUT_SIZE,
@@ -19,11 +20,12 @@ import {
   type Plan,
   type SaveData,
 } from '../../core';
+import { cardSticker, levelOf } from '../cardView';
 import { maxHpOf, maxManaOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
 import { TRAIT_ICONS, icon, iconValue, statRow } from '../icons';
 import { CLASS_COLORS } from '../palette';
-import { gearPicker, planEditor, weaponPicker } from '../plan';
+import { deckPicker, gearPicker, planEditor, weaponPicker } from '../plan';
 import { drawFighter } from '../sprites';
 import { actionBar } from '../widgets';
 
@@ -44,11 +46,12 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
   const plan: Plan = { ...DEFAULT_PLAN };
   const loadout = new Set(loadoutFor(me));
   const worn: GearChoice = gearFor(me);
+  const deck = [...defaultTactics(me).deck];
 
   const screen = h('main', { class: 'screen prefight' });
 
   const fightBtn = h('button', { class: 'btn btn-primary btn-big' }, 'Start fight');
-  fightBtn.addEventListener('click', () => actions.onStart({ ...plan }, [...loadout], { ...worn }, defaultTactics(me).deck));
+  fightBtn.addEventListener('click', () => actions.onStart({ ...plan }, [...loadout], { ...worn }, [...deck]));
 
   /** What stands out about the opponent, as stickers: tap one to read what it means. */
   const traitStickers = () => {
@@ -125,6 +128,9 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
     me.weapons.length > LOADOUT_SIZE
       ? h('section', {}, h('h2', {}, `Bring up to ${LOADOUT_SIZE} weapons`), h('p', { class: 'lede small' }, 'Accurate weapons are better against fighters who dodge a lot.'), weaponPicker(me.weapons, loadout))
       : '',
+    me.cards.length > DECK_SIZE
+      ? h('section', {}, h('h2', {}, 'Your deck'), h('p', { class: 'lede small' }, 'Bring 4 cards. Cards level up as you play them.'), deckPicker(me.cards, deck, me.cardUses))
+      : h('section', {}, h('h2', {}, 'Your cards'), h('div', { class: 'card-list' }, ...me.cards.map((id) => cardSticker(id, levelOf(me.cardUses, id), { uses: me.cardUses[id] ?? 0 })))),
     me.gear.length > 0 ? h('section', {}, h('h2', {}, 'Gear'), gearPicker(me.gear, worn)) : '',
     actionBar(fightBtn),
   );

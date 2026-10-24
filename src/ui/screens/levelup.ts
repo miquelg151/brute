@@ -1,4 +1,5 @@
 import { CLASSES, GEAR, SPELLS, UPGRADES_BY_ID, type SaveData } from '../../core';
+import { cardSticker } from '../cardView';
 import { upgradeDetail, upgradeKindLabel } from '../describe';
 import { h } from '../dom';
 import { icon, type IconName } from '../icons';
@@ -32,7 +33,8 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
             ? 'magic'
             : 'skill'
     ) as IconName;
-    const picture = art ? slot(art, '') : h('div', { class: 'slot' }, h('div', { class: 'slot-art' }, icon(mainStat, u.name, 'normal')));
+    const picture =
+      u.kind === 'card' ? cardSticker(u.ref, 1, { size: 'small' }) : art ? slot(art, '') : h('div', { class: 'slot' }, h('div', { class: 'slot-art' }, icon(mainStat, u.name, 'normal')));
     return h(
       'button',
       { class: 'choice upgrade', onclick: (e: Event) => void pick(id, e.currentTarget as HTMLElement) },

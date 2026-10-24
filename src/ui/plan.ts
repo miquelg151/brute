@@ -1,6 +1,8 @@
 // Pickers for the strategy choices, shared by the pre-fight screen and the breaks.
 import {
   GEAR,
+  CARDS,
+  DECK_SIZE,
   LOADOUT_SIZE,
   STANCES,
   STANCE_IDS,
@@ -16,6 +18,7 @@ import {
   type TacticOption,
   type Trait,
 } from '../core';
+import { cardSticker, levelOf } from './cardView';
 import { gearEffects } from './describe';
 import { h, pixelArt } from './dom';
 import { draggable } from './drag';
@@ -162,6 +165,17 @@ function stickerPicker(items: PickItem[], chosen: string[], capacity: number, on
   };
   render();
   return h('div', { class: 'picker' }, slots, hint, bag);
+}
+
+/** Choose up to DECK_SIZE of the owned cards. Edits `chosen` in place. */
+export function deckPicker(owned: string[], chosen: string[], uses: Record<string, number>): HTMLElement {
+  const items: PickItem[] = owned.map((id) => ({
+    id,
+    name: CARDS[id]!.name,
+    detail: `${CARDS[id]!.cost}⚡`,
+    art: () => cardSticker(id, levelOf(uses, id), { size: 'small' }),
+  }));
+  return stickerPicker(items, chosen, DECK_SIZE, () => {});
 }
 
 /** Bring up to LOADOUT_SIZE of the owned weapons. Edits `chosen` in place. */
