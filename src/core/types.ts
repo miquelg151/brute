@@ -55,4 +55,6 @@ export interface Character {
   cards: string[];
   /** How many times each card has been played in finished fights; sets its level. */
   cardUses: Record<string, number>;
+  /** The cards the player likes to bring (optional; see preferredDeck). */
+  deck?: string[];
 }

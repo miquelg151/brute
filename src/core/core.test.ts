@@ -24,6 +24,9 @@ import {
   cardLevel,
   chooseUpgrade,
   createCharacter,
+  defaultTactics,
+  preferredDeck,
+  setPreferredDeck,
   generateOpponent,
   mixSeed,
   finishFight,
@@ -1036,5 +1039,44 @@ describe('origin cards', () => {
       return log.events.filter((e) => e.t === 'hit' && e.kind === 'spell' && e.actor === 0).slice(0, 5).reduce((s, e) => s + (e.t === 'hit' ? e.damage : 0), 0);
     };
     expect(spellDamage('scrapyard')).toBeLessThan(spellDamage('industrial'));
+  });
+});
+
+describe('preferred deck', () => {
+  const mk = () => {
+    const c = createCharacter('D', look, 'brawler', 'port');
+    c.cards.push('patch_up', 'hurl', 'rush');
+    return c;
+  };
+
+  it('without a saved deck, it is the first cards', () => {
+    expect(preferredDeck(mk())).toEqual(['special', 'rage', 'weather_wave', 'patch_up']);
+  });
+
+  it('a saved deck is used, in its order', () => {
+    const c = mk();
+    setPreferredDeck(c, ['rush', 'special', 'hurl', 'rage']);
+    expect(preferredDeck(c)).toEqual(['rush', 'special', 'hurl', 'rage']);
+    expect(defaultTactics(c).deck).toEqual(['rush', 'special', 'hurl', 'rage']);
+  });
+
+  it('cards not owned are dropped and the deck is topped up in card order', () => {
+    const c = mk();
+    c.deck = ['rush', 'bolt', 'rush'];
+    expect(preferredDeck(c)).toEqual(['rush', 'special', 'rage', 'weather_wave']);
+  });
+
+  it('setPreferredDeck keeps only owned cards, no repeats, at most DECK_SIZE', () => {
+    const c = mk();
+    setPreferredDeck(c, ['hurl', 'hurl', 'bolt', 'special', 'rage', 'rush', 'patch_up']);
+    expect(c.deck).toEqual(['hurl', 'special', 'rage', 'rush']);
+  });
+
+  it('starting a fight remembers the deck that was brought', () => {
+    const save = newGame('E', look, 'brawler', 'port', 3);
+    save.character.cards.push('rush');
+    prepareFight(save);
+    startFight(save, DEFAULT_PLAN, [], undefined, ['rush', 'special']);
+    expect(save.character.deck).toEqual(['rush', 'special']);
   });
 });

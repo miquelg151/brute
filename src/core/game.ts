@@ -76,13 +76,28 @@ export function newGame(name: string, appearance: Appearance, classId: ClassId, 
 }
 
 export function defaultTactics(c: Character): Tactics {
-  return { ...DEFAULT_PLAN, weapons: loadoutFor(c), gear: gearFor(c), deck: c.cards.slice(0, DECK_SIZE) };
+  return { ...DEFAULT_PLAN, weapons: loadoutFor(c), gear: gearFor(c), deck: preferredDeck(c) };
 }
 
 /** Offers are derived from the save seed and level, so reloading never rerolls them. */
 function offerFor(save: SaveData): string[] {
   const rng = new Rng(mixSeed(save.seed, 1_000_000 + save.character.level * 31 + save.pendingLevelUps));
   return rollOffer(save.character, rng);
+}
+
+/** The deck brought by default: the saved one (owned cards only), topped up in card order. */
+export function preferredDeck(c: Character): string[] {
+  const deck: string[] = [];
+  for (const id of [...(c.deck ?? []), ...c.cards]) {
+    if (deck.length >= DECK_SIZE) break;
+    if (c.cards.includes(id) && !deck.includes(id)) deck.push(id);
+  }
+  return deck;
+}
+
+/** Remembers the player's deck (owned cards only, no repeats, at most DECK_SIZE). */
+export function setPreferredDeck(c: Character, ids: string[]): void {
+  c.deck = ids.filter((id, i) => c.cards.includes(id) && ids.indexOf(id) === i).slice(0, DECK_SIZE);
 }
 
 /** The player's chosen cards (owned ones only, at most DECK_SIZE) with their levels from use. */
@@ -121,6 +136,8 @@ export function startFight(save: SaveData, plan: Plan, weapons: string[], gear?:
     gear: gearFor(save.character, gear),
     deck: Object.keys(playerDeck(save.character, deck)),
   };
+  // Remember the deck that was brought, so the next fight starts with it.
+  setPreferredDeck(save.character, fight.tactics.deck);
   return fight.tactics;
 }
 

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "balance": "tsx tools/balance.ts",
-    "icons": "tsx tools/make-icons.ts"
+    "icons": "tsx tools/make-icons.ts",
+    "screens": "tsx tools/screens.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
