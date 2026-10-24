@@ -8,6 +8,16 @@ export const HAIR_COLORS = [PAL.night, PAL.brownDark, PAL.wood, PAL.sand, PAL.cr
 export const OUTFIT_COLORS = [PAL.blue, PAL.red, PAL.green, PAL.yellow, PAL.purple, PAL.orange, PAL.teal, PAL.mist];
 export const HAIR_STYLE_NAMES = ['Short', 'Mohawk', 'Long', 'Bald'];
 
+/** The colour of each origin (its cards' stripe). */
+export const ORIGIN_COLORS: Record<string, string> = {
+  port: PAL.blue,
+  rooftops: PAL.amber,
+  metro: PAL.magenta,
+  industrial: PAL.orange,
+  sewers: PAL.moss,
+  scrapyard: PAL.cyan,
+};
+
 export const CLASS_COLORS: Record<ClassId, string> = {
   brawler: PAL.coral,
   parkour: PAL.teal,

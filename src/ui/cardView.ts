@@ -1,8 +1,8 @@
 // A card drawn as a paper sticker: class stripe, pixel icon, name, cost bubble, level stars.
-import { CARDS, MAX_CARD_LEVEL, cardLevel, usesForLevel } from '../core';
+import { CARDS, MAX_CARD_LEVEL, cardLevel, cardOrigin, usesForLevel } from '../core';
 import { h } from './dom';
 import { icon, type IconName } from './icons';
-import { CLASS_COLORS } from './palette';
+import { CLASS_COLORS, ORIGIN_COLORS } from './palette';
 
 /** Which interface icon each card shows (any icon can be replaced by a PNG, see docs/ART.md). */
 export const CARD_ICONS: Record<string, IconName> = {
@@ -26,7 +26,8 @@ export const CARD_ICONS: Record<string, IconName> = {
 
 export function cardSticker(id: string, level: number, opts: { uses?: number; size?: 'small' | 'big' } = {}): HTMLElement {
   const card = CARDS[id]!;
-  const stripe = card.pool === 'general' ? 'var(--wall-dim)' : CLASS_COLORS[card.pool];
+  const stripe =
+    card.pool === 'general' ? 'var(--wall-dim)' : card.pool === 'origin' ? (ORIGIN_COLORS[cardOrigin(id) ?? ''] ?? 'var(--wall-dim)') : CLASS_COLORS[card.pool];
   const stars = h('span', { class: 'card-stars', 'aria-label': `Level ${level}` }, '★'.repeat(level) + '☆'.repeat(MAX_CARD_LEVEL - level));
   const el = h(
     'div',

@@ -22,12 +22,12 @@ export function randomAppearance(rng: Rng): Appearance {
  * Builds a bot opponent by levelling a fresh character with the same offer
  * system players use, picking randomly at each level-up.
  */
-export function generateOpponent(level: number, rng: Rng, classId?: ClassId): Character {
+export function generateOpponent(level: number, rng: Rng, classId?: ClassId, originId?: string): Character {
   const c = createCharacter(
     rng.pick(NAMES),
     randomAppearance(rng),
     classId ?? rng.pick(CLASS_IDS),
-    rng.pick(ORIGIN_IDS),
+    originId ?? rng.pick(ORIGIN_IDS),
   );
   while (c.level < level) {
     c.level++;

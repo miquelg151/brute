@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   CARDS,
+  ORIGINS,
+  ORIGIN_IDS,
+  RANKS,
+  rankOf,
+  originCard,
+  cardOrigin,
+  weatherWavePct,
   CLASSES,
   WEAPONS,
   addStats,
@@ -295,12 +302,24 @@ describe('game', () => {
     delete (v4.character as Partial<Character>).cards;
     delete (v4.character as Partial<Character>).cardUses;
     const save = migrateSave(JSON.parse(JSON.stringify(v4)))!;
-    expect(save.version).toBe(5);
+    expect(save.version).toBe(6);
     expect(save.character.name).toBe('Old');
-    expect(save.character.cards).toEqual(['special', 'roll']);
+    expect(save.character.cards).toEqual(['special', 'roll', 'weather_wave']);
     expect(save.character.cardUses).toEqual({});
     expect('daily' in save).toBe(false);
     expect(migrateSave({ version: 1 })).toBeNull();
+  });
+
+  it('a version 5 save gets its origin card and drops a fight in progress', () => {
+    const save = newGame('M', look, 'bouncer', 'industrial', 7) as unknown as Record<string, unknown>;
+    const c = save.character as { cards: string[] };
+    c.cards = ['special', 'wall', 'patch_up', 'hurl', 'rush'];
+    save.version = 5;
+    save.pendingFight = { anything: true };
+    const migrated = migrateSave(save)!;
+    expect(migrated.version).toBe(6);
+    expect(migrated.character.cards).toEqual(['special', 'wall', 'scrap_shield', 'patch_up', 'hurl', 'rush']);
+    expect(migrated.pendingFight).toBeNull();
   });
 });
 
@@ -510,12 +529,14 @@ describe('cards', () => {
     expect(scaledCount(2, 4)).toBe(3);
   });
 
-  it('every class starts with the special strike and its own card', () => {
+  it('every fighter starts with the special strike, its class card and its origin card', () => {
+    expect(startingCards('brawler', 'port')).toEqual(['special', 'rage', 'weather_wave']);
+    expect(startingCards('parkour', 'rooftops')).toEqual(['special', 'roll', 'leap']);
+    expect(startingCards('bouncer', 'industrial')).toEqual(['special', 'wall', 'scrap_shield']);
+    expect(startingCards('tamer', 'metro')).toEqual(['special', 'sic_em', 'last_train']);
+    expect(startingCards('mystic', 'sewers')).toEqual(['special', 'overcharge', 'toxic_spit']);
+    expect(startingCards('brawler', 'scrapyard')).toEqual(['special', 'rage', 'power_surge']);
     expect(startingCards('brawler')).toEqual(['special', 'rage']);
-    expect(startingCards('parkour')).toEqual(['special', 'roll']);
-    expect(startingCards('bouncer')).toEqual(['special', 'wall']);
-    expect(startingCards('tamer')).toEqual(['special', 'sic_em']);
-    expect(startingCards('mystic')).toEqual(['special', 'overcharge']);
   });
 
   it('every card costs 2-6 energy and describes every level', () => {
@@ -534,7 +555,7 @@ describe('cards', () => {
 describe('card upgrades', () => {
   it('new characters own their starting cards with no uses', () => {
     const c = createCharacter('C', look, 'mystic', 'port');
-    expect(c.cards).toEqual(['special', 'overcharge']);
+    expect(c.cards).toEqual(['special', 'overcharge', 'weather_wave']);
     expect(c.cardUses).toEqual({});
   });
 
@@ -851,5 +872,69 @@ describe('level-up cards', () => {
     }
     expect(walled).toBeGreaterThan(0);
     expect(healed).toBeGreaterThan(0);
+  });
+});
+
+describe('origins', () => {
+  it('there are six origins, each with its own starting card', () => {
+    expect(ORIGIN_IDS).toEqual(['port', 'rooftops', 'metro', 'industrial', 'sewers', 'scrapyard']);
+    for (const id of ORIGIN_IDS) {
+      const card = originCard(id)!;
+      expect(CARDS[card]!.pool).toBe('origin');
+      expect(CARDS[card]!.starting).toBe(true);
+      expect(cardOrigin(card)).toBe(id);
+    }
+  });
+
+  it('origin cards are never offered at level-ups', () => {
+    const origin = new Set(ORIGIN_IDS.map((id) => originCard(id)));
+    expect(UPGRADES.some((u) => u.kind === 'card' && origin.has(u.ref))).toBe(false);
+  });
+
+  it('origin passives match the design', () => {
+    expect(ORIGINS.port!.hpPercent).toBe(8);
+    expect(ORIGINS.rooftops!.dodge).toBe(6);
+    expect(ORIGINS.metro!.initiative).toBe(30);
+    expect(ORIGINS.industrial!.armor).toBe(2);
+    expect(ORIGINS.sewers!.hpRegen).toBe(1);
+    expect(ORIGINS.scrapyard!.armor).toBe(1);
+    expect(ORIGINS.scrapyard!.magicResist).toBe(10);
+  });
+
+  it('a new fighter gets its origin card', () => {
+    const c = createCharacter('S', look, 'mystic', 'sewers');
+    expect(c.cards).toEqual(['special', 'overcharge', 'toxic_spit']);
+  });
+
+  it('a generated opponent can be given an origin', () => {
+    const c = generateOpponent(5, new Rng(3), 'bouncer', 'scrapyard');
+    expect(c.originId).toBe('scrapyard');
+    expect(c.cards).toContain('power_surge');
+  });
+
+  it('Weather the Wave softens more with card level, up to 70%', () => {
+    expect(weatherWavePct(1)).toBe(50);
+    expect(weatherWavePct(2)).toBe(55);
+    expect(weatherWavePct(5)).toBe(70);
+    expect(weatherWavePct(9)).toBe(70);
+  });
+});
+
+describe('ranks', () => {
+  it('ranks come at levels 1, 5, 10, 15 and 20', () => {
+    expect(RANKS.map((r) => [r.id, r.from])).toEqual([
+      ['rookie', 1],
+      ['regular', 5],
+      ['veteran', 10],
+      ['champion', 15],
+      ['legend', 20],
+    ]);
+    expect(rankOf(1).id).toBe('rookie');
+    expect(rankOf(4).id).toBe('rookie');
+    expect(rankOf(5).id).toBe('regular');
+    expect(rankOf(14).id).toBe('veteran');
+    expect(rankOf(15).id).toBe('champion');
+    expect(rankOf(20).id).toBe('legend');
+    expect(rankOf(37).id).toBe('legend');
   });
 });

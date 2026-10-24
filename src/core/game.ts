@@ -1,4 +1,4 @@
-import { DECK_SIZE, cardLevel, startingCards } from './cards';
+import { DECK_SIZE, cardLevel, originCard, startingCards } from './cards';
 import { createCharacter } from './character';
 import { gearFor, loadoutFor, runFight, type BreakChoice, type CardPlay, type FightLog, type GearChoice } from './fight';
 import { generateOpponent } from './opponents';
@@ -7,7 +7,7 @@ import { Rng, mixSeed } from './rng';
 import { DEFAULT_PLAN, STANCE_IDS, TARGET_IDS, WEAPON_STYLE_IDS, type Plan } from './tactics';
 import type { Appearance, Character, ClassId } from './types';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 /** What the player decides before a fight. Locked once the fight starts. */
 export interface Tactics extends Plan {
@@ -205,6 +205,15 @@ export function migrateSave(raw: unknown): SaveData | null {
     // A fight started under the old rules can't continue under the new ones.
     save.pendingFight = null;
     save.version = 5;
+  }
+  if (save.version === 5) {
+    const c = save.character as Character;
+    // Every fighter now starts with its origin card: put it after the class card.
+    const own = originCard(c.originId);
+    if (own && !c.cards.includes(own)) c.cards.splice(Math.min(2, c.cards.length), 0, own);
+    // A fight started under the old rules can't continue under the new ones.
+    save.pendingFight = null;
+    save.version = 6;
   }
   return save.version === SAVE_VERSION ? (save as unknown as SaveData) : null;
 }

@@ -184,7 +184,7 @@ if (section('cards')) {
   console.log(`\nPace at level ${SKILL_LEVEL}: bots play ${(plays / Math.max(1, rounds) / 2).toFixed(2)} cards per round each`);
   console.log(`\nCards at level ${SKILL_LEVEL}: win rate with the card vs the same fighter without it, and how often it gets played`);
   for (const card of Object.values(CARDS)) {
-    const classes = card.pool === 'general' ? CLASS_IDS : [card.pool];
+    const classes = card.pool === 'general' || card.pool === 'origin' ? CLASS_IDS : [card.pool];
     let wins = 0;
     let played = 0;
     let total = 0;

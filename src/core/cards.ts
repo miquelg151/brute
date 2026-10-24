@@ -1,5 +1,5 @@
-// Cards: played during a fight by spending energy. Every class starts with the Special
-// Strike and one class card; the rest are won at level-ups. Cards get stronger the more
+// Cards: played during a fight by spending energy. Every fighter starts with the Special
+// Strike, one class card and one origin card; the rest are won at level-ups. Cards get stronger the more
 // they are played (see cardLevel). The fight rules for each card live in fight.ts.
 import type { ClassId } from './types';
 
@@ -8,8 +8,8 @@ export interface CardDef {
   name: string;
   /** Energy needed to play it. Never changes with level. */
   cost: number;
-  /** 'general' cards can be won by any class; class cards only by that class. */
-  pool: 'general' | ClassId;
+  /** 'general' cards can be won by any class; class cards only by that class; 'origin' cards are given by where the fighter grew up. */
+  pool: 'general' | 'origin' | ClassId;
   /** Starting cards are given at creation and never offered at level-ups. */
   starting: boolean;
   /** What it does at a card level, in plain words for the cards on screen. */
@@ -46,6 +46,11 @@ export function botCardLevel(fighterLevel: number): number {
   return Math.min(MAX_CARD_LEVEL, 1 + Math.floor(fighterLevel / 5));
 }
 
+/** Weather the Wave: how much less damage (%) a softened hit does. */
+export function weatherWavePct(level: number): number {
+  return Math.min(70, 50 + 5 * (level - 1));
+}
+
 const card = (id: string, name: string, cost: number, pool: CardDef['pool'], starting: boolean, describe: (level: number) => string): CardDef => ({
   id,
   name,
@@ -74,12 +79,39 @@ export const CARDS: Record<string, CardDef> = {
   body_slam: card('body_slam', 'Body Slam', 5, 'bouncer', false, (l) => `A heavy hit (+${scaled(40, l)}%) that pushes their next turn back.`),
   stray_dog: card('stray_dog', 'Stray Dog', 6, 'tamer', false, (l) => `A dog with ${scaled(100, l)}% health joins until the round ends.`),
   bolt: card('bolt', 'Bolt', 5, 'mystic', false, (l) => `A spell that can't be dodged and does +${scaled(30, l)}%.`),
+  // Origin cards: every fighter starts with the one from where they grew up.
+  weather_wave: card('weather_wave', 'Weather the Wave', 3, 'origin', true, (l) => `The next ${scaledCount(2, l)} hits you take do ${weatherWavePct(l)}% less damage.`),
+  leap: card('leap', 'Leap', 3, 'origin', true, (l) => `Dodge the next attack for sure and strike back with +${scaled(20, l)}%.`),
+  last_train: card('last_train', 'Last Train', 3, 'origin', true, (l) => `Your next ${scaledCount(2, l)} turns come sooner.`),
+  scrap_shield: card('scrap_shield', 'Scrap Shield', 4, 'origin', true, (l) => `A barrier that stops ${scaled(15, l)} physical damage this round.`),
+  toxic_spit: card('toxic_spit', 'Toxic Spit', 4, 'origin', true, (l) => `Poison: they lose ${scaled(4, l)} health on each of their next 3 turns. Armor doesn't help.`),
+  power_surge: card('power_surge', 'Power Surge', 5, 'origin', true, (l) => `A shocking hit${l > 1 ? ` (+${10 * (l - 1)}%)` : ''}: if it lands, they lose their next turn.`),
 };
 
 export const CARD_IDS = Object.keys(CARDS);
 
 const CLASS_CARD: Record<ClassId, string> = { brawler: 'rage', parkour: 'roll', bouncer: 'wall', tamer: 'sic_em', mystic: 'overcharge' };
 
-export function startingCards(classId: ClassId): string[] {
-  return ['special', CLASS_CARD[classId]];
+const ORIGIN_CARD: Record<string, string> = {
+  port: 'weather_wave',
+  rooftops: 'leap',
+  metro: 'last_train',
+  industrial: 'scrap_shield',
+  sewers: 'toxic_spit',
+  scrapyard: 'power_surge',
+};
+
+/** The starting card of an origin. */
+export function originCard(originId: string): string | undefined {
+  return ORIGIN_CARD[originId];
+}
+
+/** The origin an origin card belongs to (undefined for other cards). */
+export function cardOrigin(cardId: string): string | undefined {
+  return Object.keys(ORIGIN_CARD).find((id) => ORIGIN_CARD[id] === cardId);
+}
+
+export function startingCards(classId: ClassId, originId?: string): string[] {
+  const own = originId ? ORIGIN_CARD[originId] : undefined;
+  return own ? ['special', CLASS_CARD[classId], own] : ['special', CLASS_CARD[classId]];
 }

@@ -42,6 +42,10 @@ export interface OriginDef {
   dodge: number;
   initiative: number;
   armor: number;
+  /** Health healed at the start of each of the fighter's turns. */
+  hpRegen: number;
+  /** Percent of magic damage ignored, added to the class's. */
+  magicResist: number;
 }
 
 export interface ClassDef {
@@ -153,11 +157,29 @@ export const PETS: Record<string, PetDef> = {
   raccoon: { id: 'raccoon', name: 'Raccoon', maxHp: 12, damage: 2, agility: 7, speed: 5 },
 };
 
+// Where a fighter grew up: a passive bonus in every fight, a look (art layer `fighter.origin`)
+// and a starting card of its own (see ORIGIN_CARD in cards.ts).
+const origin = (id: string, name: string, description: string, bonus: Partial<Omit<OriginDef, 'id' | 'name' | 'description'>>): OriginDef => ({
+  id,
+  name,
+  description,
+  hpPercent: 0,
+  dodge: 0,
+  initiative: 0,
+  armor: 0,
+  hpRegen: 0,
+  magicResist: 0,
+  ...bonus,
+});
+
 export const ORIGINS: Record<string, OriginDef> = {
-  port: { id: 'port', name: 'The Port', description: '+6% health.', hpPercent: 6, dodge: 0, initiative: 0, armor: 0 },
-  rooftops: { id: 'rooftops', name: 'The Rooftops', description: '+4% dodge.', hpPercent: 0, dodge: 4, initiative: 0, armor: 0 },
-  metro: { id: 'metro', name: 'The Metro', description: 'Acts sooner at the start of a fight.', hpPercent: 0, dodge: 0, initiative: 30, armor: 0 },
-  industrial: { id: 'industrial', name: 'Industrial Zone', description: '+1 armor.', hpPercent: 0, dodge: 0, initiative: 0, armor: 1 },
+  port: origin('port', 'The Port', '+8% health.', { hpPercent: 8 }),
+  rooftops: origin('rooftops', 'The Rooftops', '+6% dodge.', { dodge: 6 }),
+  metro: origin('metro', 'The Metro', 'Acts sooner at the start of every round.', { initiative: 30 }),
+  industrial: origin('industrial', 'Industrial Zone', '+2 armor.', { armor: 2 }),
+  // The two strange ones: mutants from under the city and half-robots from the scrapyard.
+  sewers: origin('sewers', 'The Sewers', 'Heals 1 health every turn.', { hpRegen: 1 }),
+  scrapyard: origin('scrapyard', 'The Scrapyard', '+1 armor and +10% magic resistance.', { armor: 1, magicResist: 10 }),
 };
 
 export const CLASSES: Record<ClassId, ClassDef> = {
