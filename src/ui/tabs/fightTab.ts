@@ -3,18 +3,15 @@ import { CARDS, DECK_SIZE, preferredDeck, rankOf, type SaveData } from '../../co
 import { cardSticker, levelOf } from '../cardView';
 import { h, pixelArt } from '../dom';
 import { drawFighter } from '../sprites';
-import { streetCanvas } from '../street';
+import { HOME_STREET_SEED, streetCanvas } from '../street';
 import type { TabActions } from '../shell';
-
-/** Seed of the city skyline drawn behind the fighter (when there is no background picture). */
-const STREET_SEED = 7;
 
 export function renderFightTab(body: HTMLElement, save: SaveData, actions: TabActions): void {
   const c = save.character;
   const levelUpWaiting = save.pendingLevelUps > 0;
 
   // The street is a picture behind the fighter (CSS variable --street), scaled up with crisp pixels.
-  const street = streetCanvas(STREET_SEED).toDataURL();
+  const street = streetCanvas(HOME_STREET_SEED).toDataURL();
   const arena = h(
     'div',
     { class: 'fight-arena', style: `--street:url(${street})` },

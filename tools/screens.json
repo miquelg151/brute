@@ -5,6 +5,9 @@
     "steps": [
       { "save": null },
       { "click": "text=Start" },
+      { "click": ".create-next" },
+      { "click": ".create-next" },
+      { "click": ".create-next" },
       { "eval": "const input = document.querySelector('.name-input'); input.value = 'Miquel'; input.dispatchEvent(new Event('input'));" },
       { "click": "text=Create fighter" }
     ]
@@ -42,11 +45,49 @@
     ]
   },
   {
-    "name": "create",
+    "name": "create-look",
     "steps": [
       { "save": null },
       { "click": "text=Start" },
-      { "shot": "create" }
+      { "include": "no-page-scroll" },
+      { "shot": "create-look" }
+    ]
+  },
+  {
+    "name": "create-class",
+    "steps": [
+      { "save": null },
+      { "click": "text=Start" },
+      { "click": ".create-next" },
+      { "click": ".carousel-card:nth-child(3)" },
+      { "include": "no-page-scroll" },
+      { "shot": "create-class" }
+    ]
+  },
+  {
+    "name": "create-origin",
+    "steps": [
+      { "save": null },
+      { "click": "text=Start" },
+      { "click": ".create-next" },
+      { "click": ".create-next" },
+      { "click": ".create-panel .choice-grid .choice:nth-child(2)" },
+      { "include": "no-page-scroll" },
+      { "shot": "create-origin" }
+    ]
+  },
+  {
+    "name": "create-name",
+    "steps": [
+      { "save": null },
+      { "click": "text=Start" },
+      { "click": ".create-next" },
+      { "click": ".create-next" },
+      { "click": ".create-next" },
+      { "include": "no-page-scroll" },
+      { "shot": "create-name" },
+      { "eval": "const input = document.querySelector('.name-input'); input.value = 'Miquel'; input.dispatchEvent(new Event('input'));" },
+      { "shot": "create-name-typed" }
     ]
   },
   {

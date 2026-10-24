@@ -9,6 +9,8 @@ export const STREET_W = 240;
 export const STREET_H = 210;
 /** Where the pavement starts, from the top. */
 export const STREET_GROUND_Y = 175;
+/** Seed of the city skyline behind your fighter outside of fights (Fight tab, creation). */
+export const HOME_STREET_SEED = 7;
 
 type Rect = (x: number, y: number, w: number, h: number, color: string) => void;
 

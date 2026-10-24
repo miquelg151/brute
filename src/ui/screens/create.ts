@@ -1,11 +1,13 @@
+// Creating a fighter, in four steps: Look, Class, Origin, Name.
+// Your fighter stands on the street at the top the whole time and changes as you pick.
 import { CARDS, CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, originCard as originCardId, type Appearance, type ClassId, type SaveData } from '../../core';
 import { cardSticker } from '../cardView';
 import { h, pixelArt } from '../dom';
 import { icon, statRow } from '../icons';
-import { logo } from '../logo';
+import { reducedMotion } from '../motion';
 import { CLASS_COLORS, HAIR_COLORS, ORIGIN_COLORS, HAIR_STYLE_NAMES, OUTFIT_COLORS, SKIN_TONES } from '../palette';
 import { drawFighter } from '../sprites';
-import { actionBar } from '../widgets';
+import { HOME_STREET_SEED, streetCanvas } from '../street';
 
 const LOOK_ROWS: { key: keyof Appearance; label: string }[] = [
   { key: 'skinTone', label: 'Skin' },
@@ -20,6 +22,9 @@ const LOOK_COLORS: Partial<Record<keyof Appearance, string[]>> = {
   hairColor: HAIR_COLORS,
   outfitColor: OUTFIT_COLORS,
 };
+
+/** The four steps, in order. The name is the big title shown over the street. */
+const STEP_TITLES = ['Look', 'Class', 'Origin', 'Name'];
 
 function randomLook(): Appearance {
   const r = (n: number) => Math.floor(Math.random() * n);
@@ -41,10 +46,11 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
   const look = randomLook();
   let classId: ClassId = 'brawler';
   let originId = ORIGIN_IDS[0]!;
+  /** Which step is open: 0 = Look, 1 = Class, 2 = Origin, 3 = Name. */
+  let step = 0;
 
-  const preview = h('div', { class: 'spot spot-big' });
-  const nameInput = h('input', { class: 'name-input', maxLength: 14, placeholder: 'Name your fighter', autocomplete: 'off' });
-  const startBtn = h('button', { class: 'btn btn-primary btn-big', disabled: true }, 'Create fighter');
+  const preview = h('div', { class: 'spot' });
+  const nameInput = h('input', { class: 'name-input', maxLength: 14, placeholder: 'Name your fighter', autocomplete: 'off', enterKeyHint: 'done' });
   const lookValues = new Map<keyof Appearance, HTMLElement>();
 
   const refreshPreview = () => {
@@ -62,7 +68,7 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
   const lookRow = (key: keyof Appearance, label: string) => {
     const value = h('span', { class: 'look-value' });
     lookValues.set(key, value);
-    const step = (d: number) => () => {
+    const change = (d: number) => () => {
       const n = APPEARANCE_OPTIONS[key];
       look[key] = (look[key] + d + n) % n;
       refreshPreview();
@@ -71,9 +77,9 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
       'div',
       { class: 'look-row' },
       h('span', { class: 'look-label' }, label),
-      h('button', { class: 'btn btn-small btn-icon', onclick: step(-1), 'aria-label': `Previous ${label}` }, icon('left', 'Previous', 'normal')),
+      h('button', { class: 'btn btn-small btn-icon', onclick: change(-1), 'aria-label': `Previous ${label}` }, icon('left', 'Previous')),
       value,
-      h('button', { class: 'btn btn-small btn-icon', onclick: step(1), 'aria-label': `Next ${label}` }, icon('right', 'Next', 'normal')),
+      h('button', { class: 'btn btn-small btn-icon', onclick: change(1), 'aria-label': `Next ${label}` }, icon('right', 'Next')),
     );
   };
 
@@ -98,43 +104,6 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
     return grid;
   };
 
-  /** Big class cards side by side: swipe to look through them, the one in the middle is picked. */
-  const classCarousel = () => {
-    const track = h('div', { class: 'carousel' });
-    const dots = h('div', { class: 'carousel-dots', 'aria-hidden': 'true' });
-    const cards = CLASS_IDS.map((id) =>
-      h('button', { class: 'choice carousel-card', style: `--accent:${CLASS_COLORS[id]}`, 'aria-label': CLASSES[id].name }, classCard(id)),
-    );
-    const pick = (i: number) => {
-      const id = CLASS_IDS[i]!;
-      cards.forEach((c, j) => c.classList.toggle('selected', j === i));
-      [...dots.children].forEach((d, j) => d.classList.toggle('on', j === i));
-      if (id !== classId) {
-        classId = id;
-        refreshPreview();
-      }
-    };
-    const centre = (card: HTMLElement) => track.scrollTo({ left: card.offsetLeft - (track.clientWidth - card.offsetWidth) / 2, behavior: 'smooth' });
-    cards.forEach((card, i) => card.addEventListener('click', () => (pick(i), centre(card))));
-    dots.append(...cards.map(() => h('span', {})));
-    // When a swipe settles, pick the card closest to the middle.
-    let settle = 0;
-    track.addEventListener('scroll', () => {
-      clearTimeout(settle);
-      settle = window.setTimeout(() => {
-        const mid = track.scrollLeft + track.clientWidth / 2;
-        let best = 0;
-        cards.forEach((c, i) => {
-          if (Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid) < Math.abs(cards[best]!.offsetLeft + cards[best]!.offsetWidth / 2 - mid)) best = i;
-        });
-        pick(best);
-      }, 90);
-    });
-    track.append(...cards);
-    pick(CLASS_IDS.indexOf(classId));
-    return h('div', {}, track, dots);
-  };
-
   const classCard = (id: ClassId) => {
     const c = CLASSES[id];
     const s = c.baseStats;
@@ -147,6 +116,43 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
       h('div', { class: 'choice-stats' }, `Starts with ${SKILLS[c.startSkill]?.name ?? ''}`),
     );
   };
+
+  // Big class cards side by side: swipe to look through them, the one in the middle is picked.
+  const track = h('div', { class: 'carousel' });
+  const classDots = h('div', { class: 'carousel-dots', 'aria-hidden': 'true' });
+  const classCards = CLASS_IDS.map((id) =>
+    h('button', { class: 'choice carousel-card', style: `--accent:${CLASS_COLORS[id]}`, 'aria-label': CLASSES[id].name }, classCard(id)),
+  );
+  const pickClass = (i: number) => {
+    const id = CLASS_IDS[i]!;
+    classCards.forEach((c, j) => c.classList.toggle('selected', j === i));
+    [...classDots.children].forEach((d, j) => d.classList.toggle('on', j === i));
+    if (id !== classId) {
+      classId = id;
+      refreshPreview();
+    }
+  };
+  /** Scrolls the carousel so this card sits in the middle. */
+  const centre = (card: HTMLElement, behavior: ScrollBehavior) =>
+    track.scrollTo({ left: card.offsetLeft - (track.clientWidth - card.offsetWidth) / 2, behavior });
+  classCards.forEach((card, i) => card.addEventListener('click', () => (pickClass(i), centre(card, 'smooth'))));
+  classDots.append(...classCards.map(() => h('span', {})));
+  // When a swipe settles, pick the card closest to the middle.
+  let settle = 0;
+  track.addEventListener('scroll', () => {
+    clearTimeout(settle);
+    settle = window.setTimeout(() => {
+      const mid = track.scrollLeft + track.clientWidth / 2;
+      const distance = (c: HTMLElement) => Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
+      let best = 0;
+      classCards.forEach((c, i) => {
+        if (distance(c) < distance(classCards[best]!)) best = i;
+      });
+      pickClass(best);
+    }, 90);
+  });
+  track.append(...classCards);
+  pickClass(CLASS_IDS.indexOf(classId));
 
   /** An origin: its name in its colour, its bonus, and the card it starts with (with the card's text, since phones show no tooltips). */
   const originCard = (id: string) => {
@@ -162,27 +168,15 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
     );
   };
 
-  nameInput.addEventListener('input', () => {
-    startBtn.disabled = nameInput.value.trim().length === 0;
-  });
-  startBtn.addEventListener('click', () => {
-    const name = nameInput.value.trim();
-    if (name) onCreated(newGame(name, look, classId, originId, randomSeed()));
-  });
+  // ---- The four step panels (only the open one is shown) ----
 
-  root.append(
+  const panels = [
     h(
-      'main',
-      { class: 'screen create' },
-      logo(),
-      h('h1', {}, 'New fighter'),
-      h('p', { class: 'lede' }, 'Pick a look, a fighting style and where you grew up.'),
-      preview,
-      nameInput,
-      h('h2', {}, 'Look'),
+      'section',
+      { class: 'create-panel' },
       h(
-        'section',
-        { class: 'card' },
+        'div',
+        { class: 'card look-card' },
         ...LOOK_ROWS.map((r) => lookRow(r.key, r.label)),
         h(
           'button',
@@ -191,17 +185,97 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
           'Random look',
         ),
       ),
-      h('h2', {}, 'Class'),
-      h('p', { class: 'lede small' }, 'Sets your starting stats and skill, and which upgrades you see most.'),
-      classCarousel(),
-      h('h2', {}, 'Origin'),
+    ),
+    h(
+      'section',
+      { class: 'create-panel' },
+      h('p', { class: 'lede small' }, 'Your starting stats and skill, and the upgrades you see most.'),
+      track,
+      classDots,
+    ),
+    h(
+      'section',
+      { class: 'create-panel' },
       h('p', { class: 'lede small' }, 'A bonus in every fight, a look and a card of its own.'),
       choiceGrid(ORIGIN_IDS, originCard, (id) => {
         originId = id;
         refreshPreview();
       }, originId),
-      actionBar(startBtn),
+    ),
+    h('section', { class: 'create-panel create-name' }, h('p', { class: 'lede small' }, 'What does the street call you?'), nameInput),
+  ];
+
+  // ---- The street with the fighter, and the footer with dots, Back and Next ----
+
+  const title = h('h1', { class: 'create-title' });
+  const street = streetCanvas(HOME_STREET_SEED).toDataURL();
+  const stage = h('div', { class: 'fight-arena create-stage', style: `--street:url(${street})` }, title, preview);
+  const body = h('div', { class: 'create-body' }, ...panels);
+
+  const stepDots = h('div', { class: 'step-dots', role: 'img' }, ...STEP_TITLES.map(() => h('span', {})));
+  const backBtn = h('button', { class: 'btn btn-icon create-back', type: 'button', 'aria-label': 'Back' }, icon('left', 'Back', 'normal'));
+  const nextBtn = h('button', { class: 'btn btn-primary create-next', type: 'button' });
+  const nextArrow = icon('right', 'Next', 'normal');
+  nextArrow.setAttribute('aria-hidden', 'true');
+
+  const hasName = () => nameInput.value.trim().length > 0;
+
+  /** Opens step `next`; `direction` says which way the new panel slides in (1 = from the right). */
+  const showStep = (next: number, direction: number) => {
+    step = next;
+    panels.forEach((p, i) => p.classList.toggle('hidden', i !== step));
+    title.textContent = STEP_TITLES[step]!;
+    [...stepDots.children].forEach((d, i) => {
+      d.classList.toggle('on', i === step);
+      d.classList.toggle('done', i < step);
+    });
+    stepDots.setAttribute('aria-label', `Step ${step + 1} of ${STEP_TITLES.length}`);
+    backBtn.classList.toggle('invisible', step === 0);
+    const last = step === STEP_TITLES.length - 1;
+    nextBtn.replaceChildren(last ? 'Create fighter' : 'Next', last ? '' : nextArrow);
+    nextBtn.disabled = last && !hasName();
+    body.scrollTop = 0;
+    // The short slide: the panel and the title come in from the side we are heading to.
+    if (!reducedMotion()) {
+      for (const el of [panels[step]!, title]) {
+        el.classList.remove('slide-from-right', 'slide-from-left');
+        void el.offsetWidth; // restart the animation
+        el.classList.add(direction > 0 ? 'slide-from-right' : 'slide-from-left');
+      }
+    }
+    // The carousel lost its place while hidden: put the picked class back in the middle.
+    if (step === 1) centre(classCards[CLASS_IDS.indexOf(classId)]!, 'instant');
+    if (last) nameInput.focus({ preventScroll: true });
+  };
+
+  const create = () => {
+    const name = nameInput.value.trim();
+    if (name) onCreated(newGame(name, look, classId, originId, randomSeed()));
+  };
+
+  backBtn.addEventListener('click', () => {
+    if (step > 0) showStep(step - 1, -1);
+  });
+  nextBtn.addEventListener('click', () => {
+    if (step < STEP_TITLES.length - 1) showStep(step + 1, 1);
+    else create();
+  });
+  nameInput.addEventListener('input', () => {
+    nextBtn.disabled = !hasName();
+  });
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') create();
+  });
+
+  root.append(
+    h(
+      'main',
+      { class: 'screen create' },
+      stage,
+      body,
+      h('footer', { class: 'create-footer' }, backBtn, stepDots, nextBtn),
     ),
   );
   refreshPreview();
+  showStep(0, 1);
 }
