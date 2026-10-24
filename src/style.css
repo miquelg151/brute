@@ -1928,10 +1928,93 @@ details.more[open] summary::after {
   padding-top: 10px;
 }
 
-.pick-art .game-card {
-  transform: scale(0.8);
-}
-
 .pick-item:has(.game-card) .pick-art {
   height: auto;
+}
+
+.card-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step);
+}
+
+.game-card.tappable {
+  cursor: pointer;
+}
+
+.game-card.picked {
+  outline: 3px solid var(--pink);
+  outline-offset: 2px;
+}
+
+/* --- Cards in the fight ------------------------------------------------------ */
+.energy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meter-energy {
+  flex: 1;
+  height: 16px;
+}
+
+.meter-energy .meter-fill {
+  background: var(--yellow);
+}
+
+.energy-text {
+  font-weight: 800;
+  color: var(--sticker-fill);
+  -webkit-text-stroke: var(--sticker-outline-sm) var(--sticker-ink);
+  paint-order: stroke fill;
+}
+
+.card-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.card-button {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  justify-self: center;
+  transition: transform var(--fast) var(--ease-out);
+}
+
+.card-button:active:not(:disabled) {
+  transform: scale(0.94) rotate(-2deg);
+}
+
+.card-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.card-button.queued .game-card {
+  outline: 3px solid var(--pink);
+  outline-offset: 2px;
+}
+
+.enemy-card {
+  align-self: flex-end;
+  padding: 2px 8px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--yellow);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough-2);
+  text-shadow: none;
+  animation: slap 280ms var(--ease-bounce);
+}
+
+/* Four cards must fit in a row on the narrowest phones. */
+@media (max-width: 359px) {
+  .card-row .game-card {
+    width: 64px;
+  }
 }

@@ -1,5 +1,5 @@
 import { CLASSES, GEAR, ORIGINS, SKILLS, xpToNext, type SaveData } from '../../core';
-import { cardSticker, levelOf } from '../cardView';
+import { cardList } from '../cardView';
 import { gearEffects, maxHpOf, maxManaOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
 import { icon, iconHeading, iconValue } from '../icons';
@@ -86,7 +86,7 @@ export function renderHome(root: HTMLElement, save: SaveData, actions: HomeActio
         ...c.skills.map((id) => h('li', {}, h('strong', {}, SKILLS[id]?.name ?? id), ' ', h('span', {}, SKILLS[id]?.description ?? ''))),
       ),
       iconHeading('skill', 'Cards'),
-      h('div', { class: 'card-list' }, ...c.cards.map((id) => cardSticker(id, levelOf(c.cardUses, id), { uses: c.cardUses[id] ?? 0 }))),
+      cardList(c.cards, c.cardUses),
       resetBtn,
       actionBar(fightBtn),
     ),

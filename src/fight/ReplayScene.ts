@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Rng, SKILLS, SPECIAL_MIN_QUALITY, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
+import { CARDS, Rng, SKILLS, type CardPlay, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
 import { artImage, artManifest } from '../ui/art';
 import { drawPet, drawWeapon, fighterAnimation, fighterFrames, type Pose } from '../ui/sprites';
 import { PAL, num } from '../ui/theme';
@@ -74,6 +74,12 @@ export interface ReplayHooks {
   onFighter: (team: 0 | 1, state: FighterState) => void;
   /** A new round started. */
   onRound: (round: number) => void;
+  /** Saves a card play; the scene re-simulates right after. */
+  recordPlay: (play: CardPlay) => void;
+  /** A main fighter's energy changed. */
+  onEnergy: (team: 0 | 1, energy: number) => void;
+  /** A main fighter played a card. */
+  onCard: (team: 0 | 1, card: string) => void;
 }
 
 /**
@@ -84,6 +90,8 @@ export interface ReplayHooks {
 export class ReplayScene extends Phaser.Scene {
   private views: UnitView[] = [];
   private log: FightLog;
+  /** A card the player tapped, applied at the next tick the replay reaches. */
+  private queued: { card: string; getQuality?: () => Promise<number> } | null = null;
 
   constructor(
     initialLog: FightLog,
@@ -91,6 +99,10 @@ export class ReplayScene extends Phaser.Scene {
   ) {
     super('replay');
     this.log = initialLog;
+  }
+
+  queuePlay(card: string, getQuality?: () => Promise<number>): void {
+    this.queued ??= { card, getQuality };
   }
 
   setSpeed(speed: number): void {
@@ -290,7 +302,15 @@ export class ReplayScene extends Phaser.Scene {
         this.log = this.hooks.resimulate();
         e = this.log.events[i]!;
       }
-      await this.handle(e);
+      if (e.t === 'tick' && this.queued) {
+        const { card, getQuality } = this.queued;
+        this.queued = null;
+        const quality = getQuality ? await getQuality() : undefined;
+        this.hooks.recordPlay({ tick: e.n, card, quality });
+        this.log = this.hooks.resimulate();
+        e = this.log.events[i]!;
+      }
+      await this.handle(e, i);
     }
     await this.wait(400);
     const won = this.log.winner === 0;
@@ -300,7 +320,21 @@ export class ReplayScene extends Phaser.Scene {
     this.hooks.onFinished(this.log);
   }
 
-  private handle(e: FightEvent): Promise<void> {
+  private teamOf(idx: number): 0 | 1 {
+    return this.views[idx]!.team;
+  }
+
+  /** True when the special strike really hit: its attack follows in the same tick. */
+  private specialLanded(from: number): boolean {
+    for (let j = from + 1; j < this.log.events.length; j++) {
+      const next = this.log.events[j]!;
+      if (next.t === 'tick') return false;
+      if ((next.t === 'hit' || next.t === 'block' || next.t === 'dodge') && next.kind === 'special') return true;
+    }
+    return false;
+  }
+
+  private handle(e: FightEvent, index: number): Promise<void> {
     switch (e.t) {
       case 'round':
         this.hooks.onRound(e.round);
@@ -333,12 +367,14 @@ export class ReplayScene extends Phaser.Scene {
       case 'res':
         return this.onResources(e.actor, e.stamina, e.mana);
       case 'tick':
-      case 'energy':
-      case 'card':
-        // Task 9 shows these; for now the replay ignores them.
         return Promise.resolve();
+      case 'energy':
+        this.hooks.onEnergy(this.teamOf(e.actor), e.energy);
+        return Promise.resolve();
+      case 'card':
+        return this.onCard(e.actor, e.card);
       case 'special':
-        return this.onSpecial(e.actor, e.quality ?? 0);
+        return this.onSpecial(e.actor, e.quality, this.specialLanded(index));
       case 'death':
         return this.onDeath(e.actor);
     }
@@ -351,12 +387,19 @@ export class ReplayScene extends Phaser.Scene {
     this.drawBars(v);
   }
 
-  private async onSpecial(actor: number, quality: number): Promise<void> {
+  private async onCard(actor: number, card: string): Promise<void> {
     const v = this.view(actor);
-    const [text, color] =
-      quality >= 90 ? ['PERFECT!', PAL.yellow] : quality >= SPECIAL_MIN_QUALITY ? ['SPECIAL!', PAL.orange] : ['MISSED', PAL.fog];
+    this.hooks.onCard(v.team, card);
+    this.floatText(v.sprite.x, this.headY(v) - 10, CARDS[card]?.name ?? card, PAL.yellow, 12);
+    await this.wait(250);
+  }
+
+  /** Too weak a timing or a too tired fighter: the special does not land and a normal turn follows. */
+  private async onSpecial(actor: number, quality: number, landed: boolean): Promise<void> {
+    const v = this.view(actor);
+    const [text, color] = !landed ? ['MISSED', PAL.fog] : quality >= 90 ? ['PERFECT!', PAL.yellow] : ['SPECIAL!', PAL.orange];
     this.floatText(v.sprite.x, this.headY(v) - 8, text, color);
-    if (quality >= SPECIAL_MIN_QUALITY) {
+    if (landed) {
       this.cameras.main.flash(120, 255, 220, 120);
       await this.tween({ targets: v.sprite, scaleX: SCALE * 1.15, scaleY: SCALE * 1.15, duration: 120, yoyo: true });
     } else {

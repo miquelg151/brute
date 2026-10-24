@@ -1,10 +1,14 @@
 import Phaser from 'phaser';
 import {
+  CARDS,
+  MAX_ENERGY,
+  START_ENERGY,
   STANCES,
   TARGETS,
   WEAPON_STYLES,
   finishFight,
   recordBreak,
+  recordPlay,
   simulateFight,
   traitsOf,
   type BreakChoice,
@@ -12,14 +16,18 @@ import {
   type SaveData,
 } from '../../core';
 import { ARENA_H, ARENA_W, ARENA_ZOOM, ReplayScene, type BreakEvent, type FighterState } from '../../fight/ReplayScene';
+import { cardSticker, levelOf } from '../cardView';
 import { h } from '../dom';
 import { icon, iconValue } from '../icons';
+import { playSpecialStrike } from '../minigames';
 import { planEditor, weaponPicker } from '../plan';
 import { PAL } from '../theme';
 
 const SPEEDS = [1, 2, 4];
 const SKIP_SPEED = 40;
 const ROUNDS = 3;
+/** How long the enemy's card sticker stays up (ms). */
+const ENEMY_CARD_MS = 1500;
 /** Below this much stamina the bar turns orange. */
 const LOW_STAMINA = 25;
 
@@ -165,10 +173,46 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
   const speedBtn = h('button', { class: 'btn btn-small btn-with-icon', 'aria-label': 'Speed' }, icon('fast', 'Speed', 'normal'), speedLabel);
   const skipBtn = h('button', { class: 'btn btn-small btn-icon', 'aria-label': 'Skip to the next decision' }, icon('skip', 'Skip', 'normal'));
   const controls = h('div', { class: 'fight-controls' }, speedBtn, skipBtn);
+  // Energy bar and the cards of the deck: tap a card to play it at the next tick.
+  const energyFill = h('div', { class: 'meter-fill' });
+  const energyText = h('span', { class: 'energy-text' }, `${START_ENERGY}/${MAX_ENERGY}`);
+  const energyBar = h('div', { class: 'energy' }, icon('speed', 'Energy', 'normal'), h('div', { class: 'meter meter-energy' }, energyFill), energyText);
+  energyFill.style.width = `${(START_ENERGY * 100) / MAX_ENERGY}%`;
+  let energy = START_ENERGY;
+  const deck = save.pendingFight!.tactics!.deck;
+  const cardButtons = deck.map((id) => {
+    const btn = h('button', { class: 'card-button', 'aria-label': `${CARDS[id]!.name}, costs ${CARDS[id]!.cost} energy` }, cardSticker(id, levelOf(save.character.cardUses, id)));
+    btn.addEventListener('click', () => {
+      // One card waits at a time.
+      if (cardButtons.some((b) => b.classList.contains('queued'))) return;
+      btn.classList.add('queued');
+      scene.queuePlay(id, id === 'special' ? specialQuality : undefined);
+    });
+    return btn;
+  });
+  const cardRow = h('div', { class: 'card-row' }, ...cardButtons);
+  const refreshCards = () => deck.forEach((id, i) => (cardButtons[i]!.disabled = energy < CARDS[id]!.cost));
+  const clearQueued = () => cardButtons.forEach((b) => b.classList.remove('queued'));
+  refreshCards();
   const summary = h('div', { class: 'card fight-summary hidden' });
   const continueBtn = h('button', { class: 'btn btn-primary btn-big hidden' }, 'Continue');
   // Everything under the arena. The special strike uses all of it as its tap area.
-  const zone = h('section', { class: 'fight-zone' }, controls, summary, continueBtn);
+  const zone = h('section', { class: 'fight-zone' }, controls, energyBar, cardRow, summary, continueBtn);
+
+  /** The timing bar of the Special Strike card: hides the cards while it is up. */
+  const specialQuality = async () => {
+    cardRow.classList.add('hidden');
+    const quality = await playSpecialStrike(zone);
+    cardRow.classList.remove('hidden');
+    return quality;
+  };
+
+  /** The enemy's card, slapped on their side for a moment. */
+  const enemyCardSticker = (card: string) => {
+    const el = h('div', { class: 'enemy-card' }, CARDS[card]?.name ?? card);
+    setTimeout(() => el.remove(), ENEMY_CARD_MS);
+    return el;
+  };
 
   root.append(h('main', { class: 'screen fight' }, hud, arena, zone));
 
@@ -187,6 +231,23 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
     resimulate: () => simulateFight(save),
     onFighter: (team, state) => huds[team].update(state),
     onRound: (round) => (roundText.textContent = `${round}/${ROUNDS}`),
+    recordPlay: (play) => {
+      recordPlay(save, play);
+      store();
+      // The play is saved; if the simulation could not afford it, nothing stays marked.
+      clearQueued();
+    },
+    onEnergy: (team, value) => {
+      if (team !== 0) return;
+      energy = value;
+      energyFill.style.width = `${(value * 100) / MAX_ENERGY}%`;
+      energyText.textContent = `${value}/${MAX_ENERGY}`;
+      refreshCards();
+    },
+    onCard: (team, card) => {
+      if (team === 1) huds[1].el.append(enemyCardSticker(card));
+      else clearQueued();
+    },
     onFinished: () => {
       const result = finishFight(save);
       store();
@@ -194,7 +255,13 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
         h('div', { class: `result ${result.won ? 'win' : 'loss'}` }, result.won ? `You beat ${opponent.name}` : `${opponent.name} won`),
         h('div', { class: 'dim' }, iconValue('xp', 'Experience', `+${result.xpGained}`), result.levelsGained > 0 ? ' Level up!' : ''),
       );
+      for (const [card, count] of Object.entries(result.cardsPlayed)) {
+        summary.append(h('div', { class: 'small' }, `${CARDS[card]?.name ?? card} +${count} use${count > 1 ? 's' : ''}`));
+      }
+      for (const up of result.cardLevelUps) summary.append(h('div', { class: 'result win' }, `${CARDS[up.card]?.name ?? up.card} → level ${up.level}!`));
       controls.classList.add('hidden');
+      energyBar.classList.add('hidden');
+      cardRow.classList.add('hidden');
       for (const el of [summary, continueBtn]) {
         el.classList.remove('hidden');
         el.classList.add('slap');

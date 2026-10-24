@@ -44,5 +44,24 @@ export function cardSticker(id: string, level: number, opts: { uses?: number; si
   return el;
 }
 
+/**
+ * Cards in a row, with one line under them: tap a card to read what it does
+ * (a `title` tooltip never shows on a phone).
+ */
+export function cardList(ids: string[], uses: Record<string, number>): HTMLElement {
+  const info = h('p', { class: 'trait-info small' }, 'Tap a card to see what it does.');
+  const stickers = ids.map((id) => {
+    const level = levelOf(uses, id);
+    const el = cardSticker(id, level, { uses: uses[id] ?? 0 });
+    el.classList.add('tappable');
+    el.addEventListener('click', () => {
+      stickers.forEach((s) => s.classList.toggle('picked', s === el));
+      info.textContent = `${CARDS[id]!.name}: ${CARDS[id]!.describe(level)}`;
+    });
+    return el;
+  });
+  return h('div', { class: 'card-box' }, h('div', { class: 'card-list' }, ...stickers), info);
+}
+
 /** Level of an owned card from its uses. */
 export const levelOf = (uses: Record<string, number>, id: string) => cardLevel(uses[id] ?? 0);

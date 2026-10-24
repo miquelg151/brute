@@ -100,6 +100,8 @@ interface PickItem {
   detail: string;
   /** A fresh picture each call (a canvas can only be in one place). */
   art: () => HTMLElement;
+  /** The art already shows the name, so the text lines under it are left out. */
+  plain?: boolean;
 }
 
 /**
@@ -107,7 +109,7 @@ interface PickItem {
  * of a slot to take it back. With one slot, a new sticker replaces the old one.
  * Edits `chosen` in place and calls `onChange` after every change.
  */
-function stickerPicker(items: PickItem[], chosen: string[], capacity: number, onChange: () => void): HTMLElement {
+function stickerPicker(items: PickItem[], chosen: string[], capacity: number, onChange: () => void, onTap: (id: string) => void = () => {}): HTMLElement {
   const slots = h('div', { class: 'pick-slots drop-zone' });
   const bag = h('div', { class: 'pick-bag drop-zone' });
   const hint = h('div', { class: 'dim small' });
@@ -138,11 +140,14 @@ function stickerPicker(items: PickItem[], chosen: string[], capacity: number, on
       'div',
       { class: 'pick-item', role: 'button', tabindex: '0', 'aria-label': `${item.name}: ${inSlot ? 'take out' : 'bring'}` },
       h('div', { class: 'pick-art' }, item.art()),
-      h('span', { class: 'pick-name' }, item.name),
-      h('span', { class: 'pick-detail' }, item.detail),
+      ...(item.plain ? [] : [h('span', { class: 'pick-name' }, item.name), h('span', { class: 'pick-detail' }, item.detail)]),
     );
     draggable(el, {
-      onTap: () => (inSlot ? remove(item.id) : add(item.id)),
+      onTap: () => {
+        onTap(item.id);
+        if (inSlot) remove(item.id);
+        else add(item.id);
+      },
       onDrop: (zone) => {
         if (inSlot && zone !== slots) remove(item.id);
         else if (!inSlot && zone === slots) add(item.id);
@@ -172,10 +177,14 @@ export function deckPicker(owned: string[], chosen: string[], uses: Record<strin
   const items: PickItem[] = owned.map((id) => ({
     id,
     name: CARDS[id]!.name,
-    detail: `${CARDS[id]!.cost}⚡`,
+    detail: '',
+    plain: true,
     art: () => cardSticker(id, levelOf(uses, id), { size: 'small' }),
   }));
-  return stickerPicker(items, chosen, DECK_SIZE, () => {});
+  // Tapping a card (which also moves it) says what it does, since tooltips never show on a phone.
+  const info = h('p', { class: 'trait-info small' }, 'Tap a card to see what it does.');
+  const show = (id: string) => (info.textContent = `${CARDS[id]!.name}: ${CARDS[id]!.describe(levelOf(uses, id))}`);
+  return h('div', { class: 'card-box' }, stickerPicker(items, chosen, DECK_SIZE, () => {}, show), info);
 }
 
 /** Bring up to LOADOUT_SIZE of the owned weapons. Edits `chosen` in place. */

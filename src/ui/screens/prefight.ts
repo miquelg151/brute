@@ -20,7 +20,7 @@ import {
   type Plan,
   type SaveData,
 } from '../../core';
-import { cardSticker, levelOf } from '../cardView';
+import { cardList } from '../cardView';
 import { maxHpOf, maxManaOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
 import { TRAIT_ICONS, icon, iconValue, statRow } from '../icons';
@@ -130,7 +130,7 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
       : '',
     me.cards.length > DECK_SIZE
       ? h('section', {}, h('h2', {}, 'Your deck'), h('p', { class: 'lede small' }, 'Bring 4 cards. Cards level up as you play them.'), deckPicker(me.cards, deck, me.cardUses))
-      : h('section', {}, h('h2', {}, 'Your cards'), h('div', { class: 'card-list' }, ...me.cards.map((id) => cardSticker(id, levelOf(me.cardUses, id), { uses: me.cardUses[id] ?? 0 })))),
+      : h('section', {}, h('h2', {}, 'Your cards'), cardList(me.cards, me.cardUses)),
     me.gear.length > 0 ? h('section', {}, h('h2', {}, 'Gear'), gearPicker(me.gear, worn)) : '',
     actionBar(fightBtn),
   );
