@@ -45,6 +45,24 @@
     ]
   },
   {
+    "name": "prefight-rich",
+    "helper": true,
+    "steps": [
+      { "include": "rich" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.weapons = ['bat', 'chain', 'traffic_sign', 'umbrella', 'skateboard']; c.gear = ['riot_vest', 'tracksuit', 'sneakers', 'charm']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "click": ".fight-go" }
+    ]
+  },
+  {
+    "name": "prefight-fits",
+    "helper": true,
+    "steps": [
+      { "include": "no-page-scroll" },
+      { "eval": "const b = document.querySelector('.prefight-body'); if (b.clientHeight < 140) throw new Error(`the mini tab area is squeezed to ${b.clientHeight}px`); const t = document.querySelector('.scouting'); if (t.offsetHeight > 104) throw new Error(`the trait stickers take more than two rows: ${t.offsetHeight}px`); for (const el of document.querySelectorAll('.poster-name, .poster-level')) { if (el.scrollWidth > el.clientWidth + 1) throw new Error(`poster line cut off: ${el.textContent}`); }" }
+    ]
+  },
+  {
     "name": "title",
     "steps": [
       { "save": null },
@@ -181,11 +199,52 @@
     ]
   },
   {
-    "name": "prefight",
+    "name": "prefight-plan",
     "steps": [
       { "include": "level-10" },
       { "click": ".fight-go" },
-      { "shot": "prefight" }
+      { "include": "prefight-fits" },
+      { "shot": "prefight-plan" },
+      { "click": ".trait-chip" },
+      { "shot": "prefight-trait" },
+      { "click": ".info-btn" },
+      { "shot": "prefight-foe" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const o = s.pendingFight.opponent; o.pets = ['dog']; o.skills = ['combo', 'counter', 'spark']; o.weapons = ['traffic_sign']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "include": "prefight-fits" },
+      { "click": ".trait-chip:nth-child(2)" },
+      { "shot": "prefight-many-traits" }
+    ]
+  },
+  {
+    "name": "prefight-gear",
+    "steps": [
+      { "include": "prefight-rich" },
+      { "click": ".mini-tab-gear" },
+      { "include": "prefight-fits" },
+      { "shot": "prefight-gear" },
+      { "eval": "document.querySelector('.prefight-body').scrollTop = 9999;" },
+      { "shot": "prefight-gear-bottom" }
+    ]
+  },
+  {
+    "name": "prefight-cards",
+    "steps": [
+      { "include": "prefight-rich" },
+      { "click": ".mini-tab-cards" },
+      { "include": "prefight-fits" },
+      { "shot": "prefight-cards" }
+    ]
+  },
+  {
+    "name": "prefight-new",
+    "steps": [
+      { "include": "setup" },
+      { "click": ".fight-go" },
+      { "include": "prefight-fits" },
+      { "shot": "prefight-new" },
+      { "click": ".mini-tab-gear" },
+      { "shot": "prefight-new-gear" }
     ]
   },
   {
