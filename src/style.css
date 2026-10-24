@@ -2722,8 +2722,7 @@ button.game-card {
   overflow-y: auto;
   overflow-x: clip;
   overscroll-behavior: contain;
-  padding: calc(var(--step) * 2) max(clamp(12px, 4vw, 16px), env(safe-area-inset-right)) var(--step)
-    max(clamp(12px, 4vw, 16px), env(safe-area-inset-left));
+  padding: 12px max(clamp(12px, 4vw, 16px), env(safe-area-inset-right)) 6px max(clamp(12px, 4vw, 16px), env(safe-area-inset-left));
 }
 
 .create-panel {
@@ -2746,11 +2745,81 @@ button.game-card {
   margin-top: 4px;
 }
 
-/* The name step: the field in the middle of its area. */
-.create-name {
+/* The Class and Name steps sit in the middle of their area. */
+.create-centred {
   min-height: 100%;
   justify-content: center;
+}
+
+.create-name {
   padding-bottom: var(--step);
+}
+
+/* Origin step: six small tiles in a 2 x 3 grid, then the picked origin in full under them. */
+.origin-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.choice:has(> .origin-tile) {
+  padding: 3px 10px 4px;
+  gap: 0;
+}
+
+.origin-tile .choice-title {
+  font-size: var(--t-m);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The bonus stays on one line in the tile; the full text is in the detail under the grid. */
+.origin-bonus {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--t-xs);
+  line-height: 1.3;
+  color: var(--ink-soft);
+}
+
+.origin-bonus span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.origin-bonus .icon {
+  flex: none;
+}
+
+.origin-detail {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: -2px;
+  padding: 2px 4px 0 10px; /* the card's cost bubble may reach into the gap above */
+}
+
+/* A little wider than other small cards, so long card names keep to one or two lines. */
+.origin-detail .game-card {
+  flex: none;
+  width: 92px;
+  transform: rotate(-3deg);
+}
+
+.origin-detail-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.3;
+}
+
+.origin-detail-bonus {
+  font-weight: var(--heavy);
 }
 
 /* Footer: Back, the four dots, Next (Create fighter on the last step). */
@@ -2838,4 +2907,9 @@ button.game-card {
   .slide-from-left {
     animation: none;
   }
+}
+
+.create-panel .choice-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* two equal columns, even with long words */
+  gap: 4px 10px;
 }

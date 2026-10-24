@@ -29,6 +29,13 @@
     ]
   },
   {
+    "name": "no-step-scroll",
+    "helper": true,
+    "steps": [
+      { "eval": "const b = document.querySelector('.create-body'); if (b.scrollHeight > b.clientHeight) throw new Error(`the creation step scrolls: ${b.scrollHeight} in ${b.clientHeight}`);" }
+    ]
+  },
+  {
     "name": "rich",
     "helper": true,
     "steps": [
@@ -50,6 +57,7 @@
       { "save": null },
       { "click": "text=Start" },
       { "include": "no-page-scroll" },
+      { "include": "no-step-scroll" },
       { "shot": "create-look" }
     ]
   },
@@ -61,6 +69,7 @@
       { "click": ".create-next" },
       { "click": ".carousel-card:nth-child(3)" },
       { "include": "no-page-scroll" },
+      { "include": "no-step-scroll" },
       { "shot": "create-class" }
     ]
   },
@@ -73,7 +82,21 @@
       { "click": ".create-next" },
       { "click": ".create-panel .choice-grid .choice:nth-child(2)" },
       { "include": "no-page-scroll" },
-      { "shot": "create-origin" }
+      { "include": "no-step-scroll" },
+      { "shot": "create-origin" },
+      { "click": ".create-panel .choice-grid .choice:nth-child(6)" },
+      { "include": "no-step-scroll" },
+      { "shot": "create-origin-scrapyard" },
+      { "click": ".create-panel .choice-grid .choice:nth-child(3)" },
+      { "include": "no-step-scroll" },
+      { "shot": "create-origin-metro" },
+      { "click": ".create-panel .choice-grid .choice:nth-child(1)" },
+      { "include": "no-step-scroll" },
+      { "shot": "create-origin-port" },
+      { "click": ".create-panel .choice-grid .choice:nth-child(4)" },
+      { "include": "no-step-scroll" },
+      { "click": ".create-panel .choice-grid .choice:nth-child(5)" },
+      { "include": "no-step-scroll" }
     ]
   },
   {
@@ -85,6 +108,7 @@
       { "click": ".create-next" },
       { "click": ".create-next" },
       { "include": "no-page-scroll" },
+      { "include": "no-step-scroll" },
       { "shot": "create-name" },
       { "eval": "const input = document.querySelector('.name-input'); input.value = 'Miquel'; input.dispatchEvent(new Event('input'));" },
       { "shot": "create-name-typed" }

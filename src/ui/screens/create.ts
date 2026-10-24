@@ -1,7 +1,7 @@
 // Creating a fighter, in four steps: Look, Class, Origin, Name.
 // Your fighter stands on the street at the top the whole time and changes as you pick.
 import { CARDS, CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, originCard as originCardId, type Appearance, type ClassId, type SaveData } from '../../core';
-import { cardSticker } from '../cardView';
+import { CARD_ICONS, cardSticker } from '../cardView';
 import { h, pixelArt } from '../dom';
 import { icon, statRow } from '../icons';
 import { reducedMotion } from '../motion';
@@ -154,19 +154,35 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
   track.append(...classCards);
   pickClass(CLASS_IDS.indexOf(classId));
 
-  /** An origin: its name in its colour, its bonus, and the card it starts with (with the card's text, since phones show no tooltips). */
-  const originCard = (id: string) => {
+  /** A small origin tile: its name in its colour, and its bonus next to the icon of the card it starts with. */
+  const originTile = (id: string) => {
     const o = ORIGINS[id]!;
     const cardId = originCardId(id);
+    const cardIcon = icon(CARD_ICONS[cardId ?? ''] ?? 'skill', 'Card');
+    cardIcon.setAttribute('aria-hidden', 'true');
     return h(
       'div',
-      { class: 'origin-choice' },
+      { class: 'origin-tile' },
       h('div', { class: 'choice-title', style: `color:${ORIGIN_COLORS[id]}` }, o.name),
-      h('div', { class: 'choice-desc' }, o.description),
-      cardId ? cardSticker(cardId, 1, { size: 'small' }) : '',
-      cardId ? h('div', { class: 'choice-desc' }, CARDS[cardId]!.describe(1)) : '',
+      h('div', { class: 'origin-bonus' }, cardIcon, h('span', {}, o.description)),
     );
   };
+
+  /** Under the tiles: the picked origin's bonus in full, its starting card and what that card does. */
+  const originDetail = h('div', { class: 'origin-detail' });
+  const refreshOriginDetail = () => {
+    const cardId = originCardId(originId);
+    originDetail.replaceChildren(
+      cardId ? cardSticker(cardId, 1, { size: 'small' }) : '',
+      h(
+        'div',
+        { class: 'origin-detail-text' },
+        h('div', { class: 'origin-detail-bonus', style: `color:${ORIGIN_COLORS[originId]}` }, ORIGINS[originId]!.description),
+        cardId ? h('div', { class: 'small' }, CARDS[cardId]!.describe(1)) : '',
+      ),
+    );
+  };
+  refreshOriginDetail();
 
   // ---- The four step panels (only the open one is shown) ----
 
@@ -188,7 +204,7 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
     ),
     h(
       'section',
-      { class: 'create-panel' },
+      { class: 'create-panel create-centred' },
       h('p', { class: 'lede small' }, 'Your starting stats and skill, and the upgrades you see most.'),
       track,
       classDots,
@@ -196,13 +212,14 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
     h(
       'section',
       { class: 'create-panel' },
-      h('p', { class: 'lede small' }, 'A bonus in every fight, a look and a card of its own.'),
-      choiceGrid(ORIGIN_IDS, originCard, (id) => {
+      choiceGrid(ORIGIN_IDS, originTile, (id) => {
         originId = id;
         refreshPreview();
+        refreshOriginDetail();
       }, originId),
+      originDetail,
     ),
-    h('section', { class: 'create-panel create-name' }, h('p', { class: 'lede small' }, 'What does the street call you?'), nameInput),
+    h('section', { class: 'create-panel create-centred create-name' }, h('p', { class: 'lede small' }, 'What does the street call you?'), nameInput),
   ];
 
   // ---- The street with the fighter, and the footer with dots, Back and Next ----
