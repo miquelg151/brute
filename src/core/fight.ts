@@ -908,7 +908,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         u.trainGauge = scaled(40, level);
         break;
       case 'scrap_shield':
-        u.scrap += scaled(15, level);
+        u.scrap += scaled(12, level);
         events.push({ t: 'scrap', actor: u.idx, absorbed: 0, left: u.scrap });
         break;
       case 'toxic_spit': {

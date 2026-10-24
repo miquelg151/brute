@@ -1,12 +1,15 @@
 // Balance report. Run with `npm run balance` (all sections) or pick one:
 //   npm run balance -- 2000 classes   class vs class win rates at several levels
+//   npm run balance -- 2000 origins   each origin against the same class from a random origin
 //   npm run balance -- 2000 skill     how much playing cards well matters
 //   npm run balance -- 2000 advice    whether each strategy option's advice is true
 //   npm run balance -- 2000 cards     how much each card helps the fighter who brings it
+//                                     (origin cards are measured with fighters of their own origin)
 // The number is fights per measurement. Exits with code 1 if anything is out of range.
 import {
   CARDS,
   CLASS_IDS,
+  ORIGIN_IDS,
   Rng,
   STANCES,
   STANCE_IDS,
@@ -16,6 +19,7 @@ import {
   WEAPON_STYLES,
   WEAPON_STYLE_IDS,
   botCardLevel,
+  cardOrigin,
   generateOpponent,
   mixSeed,
   runFight,
@@ -42,6 +46,8 @@ const CLASS_MIN = 0.45;
 const CLASS_MAX = 0.55;
 const MATCHUP_MIN = 0.35;
 const MATCHUP_MAX = 0.65;
+const ORIGIN_MIN = 0.45;
+const ORIGIN_MAX = 0.55;
 
 function winRate(a: ClassId, b: ClassId, level: number): number {
   let wins = 0;
@@ -81,6 +87,35 @@ if (section('classes')) {
     }
   }
   console.log(`Targets: matchups ${Math.round(MATCHUP_MIN * 100)}-${Math.round(MATCHUP_MAX * 100)}%, class averages ${Math.round(CLASS_MIN * 100)}-${Math.round(CLASS_MAX * 100)}%`);
+}
+
+// --- Origins ---------------------------------------------------------------
+// Each origin against the same class from a random origin, so only the origin differs.
+if (section('origins')) {
+  console.log(`
+Origins: win rate against the same class from a random origin`);
+  console.log(`${'level'.padEnd(8)}${ORIGIN_IDS.map((id) => id.padEnd(12)).join('')}`);
+  for (const level of LEVELS) {
+    const cells: string[] = [];
+    for (const originId of ORIGIN_IDS) {
+      let wins = 0;
+      for (let i = 0; i < FIGHTS; i++) {
+        const rng = new Rng(mixSeed(level * 4241 + ORIGIN_IDS.indexOf(originId) * 17, i));
+        const classId = CLASS_IDS[i % CLASS_IDS.length]!;
+        const ca = generateOpponent(level, rng, classId, originId);
+        const cb = generateOpponent(level, rng, classId);
+        const aFirst = i % 2 === 0;
+        const log = aFirst ? runFight(ca, cb, rng.next()) : runFight(cb, ca, rng.next());
+        if (log.winner === (aFirst ? 0 : 1)) wins++;
+      }
+      const rate = wins / FIGHTS;
+      const flag = rate < ORIGIN_MIN || rate > ORIGIN_MAX ? '!' : ' ';
+      if (flag === '!') problems++;
+      cells.push(`${pct(rate)}${flag}`.padEnd(12));
+    }
+    console.log(`${String(level).padEnd(8)}${cells.join('')}`);
+  }
+  console.log(`Targets: ${Math.round(ORIGIN_MIN * 100)}-${Math.round(ORIGIN_MAX * 100)}%`);
 }
 
 // --- Player skill -----------------------------------------------------------
@@ -188,13 +223,15 @@ if (section('cards')) {
     let wins = 0;
     let played = 0;
     let total = 0;
+    // Origin cards: both fighters come from that origin, so the base deck is their real starting cards.
+    const originId = card.pool === 'origin' ? cardOrigin(card.id) : undefined;
     for (const classId of classes) {
       for (let i = 0; i < FIGHTS / classes.length; i++) {
         const rng = new Rng(mixSeed(9090 + CLASS_IDS.indexOf(classId), i));
-        const ca = generateOpponent(SKILL_LEVEL, rng, classId);
-        const cb = generateOpponent(SKILL_LEVEL, rng, classId);
+        const ca = generateOpponent(SKILL_LEVEL, rng, classId, originId);
+        const cb = generateOpponent(SKILL_LEVEL, rng, classId, originId);
         const level = botCardLevel(SKILL_LEVEL);
-        const base = Object.fromEntries(startingCards(classId).filter((id) => id !== card.id).map((id) => [id, level]));
+        const base = Object.fromEntries(startingCards(classId, ca.originId).filter((id) => id !== card.id).map((id) => [id, level]));
         // Swap sides every other fight: bots on side B see side A's card in the same tick
         // and can answer it at once, so always giving the card to side A would undersell it.
         const withCard = { deck: { ...base, [card.id]: level } };

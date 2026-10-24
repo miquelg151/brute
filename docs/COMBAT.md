@@ -50,8 +50,8 @@ the choices made at each break.
 
 - The Special Strike shows a timing bar: the better the timing, the bigger the bonus.
   Below 25% timing it fails and the turn plays normally. It costs 20 stamina.
-- Every class starts with the Special Strike and its own class card; the others are won
-  at level-ups.
+- Every fighter starts with the Special Strike, its own class card and the card of its
+  origin (see Origins below); the others are won at level-ups.
 - **Card levels** come from use: level 2 after 3 uses, level 3 after 8, level 4 after 15,
   level 5 after 25. Each level above 1 adds 10% to the card's numbers; counts (hits,
   dodges, blocks) go up by one at level 4. The cost never changes.
@@ -60,12 +60,39 @@ the choices made at each break.
   1. Health below 35% and Patch Up in the deck: Patch Up.
   2. The enemy played Rage, Haymaker, Flurry or a Special Strike in the last 5 ticks
      (a bot sees a card from the next tick on, never in the tick it was played): a
-     defence (Wall, Roll or Feint) if they have one. Roll is not used against a Special
-     Strike, which can't be dodged.
+     defence (Wall, Roll, Feint, Weather the Wave, Leap or Scrap Shield) if they have
+     one. Roll and Leap are not used against a Special Strike, which can't be dodged.
   3. Energy 8 or more: the card they have played least this fight; among those, the
      most expensive they can afford. Second Breath only counts while their stamina is
      below 50. A bot's Special Strike timing is rolled (40–90%).
   4. Otherwise they wait.
+
+## Origins
+
+Every fighter comes from one of six parts of the city. The origin gives a passive bonus
+in every fight and a starting card (the passives are in `ORIGINS` in `catalog.ts`, the
+cards in `cards.ts`, their fight rules in `fight.ts`). Card numbers grow with card
+level like any other card: +10% per level above 1, counts +1 at level 4.
+
+| Origin | Passive | Card (cost) | At card level 1 | Grows with level |
+|---|---|---|---|---|
+| The Port | +8% health | Weather the Wave (3) | The next 2 hits you take do 50% less damage. | 5% more softening per level, up to 70%; 3 hits at level 4 |
+| The Rooftops | +9% dodge | Leap (3) | Dodge the next attack for sure and strike back with +20%. | the strike-back bonus |
+| The Metro | Starts every round with a full turn gauge: acts right away | Last Train (3) | Your next 2 turns come sooner (each one adds 40 to the turn gauge). | the gauge added; 3 turns at level 4 |
+| Industrial Zone | +1 armor | Scrap Shield (4) | A barrier that stops 12 physical damage this round. | the damage it stops |
+| The Sewers | Heals 1 health at the start of each of its turns | Toxic Spit (4) | Poison: they lose 4 health on each of their next 3 turns. Armor doesn't help. | the poison damage |
+| The Scrapyard | +15% magic resistance | Power Surge (6) | A normal hit; if it lands (even blocked), they lose their next turn. | +10% damage per level above 1 |
+
+- Poison changes health directly: it ignores armor, shields and Scrap Shield, and it does
+  not trigger Second Wind.
+- A stunned fighter (Power Surge) loses that turn entirely: no attack and no stamina,
+  mana or health regeneration that turn.
+- Leap and Last Train carry over to the next round if they are not used up; Scrap Shield
+  ends with the round.
+- Leap can be used up by an enemy pet's attack, like Roll.
+- Pets and spirits don't get their owner's origin passive.
+- **Ranks** (rookie, regular, veteran, champion, legend) only change how a fighter looks
+  and is named; they have no effect in fights.
 
 ## Breaks
 

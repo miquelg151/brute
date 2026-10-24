@@ -893,12 +893,12 @@ describe('origins', () => {
 
   it('origin passives match the design', () => {
     expect(ORIGINS.port!.hpPercent).toBe(8);
-    expect(ORIGINS.rooftops!.dodge).toBe(6);
-    expect(ORIGINS.metro!.initiative).toBe(30);
-    expect(ORIGINS.industrial!.armor).toBe(2);
+    expect(ORIGINS.rooftops!.dodge).toBe(9);
+    expect(ORIGINS.metro!.initiative).toBe(100);
+    expect(ORIGINS.industrial!.armor).toBe(1);
     expect(ORIGINS.sewers!.hpRegen).toBe(1);
-    expect(ORIGINS.scrapyard!.armor).toBe(1);
-    expect(ORIGINS.scrapyard!.magicResist).toBe(10);
+    expect(ORIGINS.scrapyard!.armor).toBe(0);
+    expect(ORIGINS.scrapyard!.magicResist).toBe(15);
   });
 
   it('a new fighter gets its origin card', () => {
@@ -988,14 +988,18 @@ describe('origin cards', () => {
   });
 
   it('Scrap Shield stops physical damage until the round ends', () => {
-    // Costs 4: playable at tick 5.
-    const log = play(bouncer, 'scrap_shield', 5, 4);
+    // Costs 4: playable at tick 5. One break choice so the fight goes on into round 2.
+    const log = runFight(bouncer, foe, 4, {
+      a: { interactive: true, deck: deckOf('scrap_shield'), plays: [{ tick: 5, card: 'scrap_shield' }], breaks: [keep(bouncer.weapons)] },
+      b: { deck: {} },
+    });
     const from = cardIndex(log, 'scrap_shield');
     const scraps = log.events.slice(from).filter((e) => e.t === 'scrap' && e.actor === 0);
-    expect(scraps[0]).toMatchObject({ absorbed: 0, left: 15 });
+    expect(scraps[0]).toMatchObject({ absorbed: 0, left: 12 });
     expect(scraps.some((e) => e.t === 'scrap' && e.absorbed > 0)).toBe(true);
     const round2 = log.events.findIndex((e) => e.t === 'round' && e.round === 2);
-    if (round2 >= 0) expect(log.events.slice(round2).some((e) => e.t === 'scrap')).toBe(false);
+    expect(round2).toBeGreaterThanOrEqual(0);
+    expect(log.events.slice(round2).some((e) => e.t === 'scrap')).toBe(false);
   });
 
   it('Toxic Spit poisons the enemy for 3 turns, ignoring armor', () => {
@@ -1006,8 +1010,8 @@ describe('origin cards', () => {
   });
 
   it('Power Surge makes the enemy lose their next turn when it lands', () => {
-    // Costs 5: playable at tick 10.
-    const log = play(robot, 'power_surge', 10, 2, bouncer);
+    // Costs 6: playable at tick 15.
+    const log = play(robot, 'power_surge', 15, 2, bouncer);
     const from = cardIndex(log, 'power_surge');
     const strike = log.events.slice(from).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.actor === 0)!;
     expect(strike.t).not.toBe('dodge');

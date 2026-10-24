@@ -83,9 +83,9 @@ export const CARDS: Record<string, CardDef> = {
   weather_wave: card('weather_wave', 'Weather the Wave', 3, 'origin', true, (l) => `The next ${scaledCount(2, l)} hits you take do ${weatherWavePct(l)}% less damage.`),
   leap: card('leap', 'Leap', 3, 'origin', true, (l) => `Dodge the next attack for sure and strike back with +${scaled(20, l)}%.`),
   last_train: card('last_train', 'Last Train', 3, 'origin', true, (l) => `Your next ${scaledCount(2, l)} turns come sooner.`),
-  scrap_shield: card('scrap_shield', 'Scrap Shield', 4, 'origin', true, (l) => `A barrier that stops ${scaled(15, l)} physical damage this round.`),
+  scrap_shield: card('scrap_shield', 'Scrap Shield', 4, 'origin', true, (l) => `A barrier that stops ${scaled(12, l)} physical damage this round.`),
   toxic_spit: card('toxic_spit', 'Toxic Spit', 4, 'origin', true, (l) => `Poison: they lose ${scaled(4, l)} health on each of their next 3 turns. Armor doesn't help.`),
-  power_surge: card('power_surge', 'Power Surge', 5, 'origin', true, (l) => `A shocking hit${l > 1 ? ` (+${10 * (l - 1)}%)` : ''}: if it lands, they lose their next turn.`),
+  power_surge: card('power_surge', 'Power Surge', 6, 'origin', true, (l) => `A shocking hit${l > 1 ? ` (+${10 * (l - 1)}%)` : ''}: if it lands, they lose their next turn.`),
 };
 
 export const CARD_IDS = Object.keys(CARDS);

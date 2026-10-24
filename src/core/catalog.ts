@@ -174,12 +174,12 @@ const origin = (id: string, name: string, description: string, bonus: Partial<Om
 
 export const ORIGINS: Record<string, OriginDef> = {
   port: origin('port', 'The Port', '+8% health.', { hpPercent: 8 }),
-  rooftops: origin('rooftops', 'The Rooftops', '+6% dodge.', { dodge: 6 }),
-  metro: origin('metro', 'The Metro', 'Acts sooner at the start of every round.', { initiative: 30 }),
-  industrial: origin('industrial', 'Industrial Zone', '+2 armor.', { armor: 2 }),
+  rooftops: origin('rooftops', 'The Rooftops', '+9% dodge.', { dodge: 9 }),
+  metro: origin('metro', 'The Metro', 'Acts right away at the start of every round.', { initiative: 100 }),
+  industrial: origin('industrial', 'Industrial Zone', '+1 armor.', { armor: 1 }),
   // The two strange ones: mutants from under the city and half-robots from the scrapyard.
   sewers: origin('sewers', 'The Sewers', 'Heals 1 health every turn.', { hpRegen: 1 }),
-  scrapyard: origin('scrapyard', 'The Scrapyard', '+1 armor and +10% magic resistance.', { armor: 1, magicResist: 10 }),
+  scrapyard: origin('scrapyard', 'The Scrapyard', '+15% magic resistance.', { magicResist: 15 }),
 };
 
 export const CLASSES: Record<ClassId, ClassDef> = {
@@ -187,7 +187,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: 'brawler',
     name: 'Brawler',
     description: 'Tough street fighter. Chains punches into combos.',
-    baseStats: { health: 6, strength: 5, agility: 3, speed: 3, magic: 0 },
+    baseStats: { health: 7, strength: 5, agility: 3, speed: 3, magic: 0 },
     startSkill: 'combo',
     mana: 0,
     magicResist: 0,
@@ -284,7 +284,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('gear', 'brawler', 'gloves'),
   ref('card', 'brawler', 'haymaker'),
   // Parkour
-  stat('parkour_agility', 'parkour', '+3 Agility', { agility: 3 }),
+  stat('parkour_agility', 'parkour', '+2 Agility', { agility: 2 }),
   stat('parkour_speed', 'parkour', '+2 Speed, +2 Strength', { speed: 2, strength: 2 }),
   ref('skill', 'parkour', 'double_strike'),
   ref('skill', 'parkour', 'quick_start'),
