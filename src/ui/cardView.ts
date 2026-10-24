@@ -30,23 +30,27 @@ export const CARD_ICONS: Record<string, IconName> = {
   power_surge: 'skip',
 };
 
-export function cardSticker(id: string, level: number, opts: { uses?: number; size?: 'small' | 'big' } = {}): HTMLElement {
+/**
+ * A card sticker. `tag: 'button'` makes the card itself the tap target (everything inside
+ * is a span, so it is valid inside a button).
+ */
+export function cardSticker(id: string, level: number, opts: { uses?: number; size?: 'small' | 'big'; tag?: 'div' | 'button' } = {}): HTMLElement {
   const card = CARDS[id]!;
   const stripe =
     card.pool === 'general' ? 'var(--wall-dim)' : card.pool === 'origin' ? (ORIGIN_COLORS[cardOrigin(id) ?? ''] ?? 'var(--wall-dim)') : CLASS_COLORS[card.pool];
   const stars = h('span', { class: 'card-stars', 'aria-label': `Level ${level}` }, '★'.repeat(level) + '☆'.repeat(MAX_CARD_LEVEL - level));
   const el = h(
-    'div',
-    { class: `game-card ${opts.size ?? 'big'}`, style: `--stripe:${stripe}`, title: card.describe(level) },
+    opts.tag ?? 'div',
+    { class: `game-card ${opts.size ?? 'big'}`, style: `--stripe:${stripe}`, title: card.describe(level), type: opts.tag === 'button' ? 'button' : undefined },
     h('span', { class: 'card-cost' }, String(card.cost)),
-    h('div', { class: 'card-art' }, icon(CARD_ICONS[id] ?? 'skill', card.name, 'normal')),
+    h('span', { class: 'card-art' }, icon(CARD_ICONS[id] ?? 'skill', card.name, 'normal')),
     h('span', { class: 'card-name' }, card.name),
     stars,
   );
   if (opts.uses !== undefined && level < MAX_CARD_LEVEL) {
     const from = usesForLevel(level);
     const to = usesForLevel(level + 1);
-    el.append(h('div', { class: 'card-progress', role: 'img', 'aria-label': `${opts.uses - from} of ${to - from} uses to level ${level + 1}` }, h('div', { style: `width:${(100 * (opts.uses - from)) / (to - from)}%` })));
+    el.append(h('span', { class: 'card-progress', role: 'img', 'aria-label': `${opts.uses - from} of ${to - from} uses to level ${level + 1}` }, h('span', { style: `width:${(100 * (opts.uses - from)) / (to - from)}%` })));
   }
   return el;
 }
@@ -59,7 +63,7 @@ export function cardList(ids: string[], uses: Record<string, number>): HTMLEleme
   const info = h('p', { class: 'trait-info small' }, 'Tap a card to see what it does.');
   const stickers = ids.map((id) => {
     const level = levelOf(uses, id);
-    const el = cardSticker(id, level, { uses: uses[id] ?? 0 });
+    const el = cardSticker(id, level, { uses: uses[id] ?? 0, tag: 'button' });
     el.classList.add('tappable');
     el.addEventListener('click', () => {
       stickers.forEach((s) => s.classList.toggle('picked', s === el));

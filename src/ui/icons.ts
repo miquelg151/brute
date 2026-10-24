@@ -140,6 +140,11 @@ const ICONS = {
     rows: ['WWWWWWW', 'WKWWWKW', 'WWWWWWW', 'WWWKWWW', 'WWWWWWW', 'WKWWWKW', 'WWWWWWW'],
     colors: { W: PAL.white, K: PAL.ink },
   },
+  // A padlock, for things you don't have yet.
+  lock: {
+    rows: ['..SSS..', '.S...S.', '.S...S.', 'LYYYYYY', 'LYYKYYD', 'LYYKYYD', '.DDDDD.'],
+    colors: { S: PAL.fog, L: PAL.white, Y: PAL.sand, D: PAL.wood, K: PAL.brownDark },
+  },
 } satisfies Record<string, IconDef>;
 
 export type IconName = keyof typeof ICONS;

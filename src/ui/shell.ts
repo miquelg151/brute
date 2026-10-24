@@ -6,8 +6,9 @@ import { h, pixelArt } from './dom';
 import { icon, type IconName } from './icons';
 import { tabIn } from './motion';
 import { drawFighter } from './sprites';
+import { renderCardsTab } from './tabs/cardsTab';
 import { renderFightTab } from './tabs/fightTab';
-import { renderHomeCards, renderHomeFighter } from './screens/home';
+import { renderFighterTab } from './tabs/fighterTab';
 import { rankBadge } from './widgets';
 
 export type TabId = 'fighter' | 'fight' | 'cards';
@@ -54,12 +55,29 @@ function storeTab(id: TabId): void {
   }
 }
 
+/** Forgets the open tab, so the next fighter starts on the Fight tab. */
+function forgetTab(): void {
+  try {
+    localStorage.removeItem(TAB_KEY);
+  } catch {
+    // Nothing to forget.
+  }
+}
+
 /** Draws the top bar, the open tab and the tab bar into `root`. */
 export function renderShell(root: HTMLElement, save: SaveData, actions: ShellActions): void {
   const body = h('main', { class: 'shell-body' });
   const tabButtons = new Map<TabId, HTMLButtonElement>();
 
-  const tabActions: TabActions = { ...actions, openTab: (id) => open(id, true) };
+  const tabActions: TabActions = {
+    ...actions,
+    // Deleting the fighter also forgets the open tab.
+    onReset: () => {
+      forgetTab();
+      actions.onReset();
+    },
+    openTab: (id) => open(id, true),
+  };
 
   /** Shows a tab: only the middle is drawn again. */
   function open(id: TabId, animate: boolean): void {
@@ -72,8 +90,8 @@ export function renderShell(root: HTMLElement, save: SaveData, actions: ShellAct
     body.replaceChildren();
     body.scrollTop = 0;
     if (id === 'fight') renderFightTab(body, save, tabActions);
-    else if (id === 'fighter') renderHomeFighter(body, save, actions.onReset);
-    else renderHomeCards(body, save);
+    else if (id === 'fighter') renderFighterTab(body, save, tabActions);
+    else renderCardsTab(body, save, tabActions);
     if (animate) tabIn(body);
   }
 

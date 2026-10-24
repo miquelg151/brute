@@ -26,6 +26,15 @@
     ]
   },
   {
+    "name": "rich",
+    "helper": true,
+    "steps": [
+      { "include": "setup" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 10; c.xp = 9; c.weapons = ['bat', 'chain', 'traffic_sign']; c.pets = ['dog']; c.gear = ['riot_vest', 'sneakers']; c.skills = ['combo', 'iron_skin', 'spark']; c.cards = ['special', 'rage', 'weather_wave', 'patch_up', 'hurl', 'rush', 'haymaker']; c.cardUses = { special: 4, rage: 9, patch_up: 26, hurl: 1 }; delete c.deck; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 }
+    ]
+  },
+  {
     "name": "title",
     "steps": [
       { "save": null },
@@ -61,21 +70,40 @@
     ]
   },
   {
-    "name": "tab-fighter",
+    "name": "tab-fighter-new",
     "steps": [
-      { "include": "level-10" },
+      { "include": "setup" },
       { "click": ".tab-fighter" },
       { "include": "no-page-scroll" },
-      { "shot": "tab-fighter" }
+      { "shot": "tab-fighter-new" }
+    ]
+  },
+  {
+    "name": "tab-fighter",
+    "steps": [
+      { "include": "rich" },
+      { "click": ".tab-fighter" },
+      { "include": "no-page-scroll" },
+      { "shot": "tab-fighter" },
+      { "click": ".inv-item" },
+      { "shot": "tab-fighter-note" },
+      { "eval": "document.querySelector('.shell-body').scrollTop = 9999;" },
+      { "shot": "tab-fighter-bottom" }
     ]
   },
   {
     "name": "tab-cards",
     "steps": [
-      { "include": "level-10" },
+      { "include": "rich" },
       { "click": ".tab-cards" },
       { "include": "no-page-scroll" },
-      { "shot": "tab-cards" }
+      { "shot": "tab-cards" },
+      { "click": ".card-grid .game-card:nth-child(2)" },
+      { "shot": "tab-cards-picked" },
+      { "click": "text=Put in deck" },
+      { "shot": "tab-cards-swapping" },
+      { "click": ".deck-tray .game-card:nth-child(2)" },
+      { "shot": "tab-cards-swapped" }
     ]
   },
   {

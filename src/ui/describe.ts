@@ -56,23 +56,33 @@ export function gearEffects(g: GearDef): string {
   return parts.join(', ');
 }
 
+/** What a weapon does, e.g. "Damage 6, accuracy +5%. Drawn at random during fights." */
+export function weaponDetail(weaponId: string): string {
+  const w = WEAPONS[weaponId];
+  if (!w) return '';
+  const acc = w.accuracy === 0 ? '' : `, accuracy ${w.accuracy > 0 ? '+' : ''}${w.accuracy}%`;
+  return `Damage ${w.damage}${acc}${w.heavy ? ', heavy' : ''}. Drawn at random during fights.`;
+}
+
+/** What a pet brings, e.g. "Fights by your side. Health 13, damage 3, speed 5." */
+export function petDetail(petId: string): string {
+  const p = PETS[petId];
+  if (!p) return '';
+  return `Fights by your side. Health ${p.maxHp}, damage ${p.damage}, speed ${p.speed}.`;
+}
+
 export function upgradeDetail(upgradeId: string): string {
   const u = UPGRADES_BY_ID[upgradeId];
   if (!u) return '';
   switch (u.kind) {
     case 'stat':
       return 'Permanent stat boost.';
-    case 'weapon': {
-      const w = WEAPONS[u.ref]!;
-      const acc = w.accuracy === 0 ? '' : `, accuracy ${w.accuracy > 0 ? '+' : ''}${w.accuracy}%`;
-      return `Damage ${w.damage}${acc}${w.heavy ? ', heavy' : ''}. Drawn at random during fights.`;
-    }
+    case 'weapon':
+      return weaponDetail(u.ref);
     case 'skill':
       return SKILLS[u.ref]!.description;
-    case 'pet': {
-      const p = PETS[u.ref]!;
-      return `Fights by your side. Health ${p.maxHp}, damage ${p.damage}, speed ${p.speed}.`;
-    }
+    case 'pet':
+      return petDetail(u.ref);
     case 'gear':
       return `${gearEffects(GEAR[u.ref]!)}. Choose what to wear before each fight.`;
     case 'card': {

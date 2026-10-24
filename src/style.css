@@ -442,27 +442,6 @@ a {
   color: var(--tag, var(--ink-soft));
 }
 
-/* Home: fighter header */
-.hero {
-  display: flex;
-  gap: calc(var(--step) * 2);
-  align-items: flex-end;
-}
-
-.hero-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  padding-bottom: var(--step);
-}
-
-.hero-info h1 {
-  margin: 0 0 4px;
-  overflow-wrap: anywhere;
-}
-
 .bar {
   height: 12px;
   background: rgba(0, 0, 0, 0.35);
@@ -479,12 +458,13 @@ a {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   transform: rotate(0.4deg);
 }
 
 .stat {
-  padding: 10px 4px;
+  padding: 8px 2px 6px;
   text-align: center;
   border-left: 2px dashed var(--paper-edge);
 }
@@ -496,15 +476,9 @@ a {
 .stat-value {
   font-family: var(--font);
   font-weight: var(--heavy);
-  font-size: var(--t-xxl);
+  font-size: var(--t-xl);
   line-height: 1;
   display: block;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: var(--t-xs);
-  color: var(--ink-soft);
 }
 
 /* Inventory slots with the real sprite inside */
@@ -538,32 +512,6 @@ a {
   background: var(--paper-2);
   border: 2px solid var(--ink);
   border-radius: var(--rough-2);
-}
-
-.slot-empty .slot-art {
-  background: transparent;
-  border-style: dashed;
-  border-color: var(--wall-dim);
-}
-
-.skill-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.skill-list strong {
-  font-family: var(--font);
-  font-weight: var(--heavy);
-  font-size: var(--t-l);
-}
-
-.skill-list span {
-  color: var(--wall-dim);
-  font-size: var(--t-s);
 }
 
 /* Tally marks */
@@ -1286,11 +1234,6 @@ body.sheet-open {
   max-width: 100%;
 }
 
-.stats-2 {
-  grid-template-columns: repeat(2, 1fr);
-  margin-top: 4px;
-}
-
 /* --- Sticker lettering ------------------------------------------------------
    Most text looks like a die-cut sticker: light letters, a dark outline and a pink
    shadow. Three strengths:
@@ -1319,7 +1262,6 @@ h2:not(.card h2),
 .poster-name,
 .stat-value,
 .result,
-.skill-list strong,
 .timing-label {
   color: var(--sticker-fill);
   -webkit-text-stroke: var(--sticker-outline) var(--sticker-ink);
@@ -1337,7 +1279,6 @@ h2:not(.card h2),
 .poster-name,
 .stat-value,
 .result,
-.skill-list strong,
 .timing-label {
   filter: drop-shadow(var(--sticker-drop) var(--sticker-drop) 0 var(--sticker-shadow));
 }
@@ -1365,7 +1306,7 @@ h2:not(.card h2),
 /* 2. Small sticker */
 .sticker-sm,
 .rank-badge,
-.hero-info > div:not(.bar),
+.fighter-id,
 .poster-side .small,
 .look-value,
 .tag,
@@ -1376,15 +1317,14 @@ h2:not(.card h2),
   text-shadow: none;
 }
 
-.hero-info > div:not(.bar),
+.fighter-id,
 .look-value,
 .slot {
   color: var(--sticker-fill);
 }
 
 /* Inside a small-sticker line, coloured words keep their outline too. */
-.hero-info > div.dim,
-.slot-empty {
+.fighter-id .dim {
   color: var(--wall-dim);
 }
 
@@ -1996,7 +1936,7 @@ details.more[open] summary::after {
   overflow: hidden;
 }
 
-.card-progress > div {
+.card-progress > span {
   height: 100%;
   background: var(--teal);
 }
@@ -2018,8 +1958,21 @@ details.more[open] summary::after {
   gap: var(--step);
 }
 
-.game-card.tappable {
+.game-card.tappable,
+button.game-card {
   cursor: pointer;
+}
+
+/* A card that is a button keeps the card look (buttons bring their own font and padding). */
+button.game-card {
+  font: inherit;
+  text-align: center;
+}
+
+/* Inside a button everything is a span, so the bar and its fill need to be blocks. */
+.card-progress,
+.card-progress > span {
+  display: block;
 }
 
 .game-card.picked {
@@ -2346,12 +2299,7 @@ details.more[open] summary::after {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin: 0;
   padding: 16px 12px 6px;
-  font: inherit;
-  background: none;
-  border: none;
-  cursor: pointer;
 }
 
 .fight-deck .game-card {
@@ -2420,5 +2368,322 @@ details.more[open] summary::after {
 
   .fight-go:active:not(:disabled) {
     transform: rotate(-1deg);
+  }
+}
+
+/* --- Paper note: a slip under a grid that explains the tapped thing ------------ */
+.paper-note {
+  position: relative;
+  padding: 10px 14px 12px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough);
+  text-shadow: none;
+  transform: rotate(-0.6deg);
+}
+
+.note-name {
+  display: block;
+  font-size: var(--t-l);
+  font-weight: var(--heavy);
+  line-height: 1.2;
+}
+
+.note-text {
+  margin: 2px 0 0;
+  font-size: var(--t-s);
+}
+
+.paper-note .dim {
+  color: var(--ink-soft);
+}
+
+/* --- Fighter tab: stats and the inventory -------------------------------------- */
+.fighter-id {
+  margin: 0;
+}
+
+.inventory {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--step);
+}
+
+/* One row per kind of thing: its icon on the left, the squares on the right. */
+.inv-row {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 2px dashed color-mix(in srgb, var(--wall-text) 16%, transparent);
+}
+
+.inv-row:first-child {
+  border-top: none;
+}
+
+/* The icon sits level with the middle of the first square. */
+.inv-heading {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inv-row:has(.locked-slot) .inv-heading {
+  height: 48px;
+}
+
+.inventory .paper-note {
+  margin: 2px 0 6px;
+}
+
+.inv-heading canvas {
+  filter: drop-shadow(2px 0 0 var(--paper-lit)) drop-shadow(-2px 0 0 var(--paper-lit)) drop-shadow(0 2px 0 var(--paper-lit))
+    drop-shadow(0 -2px 0 var(--paper-lit));
+}
+
+.inv-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 8px;
+  min-width: 0;
+}
+
+.inv-item {
+  width: 70px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  font: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* A square slot with the thing's picture, stuck on slightly crooked. */
+.inv-square canvas {
+  /* Very big custom art still fits in the square. */
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.inv-square {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough-2);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--paper-2) 50%, var(--outline));
+  transition: transform var(--fast) var(--ease-out);
+}
+
+.inv-item:nth-child(odd) .inv-square {
+  rotate: -1.5deg;
+}
+
+.inv-item:nth-child(even) .inv-square {
+  rotate: 1deg;
+}
+
+.inv-item:active .inv-square {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--paper-2) 50%, var(--outline));
+}
+
+.inv-item[aria-pressed='true'] .inv-square {
+  background: var(--paper-lit);
+  outline: 3px solid var(--pink);
+  outline-offset: 2px;
+}
+
+.inv-name {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--sticker-fill);
+  -webkit-text-stroke: var(--sticker-outline-sm) var(--sticker-ink);
+  paint-order: stroke fill;
+  text-shadow: none;
+}
+
+/* Nothing here yet: a padlock in a faint square and a short line. */
+.locked-slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.locked-slot .inv-square {
+  width: 48px;
+  height: 48px;
+  background: color-mix(in srgb, var(--wall-text) 6%, transparent);
+  border-color: color-mix(in srgb, var(--wall-text) 28%, transparent);
+  box-shadow: none;
+  rotate: -1.5deg;
+}
+
+.locked-slot .icon {
+  opacity: 0.75;
+}
+
+.locked-text {
+  font-size: var(--t-s);
+  color: var(--wall-dim);
+}
+
+.delete-fighter {
+  align-self: center;
+  margin-top: calc(var(--step) * 3);
+}
+
+/* --- Cards tab: the deck on top, the collection below -------------------------- */
+.cards-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 0;
+  font-size: var(--t-xl);
+}
+
+/* How many cards you own, on a little paper tag. */
+.cards-count {
+  padding: 0 8px;
+  font-size: var(--t-xs);
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 10px 4px 10px 4px;
+  -webkit-text-stroke: 0;
+}
+
+/* The deck: four cards in a dark tray. */
+.deck-tray {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px 10px 12px;
+  background: var(--arena);
+  border: 2px solid var(--outline);
+  border-radius: var(--rough-2);
+  box-shadow: inset 0 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px 10px;
+  padding-top: 10px;
+}
+
+.deck-tray .game-card,
+.card-grid .game-card {
+  width: auto;
+  min-width: 0;
+}
+
+.deck-tray .card-empty {
+  min-height: 100px;
+}
+
+/* Cards stuck on slightly crooked, never all the same. */
+.deck-tray .game-card:nth-child(odd),
+.card-grid .game-card:nth-child(4n + 1),
+.card-grid .game-card:nth-child(4n + 3) {
+  rotate: -1.5deg;
+}
+
+.deck-tray .game-card:nth-child(even),
+.card-grid .game-card:nth-child(4n + 2) {
+  rotate: 1deg;
+}
+
+/* A collection card that is already in the deck is faded. */
+.card-grid .game-card.in-deck {
+  opacity: 0.45;
+}
+
+/* While swapping: the cards you can tap shake gently, the others step back. */
+.game-card.swap-target {
+  outline: 2px dashed var(--yellow);
+  outline-offset: 1px;
+  opacity: 1;
+  animation: nudge 0.9s ease-in-out infinite;
+}
+
+.game-card.swap-off {
+  opacity: 0.3;
+}
+
+.card-grid .game-card.picked {
+  opacity: 1;
+}
+
+/* The card that just came into the deck slaps down. */
+.game-card.just-in {
+  animation: slap var(--med) var(--ease-bounce);
+}
+
+@keyframes nudge {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.cards-note-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+}
+
+.cards-note-level {
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+
+.cards-hint {
+  margin: 0;
+  font-size: var(--t-s);
+  color: var(--wall-dim);
+}
+
+.cards-note-tag {
+  font-size: var(--t-xs);
+  font-weight: 800;
+  color: var(--good);
+}
+
+.cards-note-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+
+.cards-note-hint {
+  flex: 1;
+  min-width: 140px;
+  font-size: var(--t-s);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inv-square,
+  .game-card.swap-target,
+  .game-card.just-in {
+    animation: none !important;
+    transition: none;
   }
 }

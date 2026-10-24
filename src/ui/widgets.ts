@@ -1,19 +1,18 @@
-import { PETS, WEAPONS, rankOf } from '../core';
+import { rankOf } from '../core';
 import { h, pixelArt } from './dom';
-import { drawPet, drawWeapon } from './sprites';
+import { icon } from './icons';
 
 /** Inventory slot showing the item's real sprite, with its name underneath. */
-export function slot(canvas: HTMLCanvasElement | null, label: string): HTMLElement {
-  return h(
-    'div',
-    { class: canvas ? 'slot' : 'slot slot-empty' },
-    h('div', { class: 'slot-art' }, canvas ? pixelArt(canvas, 'normal') : ''),
-    label,
-  );
+export function slot(canvas: HTMLCanvasElement, label: string): HTMLElement {
+  return h('div', { class: 'slot' }, h('div', { class: 'slot-art' }, pixelArt(canvas, 'normal')), label);
 }
 
-export const weaponSlot = (id: string) => slot(drawWeapon(id), WEAPONS[id]?.name ?? id);
-export const petSlot = (id: string) => slot(drawPet(id), PETS[id]?.name ?? id);
+/** A padlocked square with a short line next to it, for an inventory group that is still empty. */
+export function lockedSlot(label: string): HTMLElement {
+  const lock = icon('lock', 'Locked', 'normal');
+  lock.setAttribute('aria-hidden', 'true');
+  return h('div', { class: 'locked-slot' }, h('span', { class: 'inv-square' }, lock), h('span', { class: 'locked-text' }, label));
+}
 
 /** A row of squares, `on` of them filled. */
 export function pips(on: number, total: number, label: string): HTMLElement {
