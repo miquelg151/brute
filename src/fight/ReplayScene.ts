@@ -324,12 +324,12 @@ export class ReplayScene extends Phaser.Scene {
     return this.views[idx]!.team;
   }
 
-  /** True when the special strike really hit: its attack follows in the same tick. */
-  private specialLanded(from: number): boolean {
+  /** True when this fighter's special strike really hit: its attack follows in the same tick. */
+  private specialLanded(from: number, actor: number): boolean {
     for (let j = from + 1; j < this.log.events.length; j++) {
       const next = this.log.events[j]!;
       if (next.t === 'tick') return false;
-      if ((next.t === 'hit' || next.t === 'block' || next.t === 'dodge') && next.kind === 'special') return true;
+      if ((next.t === 'hit' || next.t === 'block' || next.t === 'dodge') && next.kind === 'special' && next.actor === actor) return true;
     }
     return false;
   }
@@ -374,7 +374,7 @@ export class ReplayScene extends Phaser.Scene {
       case 'card':
         return this.onCard(e.actor, e.card);
       case 'special':
-        return this.onSpecial(e.actor, e.quality, this.specialLanded(index));
+        return this.onSpecial(e.actor, e.quality, this.specialLanded(index, e.actor));
       case 'death':
         return this.onDeath(e.actor);
     }

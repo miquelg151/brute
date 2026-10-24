@@ -1972,7 +1972,7 @@ details.more[open] summary::after {
 
 .card-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   padding-top: 12px;
 }
@@ -2013,8 +2013,8 @@ details.more[open] summary::after {
 }
 
 /* Four cards must fit in a row on the narrowest phones. */
-@media (max-width: 359px) {
+@media (max-width: 389px) {
   .card-row .game-card {
-    width: 64px;
+    width: min(78px, 100%);
   }
 }

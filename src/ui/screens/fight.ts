@@ -245,7 +245,11 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
       refreshCards();
     },
     onCard: (team, card) => {
-      if (team === 1) huds[1].el.append(enemyCardSticker(card));
+      if (team === 1) {
+        // Only the latest enemy card stays (many can arrive at once while skipping).
+        huds[1].el.querySelector('.enemy-card')?.remove();
+        huds[1].el.append(enemyCardSticker(card));
+      }
       else clearQueued();
     },
     onFinished: () => {
