@@ -1,7 +1,7 @@
 // Sprites for fighters, pets and weapons. Hand-made art from public/art is used when
 // present (see art.ts); otherwise a placeholder drawn in code.
 // Every sprite faces right; the replay flips it for the right-hand team.
-import { rankOf, type Appearance, type ClassId } from '../core';
+import { RANKS, rankOf, type Appearance, type ClassId } from '../core';
 import { artImage, artManifest, imageToCanvas } from './art';
 import { HAIR_COLORS, OUTFIT_COLORS, SKIN_TONES, shade } from './palette';
 import { PAL } from './theme';
@@ -237,8 +237,14 @@ function customFighter(fighter: FighterLook): HTMLCanvasElement | null {
   if (extra) imageToCanvas(extra, undefined, canvas);
   const origin = fighter.originId ? artImage(f.origin?.[fighter.originId]) : null;
   if (origin) imageToCanvas(origin, undefined, canvas);
-  const rank = artImage(f.rank?.[rankOf(fighter.level ?? 1).id]);
-  if (rank) imageToCanvas(rank, undefined, canvas);
+  // Ranks stack: every rank layer from the first up to the fighter's own rank, in order,
+  // so each rank only adds its own details on top of the earlier ones.
+  const top = rankOf(fighter.level ?? 1).from;
+  for (const r of RANKS) {
+    if (r.from > top) break;
+    const rank = artImage(f.rank?.[r.id]);
+    if (rank) imageToCanvas(rank, undefined, canvas);
+  }
   return canvas;
 }
 

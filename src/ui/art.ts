@@ -15,7 +15,7 @@ export interface ArtManifest {
     extra?: Partial<Record<ClassId, string>>;
     /** One full-colour layer per origin id, drawn after `extra` (tattoos, hood, goggles, metal plates...). */
     origin?: Record<string, string>;
-    /** One full-colour layer per rank (no file for 'rookie'), drawn last (wraps, chain, medal, belt...). */
+    /** One full-colour layer per rank (no file for 'rookie'), drawn last (wraps, chain, medal, belt...). They stack: a fighter wears every rank layer up to its own. */
     rank?: Partial<Record<RankId, string>>;
     /** Width of one animation frame: every layer is a strip of frames side by side. Leave it out for a single picture. */
     frameWidth?: number;

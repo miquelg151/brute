@@ -59,14 +59,17 @@ fighter is assembled from layers that the game colours in:
 | `hair` (one per hair style) | hair colour | **Greyscale.** Use `null` for "bald". |
 | `extra` (one per class, optional) | not coloured | Real colours: trousers and shoes, plus the class details (headband, cap, sunglasses, hood, runes...). |
 | `origin` (one per origin, optional) | not coloured | Where the fighter grew up: beanie and anchor tattoos (port), hood and scarf (rooftops), headphones (metro), goggles and apron (industrial), mutant ears and eyes (sewers), metal plates and LED eye (scrapyard). Drawn after `extra`. |
-| `rank` (one per rank, optional) | not coloured | How seasoned the fighter is: wrist wraps, chain, medal, gold belt... Drawn last. |
+| `rank` (one per rank, optional) | not coloured | How seasoned the fighter is: wrist wraps, chain, medal, gold belt... Drawn last, and they stack (see below). |
 
 They are drawn in that order, so `rank` covers everything else.
 
 Ranks come from the fighter's level: **Regular** from level 5, **Veteran** from 10,
 **Champion** from 15 and **Legend** from 20. A **Rookie** (levels 1-4) has no rank layer,
-so there is no file for it. The rank layers don't add up: a Legend only wears the legend
-layer, so draw everything a Legend should show in that one file.
+so there is no file for it. The rank layers stack: a fighter wears every rank layer from
+Regular up to its own rank, in that order. A Legend shows the Regular wraps and patches,
+the Veteran chain, knee pads and scar, the Champion bandages, medal and shoulder pads, and
+the Legend belt and crown. So each rank file only needs what that rank adds; check in
+`?gallery` that it still looks right on top of the earlier ones.
 
 ### Animation frames
 
