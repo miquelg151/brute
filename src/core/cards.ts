@@ -60,9 +60,9 @@ export const CARDS: Record<string, CardDef> = {
   special: card('special', 'Special Strike', 5, 'general', true, (l) => `Time it well: your next attack does up to +${scaled(60, l)}% and can't be dodged.`),
   rage: card('rage', 'Rage', 4, 'brawler', true, (l) => `+${scaled(30, l)}% damage on your next 3 turns.`),
   roll: card('roll', 'Roll', 3, 'parkour', true, (l) => `Dodge the next ${scaledCount(2, l)} attacks for sure.`),
-  wall: card('wall', 'Wall', 5, 'bouncer', true, (l) => `Block the next ${scaledCount(2, l)} hits for sure.`),
+  wall: card('wall', 'Wall', 5, 'bouncer', true, (l) => (scaledCount(1, l) === 1 ? 'Block the next hit for sure.' : `Block the next ${scaledCount(1, l)} hits for sure.`)),
   sic_em: card('sic_em', "Sic 'em", 3, 'tamer', true, (l) => `Every pet attacks right now with +${scaled(100, l)}% damage.`),
-  overcharge: card('overcharge', 'Overcharge', 4, 'mystic', true, (l) => `+${scaled(15, l)} mana and your next spell does +${scaled(50, l)}%.`),
+  overcharge: card('overcharge', 'Overcharge', 4, 'mystic', true, (l) => `+${scaled(10, l)} mana and your next spell does +${scaled(30, l)}%.`),
   // Won at level-ups
   patch_up: card('patch_up', 'Patch Up', 4, 'general', false, (l) => `Heal ${scaled(10, l)}% of your health.`),
   hurl: card('hurl', 'Hurl', 3, 'general', false, (l) => `Throw your weapon now for ${scaled(200, l)}% damage.`),
@@ -73,7 +73,7 @@ export const CARDS: Record<string, CardDef> = {
   flurry: card('flurry', 'Flurry', 5, 'parkour', false, (l) => `Your next turn strikes 3 times at ${scaled(90, l)}% damage each.`),
   body_slam: card('body_slam', 'Body Slam', 5, 'bouncer', false, (l) => `A heavy hit (+${scaled(40, l)}%) that pushes their next turn back.`),
   stray_dog: card('stray_dog', 'Stray Dog', 6, 'tamer', false, (l) => `A dog with ${scaled(100, l)}% health joins until the round ends.`),
-  bolt: card('bolt', 'Bolt', 5, 'mystic', false, (l) => `A spell that can't be dodged and does +${scaled(50, l)}%.`),
+  bolt: card('bolt', 'Bolt', 5, 'mystic', false, (l) => `A spell that can't be dodged and does +${scaled(30, l)}%.`),
 };
 
 export const CARD_IDS = Object.keys(CARDS);

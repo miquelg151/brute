@@ -18,7 +18,7 @@ the choices made at each break.
 ## Energy and cards
 
 - Each fighter has **energy**, from 0 to 10. It starts at 3 and fills one point every
-  5 ticks. It is carried over from round to round.
+  7 ticks. It is carried over from round to round.
 - Each fighter brings a deck of up to 4 cards. Playing a card spends its energy cost.
   A card played on a tick takes effect at the start of the next tick (the play is
   recorded at "current tick + 1"), before anyone acts on that tick.
@@ -30,9 +30,9 @@ the choices made at each break.
 | Special Strike | 5 | everyone (starting) | Time it well: your next attack does up to +60% and can't be dodged. |
 | Rage | 4 | Brawler (starting) | +30% damage on your next 3 turns. |
 | Roll | 3 | Parkour (starting) | Dodge the next 2 attacks for sure. |
-| Wall | 5 | Bouncer (starting) | Block the next 2 hits for sure. |
+| Wall | 5 | Bouncer (starting) | Block the next hit for sure. |
 | Sic 'em | 3 | Tamer (starting) | Every pet attacks right now with +100% damage. |
-| Overcharge | 4 | Mystic (starting) | +15 mana and your next spell does +50%. |
+| Overcharge | 4 | Mystic (starting) | +10 mana and your next spell does +30%. |
 | Patch Up | 4 | any class | Heal 10% of your health. |
 | Hurl | 3 | any class | Throw your weapon now for 200% damage. |
 | Rush | 2 | any class | Act right away. |
@@ -42,7 +42,7 @@ the choices made at each break.
 | Flurry | 5 | Parkour | Your next turn strikes 3 times at 90% damage each. |
 | Body Slam | 5 | Bouncer | A heavy hit (+40%) that pushes their next turn back. |
 | Stray Dog | 6 | Tamer | A dog with 100% health joins until the round ends. |
-| Bolt | 5 | Mystic | A spell that can't be dodged and does +50%. |
+| Bolt | 5 | Mystic | A spell that can't be dodged and does +30%. |
 
 - The Special Strike shows a timing bar: the better the timing, the bigger the bonus.
   Below 25% timing it fails and the turn plays normally. It costs 20 stamina.
@@ -55,7 +55,8 @@ the choices made at each break.
   tick they play at most one card, with these rules in order:
   1. Health below 35% and Patch Up in the deck: Patch Up.
   2. The enemy played Rage, Haymaker, Flurry or a Special Strike in the last 5 ticks: a
-     defence (Wall, Roll or Feint) if they have one.
+     defence (Wall, Roll or Feint) if they have one. Roll is not used against a Special
+     Strike, which can't be dodged.
   3. Energy 8 or more: the card they have played least this fight; among those, the
      most expensive they can afford. A bot's Special Strike timing is rolled (40–90%).
   4. Otherwise they wait.
@@ -109,5 +110,5 @@ Every piece has an upside and often a downside (a riot vest is great armor but s
 - At each level-up, at least one of the three choices is a weapon, skill, pet or gear
   piece, as long as there is any left to get.
 - **Keep** weapons: hits with a weapon in hand ignore 2 armor (good against tough foes).
-- **Throw** weapons: 40% chance per turn to throw; throws can't be dodged or countered.
+- **Throw** weapons: 50% chance per turn to throw; throws can't be dodged or countered.
 - **Agile** stance: spells are dodged as easily as hits (normally only 60% as easily).

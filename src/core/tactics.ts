@@ -150,7 +150,7 @@ export const WEAPON_STYLES: Record<WeaponStyle, WeaponStyleDef> = {
   throw: {
     id: 'throw',
     name: 'Throw',
-    throwChance: 40,
+    throwChance: 50,
     drawChance: 50,
     armorPierce: 0,
     effects: [

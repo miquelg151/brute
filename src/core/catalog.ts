@@ -148,7 +148,7 @@ export const GEAR: Record<string, GearDef> = {
 };
 
 export const PETS: Record<string, PetDef> = {
-  dog: { id: 'dog', name: 'Dog', maxHp: 16, damage: 3, agility: 4, speed: 5 },
+  dog: { id: 'dog', name: 'Dog', maxHp: 13, damage: 3, agility: 4, speed: 5 },
   crow: { id: 'crow', name: 'Crow', maxHp: 9, damage: 2, agility: 10, speed: 7 },
   raccoon: { id: 'raccoon', name: 'Raccoon', maxHp: 12, damage: 2, agility: 7, speed: 5 },
 };
@@ -174,7 +174,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: 'parkour',
     name: 'Parkour',
     description: 'Fast and slippery. Dodges and strikes back.',
-    baseStats: { health: 4, strength: 3, agility: 7, speed: 6, magic: 0 },
+    baseStats: { health: 4, strength: 3, agility: 7, speed: 7, magic: 0 },
     startSkill: 'counter',
     mana: 0,
     magicResist: 0,

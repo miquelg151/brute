@@ -115,9 +115,11 @@ export const SPECIAL_MAX_BONUS = 60;
 export const MAX_ENERGY = 10;
 export const START_ENERGY = 3;
 /** One energy point every this many ticks. */
-export const ENERGY_EVERY = 5;
+export const ENERGY_EVERY = 7;
 /** Bots play a card when their energy reaches this (unless a rule fires earlier). */
 const BOT_SPEND_AT = 8;
+/** Bots answer an enemy attack card played within this many ticks. */
+const BOT_REACTION_TICKS = 5;
 
 export const MAX_STAMINA = 100;
 /** Base stamina cost of each kind of action, before stance and gear. */
@@ -619,7 +621,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     else if (has('spirit') && spirit && !alive(spirit) && !u.summonedThisRound && rng.chance(60)) spell = 'spirit';
     else if (has('drain') && hpPct < 60) spell = 'drain';
     else if (has('flash') && !foe.blinded && rng.chance(30)) spell = 'flash';
-    else if (has('spark') && rng.chance(70)) spell = 'spark';
+    else if (has('spark') && rng.chance(85)) spell = 'spark';
     if (!spell) return false;
 
     u.mana -= SPELLS[spell]!.mana;
@@ -714,7 +716,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         u.sureDodges += scaledCount(2, level);
         break;
       case 'wall':
-        u.sureBlocks += scaledCount(2, level);
+        u.sureBlocks += scaledCount(1, level);
         break;
       case 'sic_em':
         for (const pet of units.filter((p) => p.team === u.team && !p.isMain && alive(p))) {
@@ -724,8 +726,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         }
         break;
       case 'overcharge':
-        u.mana = Math.min(u.maxMana, u.mana + scaled(15, level));
-        u.spellBonusPct = scaled(50, level);
+        u.mana = Math.min(u.maxMana, u.mana + scaled(10, level));
+        u.spellBonusPct = scaled(30, level);
         break;
       case 'patch_up': {
         const before = u.hp;
@@ -784,7 +786,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       }
       case 'bolt': {
         events.push({ t: 'cast', actor: u.idx, spell: 'bolt', target: enemyMainOf(u).idx });
-        u.spellBonusPct += scaled(50, level);
+        u.spellBonusPct += scaled(30, level);
         magicAttack(u, enemyMainOf(u), 4 + u.magic, true);
         break;
       }
@@ -800,8 +802,9 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const pick = (id: string) => (id === 'special' ? { card: id, quality: u.specialQuality ?? rng.int(40, 91) } : { card: id });
     if (u.hp * 100 < u.maxHp * 35 && can('patch_up')) return pick('patch_up');
     const enemyLast = lastCard[u.team === 0 ? 1 : 0];
-    if (enemyLast && tick - enemyLast.tick <= ENERGY_EVERY && OFFENSIVE.has(enemyLast.card)) {
-      const defence = DEFENSIVE.find(can);
+    if (enemyLast && tick - enemyLast.tick <= BOT_REACTION_TICKS && OFFENSIVE.has(enemyLast.card)) {
+      // A Special Strike can't be dodged, so Roll does not answer it.
+      const defence = DEFENSIVE.find((id) => can(id) && (enemyLast.card !== 'special' || id !== 'roll'));
       if (defence) return pick(defence);
     }
     if (u.energy >= BOT_SPEND_AT) {
