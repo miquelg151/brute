@@ -232,6 +232,8 @@ a {
    standing on a flat oval shadow. */
 .spot {
   --sticker-edge: 3px; /* width of the paper outline */
+  --gold-edge: var(--yellow); /* a Legend's outline */
+  --gold-halo: color-mix(in srgb, var(--amber) 60%, transparent); /* a Legend's soft halo */
   display: flex;
   justify-content: center;
   align-items: flex-end;
@@ -244,6 +246,13 @@ a {
   filter: drop-shadow(var(--sticker-edge) 0 0 var(--paper-lit)) drop-shadow(calc(var(--sticker-edge) * -1) 0 0 var(--paper-lit))
     drop-shadow(0 var(--sticker-edge) 0 var(--paper-lit)) drop-shadow(0 calc(var(--sticker-edge) * -1) 0 var(--paper-lit))
     drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.3));
+}
+
+/* Legend rank: the sticker edge turns gold, with a soft gold halo. */
+.spot.legend canvas {
+  filter: drop-shadow(var(--sticker-edge) 0 0 var(--gold-edge)) drop-shadow(calc(var(--sticker-edge) * -1) 0 0 var(--gold-edge))
+    drop-shadow(0 var(--sticker-edge) 0 var(--gold-edge)) drop-shadow(0 calc(var(--sticker-edge) * -1) 0 var(--gold-edge))
+    drop-shadow(0 0 6px var(--gold-halo)) drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.3));
 }
 
 .spot-big {
@@ -336,6 +345,48 @@ a {
   font-size: var(--t-xs);
   color: var(--ink-soft);
   margin-top: 2px;
+}
+
+/* Origin choices: the origin's starting card sits under its bonus
+   (room above it for the card's cost bubble). */
+.origin-choice .game-card {
+  margin: 10px 0 2px;
+}
+
+/* Level-up: the new rank celebration above the upgrade choices. */
+.rank-up {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rank-up h2 {
+  margin-top: 0;
+}
+
+/* Rank badge next to the level: small sticker letters, the colour grows with the rank. */
+.rank-badge {
+  color: var(--rank);
+}
+
+.rank-rookie {
+  --rank: var(--paper);
+}
+
+.rank-regular {
+  --rank: var(--sky);
+}
+
+.rank-veteran {
+  --rank: var(--lime);
+}
+
+.rank-champion {
+  --rank: var(--amber);
+}
+
+.rank-legend {
+  --rank: var(--yellow);
 }
 
 /* Upgrade cards */
@@ -1285,6 +1336,7 @@ h2:not(.card h2),
 
 /* 2. Small sticker */
 .sticker-sm,
+.rank-badge,
 .hero-info > div:not(.bar),
 .poster-side .small,
 .look-value,

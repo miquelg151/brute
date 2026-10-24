@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CARDS, Rng, SKILLS, START_STAMINA, type CardPlay, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
+import { CARDS, Rng, SKILLS, START_STAMINA, rankOf, type CardPlay, type ClassId, type FightEvent, type FightLog, type HitKind } from '../core';
 import { artImage, artManifest } from '../ui/art';
 import { drawPet, drawWeapon, fighterAnimation, fighterFrames, type Pose } from '../ui/sprites';
 import { PAL, num } from '../ui/theme';
@@ -182,6 +182,8 @@ export class ReplayScene extends Phaser.Scene {
       }
       const sprite = this.add.image(x, y, key).setOrigin(0.5, 1).setScale(SCALE).setFlipX(dir === -1).setDepth(y);
       if (info.summoned) sprite.setAlpha(0);
+      // Legend rank: a soft gold aura (WebGL only; the canvas renderer has no FX).
+      if (info.isMain && rankOf(info.level ?? 1).id === 'legend') sprite.preFX?.addGlow(num(PAL.yellow), 2, 0, false, 0.1, 6);
 
       const view: UnitView = {
         sprite,

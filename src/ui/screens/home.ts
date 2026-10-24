@@ -1,11 +1,11 @@
-import { CLASSES, GEAR, ORIGINS, SKILLS, xpToNext, type SaveData } from '../../core';
+import { CLASSES, GEAR, ORIGINS, SKILLS, rankOf, xpToNext, type SaveData } from '../../core';
 import { cardList } from '../cardView';
 import { gearEffects, maxHpOf, maxManaOf, totalStats } from '../describe';
 import { h, pixelArt } from '../dom';
 import { icon, iconHeading, iconValue } from '../icons';
 import { CLASS_COLORS } from '../palette';
 import { drawFighter } from '../sprites';
-import { actionBar, petSlot, slot, weaponSlot } from '../widgets';
+import { actionBar, petSlot, rankBadge, slot, weaponSlot } from '../widgets';
 
 interface HomeActions {
   onFight: () => void;
@@ -43,12 +43,12 @@ export function renderHome(root: HTMLElement, save: SaveData, actions: HomeActio
       h(
         'header',
         { class: 'hero' },
-        h('div', { class: 'spot' }, pixelArt(drawFighter(c), 'big')),
+        h('div', { class: rankOf(c.level).id === 'legend' ? 'spot legend' : 'spot' }, pixelArt(drawFighter(c), 'big')),
         h(
           'div',
           { class: 'hero-info' },
           h('h1', {}, c.name),
-          h('div', {}, `Level ${c.level} `, h('span', { class: 'sticker-sm', style: `color:${CLASS_COLORS[c.classId]}` }, CLASSES[c.classId].name)),
+          h('div', {}, `Level ${c.level} `, h('span', { class: 'sticker-sm', style: `color:${CLASS_COLORS[c.classId]}` }, CLASSES[c.classId].name), ' ', rankBadge(c.level)),
           h('div', { class: 'dim small' }, `From ${ORIGINS[c.originId]?.name ?? ''}`),
           h('div', { class: 'bar', role: 'img', 'aria-label': `${c.xp} of ${need} XP` }, h('div', { class: 'bar-fill', style: `width:${(100 * c.xp) / need}%` })),
           h('div', { class: 'dim small' }, iconValue('xp', 'Experience', `${c.xp} / ${need}`)),

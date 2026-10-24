@@ -1,4 +1,4 @@
-import { PETS, WEAPONS } from '../core';
+import { PETS, WEAPONS, rankOf } from '../core';
 import { h, pixelArt } from './dom';
 import { drawPet, drawWeapon } from './sprites';
 
@@ -27,4 +27,10 @@ export function pips(on: number, total: number, label: string): HTMLElement {
 /** The screen's main action, kept at the bottom of the screen within reach of the thumb. */
 export function actionBar(...children: (Node | string)[]): HTMLElement {
   return h('div', { class: 'action-bar' }, ...children);
+}
+
+/** A small sticker with the fighter's rank, e.g. "Veteran". Its colour grows with the rank. */
+export function rankBadge(level: number): HTMLElement {
+  const rank = rankOf(level);
+  return h('span', { class: `rank-badge rank-${rank.id}` }, rank.name);
 }

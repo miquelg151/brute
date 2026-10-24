@@ -22,6 +22,12 @@ export const CARD_ICONS: Record<string, IconName> = {
   body_slam: 'heavy',
   stray_dog: 'pet',
   bolt: 'magic',
+  weather_wave: 'stance',
+  leap: 'counter',
+  last_train: 'fast',
+  scrap_shield: 'armor',
+  toxic_spit: 'fragile',
+  power_surge: 'skip',
 };
 
 export function cardSticker(id: string, level: number, opts: { uses?: number; size?: 'small' | 'big' } = {}): HTMLElement {

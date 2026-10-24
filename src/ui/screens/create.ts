@@ -1,8 +1,9 @@
-import { CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, type Appearance, type ClassId, type SaveData } from '../../core';
+import { CARDS, CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, originCard as originCardId, type Appearance, type ClassId, type SaveData } from '../../core';
+import { cardSticker } from '../cardView';
 import { h, pixelArt } from '../dom';
 import { icon, statRow } from '../icons';
 import { logo } from '../logo';
-import { CLASS_COLORS, HAIR_COLORS, HAIR_STYLE_NAMES, OUTFIT_COLORS, SKIN_TONES } from '../palette';
+import { CLASS_COLORS, HAIR_COLORS, ORIGIN_COLORS, HAIR_STYLE_NAMES, OUTFIT_COLORS, SKIN_TONES } from '../palette';
 import { drawFighter } from '../sprites';
 import { actionBar } from '../widgets';
 
@@ -147,9 +148,18 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
     );
   };
 
+  /** An origin: its name in its colour, its bonus, and the card it starts with (with the card's text, since phones show no tooltips). */
   const originCard = (id: string) => {
     const o = ORIGINS[id]!;
-    return h('div', {}, h('div', { class: 'choice-title' }, o.name), h('div', { class: 'choice-desc' }, o.description));
+    const cardId = originCardId(id);
+    return h(
+      'div',
+      { class: 'origin-choice' },
+      h('div', { class: 'choice-title', style: `color:${ORIGIN_COLORS[id]}` }, o.name),
+      h('div', { class: 'choice-desc' }, o.description),
+      cardId ? cardSticker(cardId, 1, { size: 'small' }) : '',
+      cardId ? h('div', { class: 'choice-desc' }, CARDS[cardId]!.describe(1)) : '',
+    );
   };
 
   nameInput.addEventListener('input', () => {
@@ -185,7 +195,7 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
       h('p', { class: 'lede small' }, 'Sets your starting stats and skill, and which upgrades you see most.'),
       classCarousel(),
       h('h2', {}, 'Origin'),
-      h('p', { class: 'lede small' }, 'A small bonus in every fight.'),
+      h('p', { class: 'lede small' }, 'A bonus in every fight, a look and a card of its own.'),
       choiceGrid(ORIGIN_IDS, originCard, (id) => {
         originId = id;
         refreshPreview();

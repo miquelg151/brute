@@ -1,11 +1,11 @@
-import { CLASSES, GEAR, SPELLS, UPGRADES_BY_ID, type SaveData } from '../../core';
+import { CLASSES, GEAR, SPELLS, UPGRADES_BY_ID, rankOf, type SaveData } from '../../core';
 import { cardSticker } from '../cardView';
 import { upgradeDetail, upgradeKindLabel } from '../describe';
-import { h } from '../dom';
+import { h, pixelArt } from '../dom';
 import { icon, type IconName } from '../icons';
 import { pause } from '../motion';
 import { CLASS_COLORS } from '../palette';
-import { drawPet, drawWeapon } from '../sprites';
+import { drawFighter, drawPet, drawWeapon } from '../sprites';
 import { slot } from '../widgets';
 
 export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgradeId: string) => void): void {
@@ -53,11 +53,27 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
     );
   });
 
+  // The level being reached now (several level-ups can wait in a row).
+  const reached = c.level - save.pendingLevelUps + 1;
+  const rank = rankOf(reached);
+  // A new rank gets a small celebration: the fighter with their new look, and its name.
+  // It slaps on with the screen's entrance (`.rank-up` is in the sticker list in motion.ts).
+  const rankUp =
+    rank.id !== rankOf(reached - 1).id
+      ? h(
+          'section',
+          { class: 'rank-up' },
+          h('div', { class: rank.id === 'legend' ? 'spot spot-big legend' : 'spot spot-big' }, pixelArt(drawFighter({ ...c, level: reached }), 'big')),
+          h('h2', {}, `You are now a ${rank.name}!`),
+        )
+      : '';
+
   root.append(
     h(
       'main',
       { class: 'screen levelup' },
-      h('h1', {}, `Level ${c.level - save.pendingLevelUps + 1}`),
+      h('h1', {}, `Level ${reached}`),
+      rankUp,
       h('p', { class: 'lede' }, 'Pick one upgrade. It is permanent.'),
       h('div', { class: 'choice-list' }, ...cards),
     ),

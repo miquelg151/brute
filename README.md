@@ -2,6 +2,7 @@
 
 Mobile-first pixel-art auto-battler inspired by El Bruto: build a fighter, read your
 opponent, pick a stance, and play cards with your energy in as many fights as you like.
+Six origins each give a bonus and a card of their own, and a fighter's rank (Rookie to Legend) shows on their look as they level up.
 
 **Play it:** https://miquelg151.github.io/brute/ (updates automatically on every push to `main`).
 

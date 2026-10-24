@@ -15,6 +15,7 @@ import {
   defaultTactics,
   gearFor,
   loadoutFor,
+  rankOf,
   traitsOf,
   type GearChoice,
   type Plan,
@@ -27,7 +28,7 @@ import { TRAIT_ICONS, icon, iconValue, statRow } from '../icons';
 import { CLASS_COLORS } from '../palette';
 import { deckPicker, gearPicker, planEditor, weaponPicker } from '../plan';
 import { drawFighter } from '../sprites';
-import { actionBar } from '../widgets';
+import { actionBar, rankBadge } from '../widgets';
 
 interface PrefightActions {
   onStart: (plan: Plan, weapons: string[], gear: GearChoice, deck: string[]) => void;
@@ -68,8 +69,15 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
     return h('div', { class: 'traits-box' }, h('div', { class: 'trait-chips' }, ...chips), info);
   };
 
-  const side = (canvas: HTMLCanvasElement, name: string, sub: HTMLElement) =>
-    h('div', { class: 'poster-side' }, h('div', { class: 'spot' }, canvas), h('div', { class: 'poster-name' }, name), sub);
+  // A Legend's sticker gets a gold edge (see `.spot.legend` in style.css).
+  const side = (canvas: HTMLCanvasElement, name: string, level: number, sub: HTMLElement) =>
+    h(
+      'div',
+      { class: 'poster-side' },
+      h('div', { class: rankOf(level).id === 'legend' ? 'spot legend' : 'spot' }, canvas),
+      h('div', { class: 'poster-name' }, name),
+      sub,
+    );
   const foePlan = fight.opponentPlan;
   const foeWorn = [foeGear.armor, foeGear.accessory].filter((g): g is string => !!g);
 
@@ -78,12 +86,13 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
     h(
       'div',
       { class: 'poster taped' },
-      side(pixelArt(drawFighter(me), 'normal'), me.name, h('div', { class: 'dim small' }, `Level ${me.level}`)),
+      side(pixelArt(drawFighter(me), 'normal'), me.name, me.level, h('div', { class: 'dim small' }, `Level ${me.level} `, rankBadge(me.level))),
       h('div', { class: 'vs' }, 'VS'),
       side(
         pixelArt(drawFighter(foe), 'normal', true),
         foe.name,
-        h('div', { class: 'small', style: `color:${CLASS_COLORS[foe.classId]}` }, `Level ${foe.level} ${CLASSES[foe.classId].name}`),
+        foe.level,
+        h('div', { class: 'small', style: `color:${CLASS_COLORS[foe.classId]}` }, `Level ${foe.level} `, rankBadge(foe.level), ` ${CLASSES[foe.classId].name}`),
       ),
     ),
     h('h2', {}, `Scouting ${foe.name}`),

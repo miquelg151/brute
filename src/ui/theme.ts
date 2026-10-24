@@ -107,6 +107,8 @@ const CSS_COLORS: Record<string, string> = {
   cyan: PAL.cyan,
   purple: PAL.purple,
   blue: PAL.blue,
+  sky: PAL.sky, // rank badges
+  amber: PAL.amber,
   'green-lit': PAL.green, // "you won" sticker
   'coral-lit': PAL.coral, // "you lost" sticker
   good: PAL.forest,
