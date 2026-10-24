@@ -2404,7 +2404,9 @@ button.game-card {
   margin: 0;
 }
 
+/* --inv-square (the size of a slot) is set by fighterTab.ts, which also uses it to fit the sprites. */
 .inventory {
+  --inv-locked: calc(var(--inv-square) * 0.75);
   display: flex;
   flex-direction: column;
   margin-top: var(--step);
@@ -2425,14 +2427,14 @@ button.game-card {
 
 /* The icon sits level with the middle of the first square. */
 .inv-heading {
-  height: 64px;
+  height: var(--inv-square);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .inv-row:has(.locked-slot) .inv-heading {
-  height: 48px;
+  height: var(--inv-locked);
 }
 
 .inventory .paper-note {
@@ -2452,7 +2454,7 @@ button.game-card {
 }
 
 .inv-item {
-  width: 70px;
+  width: calc(var(--inv-square) + 6px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2475,8 +2477,8 @@ button.game-card {
 }
 
 .inv-square {
-  width: 64px;
-  height: 64px;
+  width: var(--inv-square);
+  height: var(--inv-square);
   display: grid;
   place-items: center;
   background: var(--paper-2);
@@ -2524,8 +2526,8 @@ button.game-card {
 }
 
 .locked-slot .inv-square {
-  width: 48px;
-  height: 48px;
+  width: var(--inv-locked);
+  height: var(--inv-locked);
   background: color-mix(in srgb, var(--wall-text) 6%, transparent);
   border-color: color-mix(in srgb, var(--wall-text) 28%, transparent);
   box-shadow: none;
@@ -2608,11 +2610,6 @@ button.game-card {
   rotate: 1deg;
 }
 
-/* A collection card that is already in the deck is faded. */
-.card-grid .game-card.in-deck {
-  opacity: 0.45;
-}
-
 /* While swapping: the cards you can tap shake gently, the others step back. */
 .game-card.swap-target {
   outline: 2px dashed var(--yellow);
@@ -2625,7 +2622,8 @@ button.game-card {
   opacity: 0.3;
 }
 
-.card-grid .game-card.picked {
+/* The picked card stays clear while you choose what to swap it with. */
+.game-card.picked.swap-off {
   opacity: 1;
 }
 

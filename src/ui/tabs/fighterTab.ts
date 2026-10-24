@@ -11,8 +11,10 @@ import { drawPet, drawWeapon } from '../sprites';
 import { PIXEL } from '../theme';
 import { lockedSlot } from '../widgets';
 
-/** Room for a picture inside an inventory square, in screen pixels. */
-const SQUARE_ART = 56;
+/** Size of an inventory square in screen pixels (style.css reads it as --inv-square). */
+const SQUARE = 64;
+/** Room for a picture inside a square: the square minus its border and a little air. */
+const SQUARE_ART = SQUARE - 8;
 
 /** Draws a sprite at the game's normal pixel size, or the small one if it would not fit a square. */
 function fitted(canvas: HTMLCanvasElement): HTMLCanvasElement {
@@ -146,7 +148,7 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
         stats.magic > 0 ? stat('magic', stats.magic, 'Magic') : '',
         mana > 0 ? stat('mana', mana, 'Mana') : '',
       ),
-      h('div', { class: 'inventory' }, ...rows),
+      h('div', { class: 'inventory', style: `--inv-square:${SQUARE}px` }, ...rows),
       note,
       resetBtn,
     ),

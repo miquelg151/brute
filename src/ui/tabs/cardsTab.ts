@@ -1,4 +1,4 @@
-// The Cards tab: the deck you bring to fights on top, every card you own below.
+// The Cards tab: the deck you bring to fights on top, the other cards you own below.
 // Tap a card to read it. To change the deck, tap a card, press the swap button, then tap
 // the card to swap it with. The deck is saved on the fighter (see preferredDeck).
 import { CARDS, DECK_SIZE, MAX_CARD_LEVEL, preferredDeck, setPreferredDeck, usesForLevel, type SaveData } from '../../core';
@@ -51,18 +51,17 @@ export function renderCardsTab(body: HTMLElement, save: SaveData, actions: TabAc
 
   /**
    * One card as a button. While swapping, the cards that can finish the swap are marked:
-   * deck cards when the picked card is outside the deck, and the other way round.
+   * the deck cards when the picked card is outside the deck, and the other way round.
    */
   function cardButton(id: string, place: 'deck' | 'collection'): HTMLElement {
-    const deck = preferredDeck(c);
     const card = cardSticker(id, levelOf(c.cardUses, id), { uses: c.cardUses[id] ?? 0, tag: 'button' });
     if (id === picked) card.classList.add('picked');
-    if (id === justIn && place === 'deck') card.classList.add('just-in');
-    if (place === 'collection' && deck.includes(id)) card.classList.add('in-deck');
+    if (id === justIn) card.classList.add('just-in');
 
     let target = false;
     if (swapping && picked) {
-      target = deck.includes(picked) ? place === 'collection' && !deck.includes(id) : place === 'deck';
+      const pickedInDeck = preferredDeck(c).includes(picked);
+      target = pickedInDeck ? place === 'collection' : place === 'deck';
       card.classList.add(target ? 'swap-target' : 'swap-off');
     }
     card.addEventListener('click', () => {
@@ -122,8 +121,8 @@ export function renderCardsTab(body: HTMLElement, save: SaveData, actions: TabAc
 
   function draw(): void {
     const deck = preferredDeck(c);
-    // Every card you own; the ones outside the deck come first, as they are the ones to swap in.
-    const collection = [...c.cards.filter((id) => !deck.includes(id)), ...deck];
+    // The cards you own that stay home: the ones you can swap in.
+    const collection = c.cards.filter((id) => !deck.includes(id));
     const deckSlots = Array.from({ length: DECK_SIZE }, (_, i) => {
       const id = deck[i];
       return id ? cardButton(id, 'deck') : h('span', { class: 'game-card card-empty', 'aria-label': 'Empty slot' });
@@ -132,8 +131,10 @@ export function renderCardsTab(body: HTMLElement, save: SaveData, actions: TabAc
       h('h2', { class: 'cards-label' }, 'Deck'),
       h('div', { class: 'deck-tray' }, ...deckSlots),
       note(),
-      h('h2', { class: 'cards-label' }, 'Collection', h('span', { class: 'cards-count' }, String(c.cards.length))),
-      h('div', { class: 'card-grid' }, ...collection.map((id) => cardButton(id, 'collection'))),
+      h('h2', { class: 'cards-label' }, 'Collection', h('span', { class: 'cards-count' }, String(collection.length))),
+      collection.length
+        ? h('div', { class: 'card-grid' }, ...collection.map((id) => cardButton(id, 'collection')))
+        : h('p', { class: 'cards-hint' }, 'Every card you own is in your deck.'),
     );
   }
 
