@@ -23,6 +23,8 @@ import {
   newGame,
   prepareFight,
   recordPlay,
+  lastPlayTick,
+  playsInOrder,
   migrateSave,
   recordBreak,
   rollOffer,
@@ -260,6 +262,31 @@ describe('game', () => {
     expect(result.cardsPlayed.rage).toBe(1);
     expect(save.character.cardUses.rage).toBe(3);
     expect(result.cardLevelUps).toEqual([{ card: 'rage', level: 2 }]);
+  });
+
+  it('a play at or before the last saved play is not saved (no redo after a reload)', () => {
+    const save = newGame('Me', look, 'brawler', 'port', 21);
+    prepareFight(save);
+    startFight(save, DEFAULT_PLAN, []);
+    expect(recordPlay(save, { tick: 20, card: 'rage' })).toBe(true);
+    // Watching the fight again after a reload, the player taps earlier: ignored.
+    expect(recordPlay(save, { tick: 8, card: 'special', quality: 100 })).toBe(false);
+    expect(recordPlay(save, { tick: 20, card: 'special', quality: 100 })).toBe(false);
+    expect(save.pendingFight!.inputs.plays).toEqual([{ tick: 20, card: 'rage' }]);
+    expect(lastPlayTick(save)).toBe(20);
+    expect(recordPlay(save, { tick: 21, card: 'special', quality: 100 })).toBe(true);
+    expect(lastPlayTick(save)).toBe(21);
+  });
+
+  it('the simulation applies plays only in non-decreasing tick order', () => {
+    expect(playsInOrder([{ tick: 5, card: 'a' }, { tick: 3, card: 'b' }, { tick: 5, card: 'c' }, { tick: 9, card: 'd' }]).map((p) => p.card)).toEqual(['a', 'c', 'd']);
+    const a = generateOpponent(10, new Rng(11), 'brawler');
+    const b = generateOpponent(10, new Rng(12), 'bouncer');
+    const run = (plays: CardPlay[]) => runFight(a, b, 42, { a: { interactive: true, deck: { rage: 1, second_breath: 1 }, plays, breaks: [] }, b: { deck: {} } });
+    // The Second Breath at tick 10 comes after a play at tick 20 in the list, so it never happens.
+    const late = run([{ tick: 20, card: 'rage' }, { tick: 10, card: 'second_breath' }]);
+    expect(late.events).toEqual(run([{ tick: 20, card: 'rage' }]).events);
+    expect(late.events.filter((e) => e.t === 'card' && e.actor === 0).map((e) => (e.t === 'card' ? e.card : ''))).toEqual(['rage']);
   });
 
   it('a version 4 save is migrated, keeping the fighter', () => {
@@ -728,6 +755,87 @@ describe('level-up cards', () => {
       }
       expect(seen).toBeGreaterThan(10);
     }
+  });
+
+  it('a bot reacts to a card from the next tick on, never in the same tick', () => {
+    // Team 0 plays Rage at tick 5; the bot on team 1 can afford Feint, but only sees the Rage at tick 6.
+    const log = runFight(me, foe, 5, { a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: 5, card: 'rage' }], breaks: [] }, b: { deck: { feint: 1 } } });
+    const tickOf = (i: number) => {
+      for (let j = i; j >= 0; j--) {
+        const e = log.events[j]!;
+        if (e.t === 'tick') return e.n;
+      }
+      return -1;
+    };
+    const rage = cardIndex(log, 'rage');
+    const feint = log.events.findIndex((e) => e.t === 'card' && e.actor !== 0 && e.card === 'feint');
+    expect(tickOf(rage)).toBe(5);
+    expect(tickOf(feint)).toBe(6);
+  });
+
+  it('bots never play a defence in the same tick as the enemy offensive card', () => {
+    const OFFENSIVE = ['rage', 'haymaker', 'flurry', 'special'];
+    const DEFENSIVE = ['wall', 'roll', 'feint'];
+    // Two sturdy fighters, so the fights last long enough for many cards.
+    const x = { ...generateOpponent(25, new Rng(70), 'bouncer'), cards: ['rage', 'haymaker', 'feint', 'wall'] };
+    const y = { ...generateOpponent(25, new Rng(71), 'bouncer'), cards: ['special', 'haymaker', 'roll', 'feint'] };
+    // A defence in the same tick as an enemy offensive card is fine only for another reason:
+    // the bot had 8+ energy (it spends anyway), or the enemy played an offensive card in the 5 ticks before.
+    let reactions = 0;
+    for (let seed = 0; seed < 20; seed++) {
+      for (const [l, r] of [[x, y], [y, x]] as const) {
+        const log = runFight(l, r, seed);
+        let tick = -1;
+        const energy = [3, 3];
+        const offenceTicks: number[][] = [[], []];
+        let offenceThisTick = [false, false];
+        for (const e of log.events) {
+          if (e.t === 'tick') {
+            tick = e.n;
+            offenceThisTick = [false, false];
+          } else if (e.t === 'energy') energy[log.roster[e.actor]!.team] = e.energy;
+          else if (e.t === 'card') {
+            // Events name units by roster index; the main fighters are found by team.
+            const team = log.roster[e.actor]!.team;
+            const enemy = team === 0 ? 1 : 0;
+            if (DEFENSIVE.includes(e.card)) {
+              // The energy event of this play came just before it: add the cost back.
+              const before = energy[team]! + CARDS[e.card]!.cost;
+              const earlierOffence = offenceTicks[enemy]!.some((t) => t < tick && tick - t <= 5);
+              if (earlierOffence) reactions++;
+              if (offenceThisTick[enemy]) expect(before >= 8 || earlierOffence, `seed ${seed} tick ${tick}`).toBe(true);
+            }
+            if (OFFENSIVE.includes(e.card)) {
+              offenceThisTick[team] = true;
+              offenceTicks[team]!.push(tick);
+            }
+          }
+        }
+      }
+    }
+    expect(reactions).toBeGreaterThan(0);
+  });
+
+  it('Stray Dog cannot be played while its dog is fighting', () => {
+    const t = generateOpponent(12, new Rng(65), 'tamer');
+    const weak = { ...generateOpponent(3, new Rng(72), 'mystic'), pets: [] };
+    let checked = 0;
+    for (let seed = 0; seed < 20; seed++) {
+      // Energy is full (10) when round 2 starts at tick 45; a second play at tick 60 could afford it (7 energy).
+      const plays = [{ tick: 45, card: 'stray_dog' }, { tick: 60, card: 'stray_dog' }];
+      const breaks: BreakChoice[] = [keep(t.weapons)];
+      const log = runFight(t, weak, seed, { a: { interactive: true, deck: { stray_dog: 1 }, plays, breaks }, b: { deck: {} } });
+      const dog = log.roster.findIndex((u) => u.name === 'Stray Dog');
+      const tick60 = log.events.findIndex((e) => e.t === 'tick' && e.n === 60);
+      const first = cardIndex(log, 'stray_dog');
+      if (tick60 < 0 || first < 0 || log.events.slice(first, tick60).some((e) => e.t === 'death' && e.actor === dog)) continue;
+      checked++;
+      // Only one Stray Dog card was played, and the energy was not spent a second time.
+      expect(log.events.filter((e) => e.t === 'card' && e.actor === 0).length).toBe(1);
+      const energyAt60 = log.events.slice(0, tick60 + 3).filter((e) => e.t === 'energy' && e.actor === 0).at(-1);
+      expect(energyAt60).toMatchObject({ energy: 7 });
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 
   it('bots heal when low and defend against Rage', () => {

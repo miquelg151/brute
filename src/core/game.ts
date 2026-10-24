@@ -124,8 +124,25 @@ export function startFight(save: SaveData, plan: Plan, weapons: string[], gear?:
   return fight.tactics;
 }
 
-export function recordPlay(save: SaveData, play: CardPlay): void {
-  save.pendingFight?.inputs.plays.push({ ...play });
+/**
+ * Saves a card play. Plays only go forward in time: a play at or before the tick of the
+ * last saved play is ignored (after a reload the fight is watched again from the start,
+ * and a play made then would change what the player has already seen).
+ * Returns true if the play was saved.
+ */
+export function recordPlay(save: SaveData, play: CardPlay): boolean {
+  const plays = save.pendingFight?.inputs.plays;
+  if (!plays) return false;
+  if (play.tick <= lastPlayTick(save)) return false;
+  plays.push({ ...play });
+  return true;
+}
+
+/** The largest tick of the saved card plays, or -1 if there is none. */
+export function lastPlayTick(save: SaveData): number {
+  let last = -1;
+  for (const p of save.pendingFight?.inputs.plays ?? []) last = Math.max(last, p.tick);
+  return last;
 }
 
 export function recordBreak(save: SaveData, choice: BreakChoice): void {

@@ -22,6 +22,10 @@ the choices made at each break.
 - Each fighter brings a deck of up to 4 cards. Playing a card spends its energy cost.
   A card played on a tick takes effect at the start of the next tick (the play is
   recorded at "current tick + 1"), before anyone acts on that tick.
+- Plays only go forward in time: a player's plays are applied in the order they were
+  made, and a play with an earlier tick than one already made is ignored (when saving
+  and in the simulation). One play per tick.
+- Stray Dog can't be played while its dog is still fighting.
 - Effects that wait for "your next attack / next turn / next hits" last until used, even
   across rounds.
 
@@ -54,7 +58,8 @@ the choices made at each break.
 - **Bots** bring their first 4 cards at level `1 + fighter level / 5` (max 5). Each
   tick they play at most one card, with these rules in order:
   1. Health below 35% and Patch Up in the deck: Patch Up.
-  2. The enemy played Rage, Haymaker, Flurry or a Special Strike in the last 5 ticks: a
+  2. The enemy played Rage, Haymaker, Flurry or a Special Strike in the last 5 ticks
+     (a bot sees a card from the next tick on, never in the tick it was played): a
      defence (Wall, Roll or Feint) if they have one. Roll is not used against a Special
      Strike, which can't be dodged.
   3. Energy 8 or more: the card they have played least this fight; among those, the

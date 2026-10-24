@@ -91,7 +91,11 @@ export interface TeamOptions extends Partial<Plan> {
   interactive?: boolean;
   /** Cards brought (id -> level). Missing: the first DECK_SIZE owned cards at bot level. */
   deck?: Record<string, number>;
-  /** Interactive side: the cards the player played, in order. */
+  /**
+   * Interactive side: the cards the player played, in order. Only plays in non-decreasing
+   * tick order count: a play whose tick is earlier than a play before it in the list is
+   * ignored (see playsInOrder).
+   */
   plays?: CardPlay[];
   /** Bots: timing quality of their special strikes (missing: rolled 40-90). */
   specialQuality?: number;
@@ -341,7 +345,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     interactive: opts.interactive ?? false,
     energy: START_ENERGY,
     deck: opts.deck ?? defaultDeck(c),
-    plays: opts.plays ?? [],
+    plays: playsInOrder(opts.plays ?? []),
     specialQuality: opts.specialQuality,
     timesPlayed: {},
     pendingSpecial: null,
@@ -425,6 +429,19 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     const hp = scaled(dog.maxHp, level);
     companion({ team, isMain: false, name: 'Stray Dog', defId: 'dog', maxHp: hp, maxStamina: 0, maxMana: 0, summoned: true }, hp, dog.damage, dog.agility, dog.speed);
   }
+}
+
+/**
+ * The canonical rule for a player's plays: they are applied in the order they were made,
+ * so a play may never go back in time. A play with an earlier tick than one already
+ * kept is dropped. (A future server can check a fight's plays with this same rule.)
+ */
+export function playsInOrder(plays: readonly CardPlay[]): CardPlay[] {
+  const kept: CardPlay[] = [];
+  for (const p of plays) {
+    if (kept.length === 0 || p.tick >= kept.at(-1)!.tick) kept.push(p);
+  }
+  return kept;
 }
 
 /** The rule a side follows at breaks when nobody is choosing for it. */
@@ -686,13 +703,32 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
 
   /** The last card each team played, for the bot's reactions. */
   const lastCard: [{ card: string; tick: number } | null, { card: string; tick: number } | null] = [null, null];
+  /**
+   * What the bots see: lastCard as it was when the tick started. Plays made in the same
+   * tick are not seen yet, so a bot reacts one tick later at the earliest, whatever the team order.
+   */
+  let seenLastCard: typeof lastCard = [null, null];
+
+  /** The fighter's Stray Dog, if their deck has the card. */
+  const strayDogOf = (u: Unit) => units.find((s) => s.owner === u.idx && roster[s.idx]!.name === 'Stray Dog');
+
+  /** True when the card can be played right now (in the deck, enough energy, and it would do something). */
+  const canPlay = (u: Unit, id: string): boolean => {
+    const def = CARDS[id];
+    if (!def || u.deck[id] === undefined || u.energy < def.cost) return false;
+    // Stray Dog only calls the dog when it is not already fighting.
+    if (id === 'stray_dog') {
+      const dog = strayDogOf(u);
+      if (dog && alive(dog)) return false;
+    }
+    return true;
+  };
 
   /** Plays a card for a main fighter. Returns false (and does nothing) if it can't be played now. */
   const playCard = (u: Unit, id: string, tick: number, quality?: number): boolean => {
-    const level = u.deck[id];
-    const def = CARDS[id];
-    if (!def || level === undefined || u.energy < def.cost || !alive(u) || winner !== null) return false;
-    u.energy -= def.cost;
+    if (!canPlay(u, id) || !alive(u) || winner !== null) return false;
+    const level = u.deck[id]!;
+    u.energy -= CARDS[id]!.cost;
     // The energy is shown before the card's effect: nothing may follow a knockout.
     emitEnergy();
     events.push({ t: 'card', actor: u.idx, card: id, level });
@@ -740,9 +776,13 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         if (u.weapon) {
           // A throw already multiplies damage (x1.5, x2 with Thrower); the bonus tops it up to the card's total.
           const throwPct = u.skills.has('thrower') ? 200 : 150;
-          u.nextHitPct = Math.round((scaled(200, level) * 100) / throwPct) - 100;
+          // Added to any pending bonus (Feint, Rush, Haymaker), which the throw uses up.
+          u.nextHitPct += Math.round((scaled(200, level) * 100) / throwPct) - 100;
+          // A throw can't be dodged anyway: a pending "can't be dodged" (Haymaker) is kept for the next hit.
+          const keepSure = u.nextHitSure;
           u.thrown.add(u.weapon);
           attack(u, target, 'throw');
+          u.nextHitSure = keepSure;
           u.weapon = null;
         } else attack(u, target, 'melee');
         break;
@@ -776,8 +816,9 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         break;
       }
       case 'stray_dog': {
-        const dog = units.find((s) => s.owner === u.idx && roster[s.idx]!.name === 'Stray Dog');
-        if (dog && !alive(dog)) {
+        // canPlay already checked that the dog is not fighting.
+        const dog = strayDogOf(u);
+        if (dog) {
           dog.hp = dog.maxHp;
           dog.gauge = 50;
           events.push({ t: 'summon', actor: dog.idx, owner: u.idx, hp: dog.hp });
@@ -798,10 +839,10 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
 
   /** A bot's choice for this tick, from what it can see: its own state and the enemy's last card. */
   const botChoice = (u: Unit, tick: number): { card: string; quality?: number } | null => {
-    const can = (id: string) => u.deck[id] !== undefined && CARDS[id] !== undefined && u.energy >= CARDS[id]!.cost;
+    const can = (id: string) => canPlay(u, id);
     const pick = (id: string) => (id === 'special' ? { card: id, quality: u.specialQuality ?? rng.int(40, 91) } : { card: id });
     if (u.hp * 100 < u.maxHp * 35 && can('patch_up')) return pick('patch_up');
-    const enemyLast = lastCard[u.team === 0 ? 1 : 0];
+    const enemyLast = seenLastCard[u.team === 0 ? 1 : 0];
     if (enemyLast && tick - enemyLast.tick <= BOT_REACTION_TICKS && OFFENSIVE.has(enemyLast.card)) {
       // A Special Strike can't be dodged, so Roll does not answer it.
       const defence = DEFENSIVE.find((id) => can(id) && (enemyLast.card !== 'special' || id !== 'roll'));
@@ -825,6 +866,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       if (n > 0 && n % ENERGY_EVERY === 0) m.energy = Math.min(MAX_ENERGY, m.energy + 1);
     }
     emitEnergy();
+    seenLastCard = [lastCard[0], lastCard[1]];
     for (const m of mains) {
       if (m.interactive) {
         for (const p of m.plays) if (p.tick === n) playCard(m, p.card, n, p.quality);
@@ -833,6 +875,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         if (choice) playCard(m, choice.card, n, choice.quality);
       }
     }
+    // Cards like Second Breath or Hurl change stamina and mana: show it before anyone acts.
+    if (winner === null) emitRes();
   };
 
   const takeTurnBody = (u: Unit) => {
