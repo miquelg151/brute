@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CARDS,
   FISTS_DAMAGE,
+  GEAR,
+  PETS,
   ORIGINS,
   ORIGIN_IDS,
   RANKS,
@@ -1156,6 +1158,38 @@ describe('class branches', () => {
     'skill:flash': ['mystic', 'warden'],
     'skill:spirit': ['mystic', 'warden'],
     'gear:rune_hoodie': ['mystic', ''],
+    // Content expansion: a skill, a card and an item per branch.
+    'skill:rhythm': ['brawler', 'boxer'],
+    'card:jab_flurry': ['brawler', 'boxer'],
+    'gear:boxing_wraps': ['brawler', 'boxer'],
+    'skill:bone_breaker': ['brawler', 'brute'],
+    'card:street_bite': ['brawler', 'brute'],
+    'weapon:knuckles': ['brawler', 'brute'],
+    'skill:momentum': ['parkour', 'acrobat'],
+    'card:backflip': ['parkour', 'acrobat'],
+    'gear:spring_sneakers': ['parkour', 'acrobat'],
+    'skill:quick_hands': ['parkour', 'thief'],
+    'card:heist': ['parkour', 'thief'],
+    'weapon:switchblade': ['parkour', 'thief'],
+    'skill:thorns': ['bouncer', 'wall'],
+    'card:taunt': ['bouncer', 'wall'],
+    'gear:dumpster_lid': ['bouncer', 'wall'],
+    'skill:demolition': ['bouncer', 'wrecker'],
+    'card:sledge_swing': ['bouncer', 'wrecker'],
+    'weapon:sledgehammer': ['bouncer', 'wrecker'],
+    'skill:pack_call': ['tamer', 'pack'],
+    'card:gang_up': ['tamer', 'pack'],
+    'pet:rat': ['tamer', 'pack'],
+    'pet:pigeon': ['tamer', 'pack'],
+    'skill:guardian': ['tamer', 'bond'],
+    'card:together': ['tamer', 'bond'],
+    'gear:key_collar': ['tamer', 'bond'],
+    'skill:flame': ['mystic', 'witch'],
+    'card:fireball': ['mystic', 'witch'],
+    'gear:neon_spray': ['mystic', 'witch'],
+    'skill:overflow': ['mystic', 'warden'],
+    'card:rune_circle': ['mystic', 'warden'],
+    'gear:rune_amulet': ['mystic', 'warden'],
   };
 
   it('every non-stat class upgrade has the pool and branch of the spec table', () => {
@@ -1579,3 +1613,105 @@ function ownsUpgrade(c: Character, upgradeId: string): boolean {
     return true;
   }
 }
+
+describe('content expansion data', () => {
+  it('each branch has 6-7 own upgrades', () => {
+    for (const pair of Object.values(BRANCHES)) {
+      for (const b of pair) {
+        const own = UPGRADES.filter((u) => u.branch === b.id);
+        expect([b.id, own.length >= 6 && own.length <= 7]).toEqual([b.id, true]);
+      }
+    }
+  });
+
+  it('the general pool has 8 weapons and 7 gear', () => {
+    const general = UPGRADES.filter((u) => u.pool === 'general');
+    expect(general.filter((u) => u.kind === 'weapon').map((u) => u.id).sort()).toEqual(
+      ['bat', 'chain', 'skateboard', 'umbrella', 'brick', 'bottle', 'pool_cue', 'crowbar'].map((id) => `weapon:${id}`).sort(),
+    );
+    expect(general.filter((u) => u.kind === 'gear').map((u) => u.id).sort()).toEqual(
+      ['leather_jacket', 'sneakers', 'charm', 'cap', 'patched_coat', 'backpack', 'headphones'].map((id) => `gear:${id}`).sort(),
+    );
+  });
+
+  it('new skills exist with a description', () => {
+    for (const id of ['rhythm', 'bone_breaker', 'momentum', 'quick_hands', 'thorns', 'demolition', 'pack_call', 'guardian', 'flame', 'overflow']) {
+      expect(SKILLS[id]?.description.length).toBeGreaterThan(10);
+      expect(SPELLS[id]).toBeUndefined();
+    }
+  });
+
+  it('new cards are class cards with the spec costs and describe every level', () => {
+    const costs: Record<string, [string, number]> = {
+      jab_flurry: ['brawler', 4],
+      street_bite: ['brawler', 4],
+      backflip: ['parkour', 4],
+      heist: ['parkour', 4],
+      taunt: ['bouncer', 3],
+      sledge_swing: ['bouncer', 5],
+      gang_up: ['tamer', 5],
+      together: ['tamer', 4],
+      fireball: ['mystic', 5],
+      rune_circle: ['mystic', 4],
+    };
+    for (const [id, [pool, cost]] of Object.entries(costs)) {
+      const card = CARDS[id]!;
+      expect([id, card.pool, card.cost, card.starting]).toEqual([id, pool, cost, false]);
+      expect(card.describe(1).length).toBeGreaterThan(10);
+    }
+    // Scaled numbers show up in the text.
+    expect(CARDS.street_bite!.describe(1)).toContain('5');
+    expect(CARDS.street_bite!.describe(5)).toContain('7');
+    expect(CARDS.backflip!.describe(4)).toContain('3');
+  });
+
+  it('new weapons have the spec numbers', () => {
+    const spec: Record<string, [number, number, boolean]> = {
+      knuckles: [5, 10, false],
+      switchblade: [4, 15, false],
+      sledgehammer: [12, -15, true],
+      brick: [5, 0, false],
+      bottle: [8, 0, false],
+      pool_cue: [4, 20, false],
+      crowbar: [8, -5, true],
+    };
+    for (const [id, [damage, accuracy, heavy]] of Object.entries(spec)) {
+      const w = WEAPONS[id]!;
+      expect([id, w.damage, w.accuracy, w.heavy]).toEqual([id, damage, accuracy, heavy]);
+    }
+    expect(WEAPONS.bottle!.breaks).toBe(true);
+    expect(WEAPONS.brick!.throwBonusPct).toBe(50);
+    expect(WEAPONS.bat!.breaks).toBeUndefined();
+  });
+
+  it('new gear has the spec slot and numbers', () => {
+    expect(GEAR.boxing_wraps).toMatchObject({ slot: 'accessory', startRhythm: 2 });
+    expect(GEAR.spring_sneakers).toMatchObject({ slot: 'accessory', dodge: 6 });
+    expect(GEAR.dumpster_lid).toMatchObject({ slot: 'armor', armor: 2, thorns: 10 });
+    expect(GEAR.key_collar).toMatchObject({ slot: 'accessory', petHealth: 40 });
+    expect(GEAR.neon_spray).toMatchObject({ slot: 'accessory', magic: 2 });
+    expect(GEAR.rune_amulet).toMatchObject({ slot: 'accessory', magicResist: 30 });
+    expect(GEAR.cap).toMatchObject({ slot: 'accessory', dodge: 4 });
+    expect(GEAR.patched_coat).toMatchObject({ slot: 'armor', armor: 2, speed: -1 });
+    expect(GEAR.backpack).toMatchObject({ slot: 'accessory', staminaRegen: 1 });
+    expect(GEAR.headphones).toMatchObject({ slot: 'accessory', speed: 1, dodge: 2 });
+  });
+
+  it('new pets have the spec numbers', () => {
+    expect(PETS.rat).toMatchObject({ maxHp: 7, damage: 2, agility: 8, speed: 8 });
+    expect(PETS.pigeon).toMatchObject({ maxHp: 6, damage: 1, agility: 12, speed: 9 });
+  });
+
+  it('gear magic adds to the fighter magic in fights', () => {
+    const c = createCharacter('M', look, 'mystic', 'port');
+    c.gear = ['neon_spray'];
+    const foe = createCharacter('F', look, 'brawler', 'port');
+    const plain = runFight(c, foe, 3, { a: { gear: { armor: null, accessory: null } } });
+    const sprayed = runFight(c, foe, 3, { a: { gear: { armor: null, accessory: 'neon_spray' } } });
+    // Same seed: the first spell hit lands the same way, only bigger with 2 more magic.
+    const firstSpell = (log: FightLog) => log.events.find((e) => e.t === 'hit' && e.kind === 'spell' && e.actor === 0);
+    const a = firstSpell(plain);
+    const b = firstSpell(sprayed);
+    expect(a && a.t === 'hit' && b && b.t === 'hit' && b.damage > a.damage).toBe(true);
+  });
+});
