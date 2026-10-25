@@ -1292,14 +1292,40 @@ describe('class branches', () => {
   });
 
   it('choosing the branch remakes a waiting offer', () => {
-    const save = newGame('Me', look, 'brawler', 'port', 8);
-    save.character.level = BRANCH_LEVEL;
+    let changed = 0;
+    for (let seed = 0; seed < 20; seed++) {
+      const save = newGame('Me', look, 'brawler', 'port', seed);
+      save.character.level = BRANCH_LEVEL;
+      save.pendingLevelUps = 1;
+      prepareLevelUp(save);
+      const before = save.offer!;
+      expect(before.every((id) => UPGRADES_BY_ID[id]!.branch === undefined)).toBe(true);
+      chooseFighterBranch(save, 'boxer');
+      expect(save.character.branch).toBe('boxer');
+      // The new offer is exactly a fresh roll with the branch set (it may hold the same items).
+      const fresh = { ...save, offer: null };
+      prepareLevelUp(fresh);
+      expect(save.offer).toEqual(fresh.offer);
+      if (save.offer!.some((id) => UPGRADES_BY_ID[id]!.branch === 'boxer')) changed++;
+    }
+    // Over a few seeds, branch items do show up.
+    expect(changed).toBeGreaterThan(0);
+  });
+
+  it('a version 6 save with a waiting offer from the old pools gets a fresh, valid offer', () => {
+    const save = newGame('M', look, 'brawler', 'port', 6) as unknown as Record<string, unknown>;
+    (save.character as Character).level = 3;
+    save.version = 6;
     save.pendingLevelUps = 1;
-    prepareLevelUp(save);
-    expect(save.offer!.every((id) => UPGRADES_BY_ID[id]!.branch === undefined)).toBe(true);
-    chooseFighterBranch(save, 'boxer');
-    expect(save.character.branch).toBe('boxer');
-    expect(save.offer).toHaveLength(3);
+    save.offer = ['pet:dog', 'gen_health', 'gen_speed'];
+    const migrated = migrateSave(JSON.parse(JSON.stringify(save)))!;
+    expect(migrated.offer).toBeNull();
+    expect(prepareLevelUp(migrated)).toBe(true);
+    expect(migrated.offer).toHaveLength(3);
+    for (const id of migrated.offer!) expect(UPGRADES_BY_ID[id]).toBeDefined();
+    chooseUpgrade(migrated, migrated.offer![0]!);
+    expect(migrated.pendingLevelUps).toBe(0);
+    expect(migrated.offer).toBeNull();
   });
 
   it('bots at level 5 and up have a branch of their class; younger bots have none', () => {

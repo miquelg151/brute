@@ -257,6 +257,9 @@ export function migrateSave(raw: unknown): SaveData | null {
   }
   if (save.version === 6) {
     // Branches are new: the fighter has none yet and picks one in the game (from level 5).
+    // A waiting offer was rolled from the old pools (it may hold upgrades that no longer
+    // exist, like the dog), so drop it: prepareLevelUp rolls it again from the same seed.
+    save.offer = null;
     save.version = 7;
   }
   return save.version === SAVE_VERSION ? (save as unknown as SaveData) : null;
