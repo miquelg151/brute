@@ -29,7 +29,7 @@ export const CARD_ICONS: Record<string, IconName> = {
   toxic_spit: 'fragile',
   power_surge: 'skip',
   headbutt: 'heavy',
-  pickpocket: 'skip',
+  pickpocket: 'accessory',
   ground_pound: 'manyHits',
 };
 

@@ -57,9 +57,11 @@ Sense, Thrower), each class has only 6-7 own upgrades so they run out around lev
 
 | Card | Cost | Effect at level 1 |
 |---|---|---|
-| Headbutt (`headbutt`, Brute) | 5 | A hit with +20% (scaled); if it lands, the enemy fighter loses their next turn |
+| Headbutt (`headbutt`, Brute) | 6 | Your next hit does +10% (scaled) and, if it lands, the enemy fighter loses their next turn |
 | Pickpocket (`pickpocket`, Thief) | 3 | Steal 2 energy from the enemy fighter (+1 at card level 4) |
 | Ground Pound (`ground_pound`, Wrecker) | 5 | Hit every enemy unit (fighter and pets) for 60% (scaled) damage; can't be dodged |
+
+Note: the tuned numbers live in docs/COMBAT.md; this table shows the original design.
 
 ## How it plays
 
