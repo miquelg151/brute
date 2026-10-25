@@ -598,7 +598,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
   /** Applies damage through any ward, emits the hit, handles death and second wind. Returns true if the target survived. */
   const land = (att: Unit, def: Unit, kind: HitKind, damage: number, blocked: boolean): boolean => {
     // Thick Skull: below half health, every hit does less.
-    if (def.skills.has('thick_skull') && def.hp * 2 < def.maxHp) damage = Math.floor((damage * (100 - THICK_SKULL_PCT)) / 100);
+    // A hit that did damage still does at least 1.
+    if (def.skills.has('thick_skull') && def.hp * 2 < def.maxHp && damage > 0) damage = Math.max(1, Math.floor((damage * (100 - THICK_SKULL_PCT)) / 100));
     // Weather the Wave: the next hits taken do less damage.
     if (def.waveHits > 0 && damage > 0) {
       def.waveHits--;
@@ -849,6 +850,17 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     return true;
   };
 
+  /** Power Surge and Headbutt: a hit with a bonus (%) that makes the enemy lose their next turn if it lands. */
+  const stunningHit = (u: Unit, bonusPct: number): void => {
+    const foe = enemyMainOf(u);
+    u.nextHitPct += bonusPct;
+    const seen = events.length;
+    attack(u, foe, 'melee');
+    // Only a hit that landed (even blocked) stuns; a dodge or a blinded miss doesn't.
+    const landed = events.slice(seen).some((e) => (e.t === 'hit' || e.t === 'block') && e.actor === u.idx && e.target === foe.idx);
+    if (landed && alive(foe)) foe.stunned = true;
+  };
+
   /** What each card does. */
   const applyCard = (u: Unit, id: string, level: number, quality: number): void => {
     switch (id) {
@@ -965,16 +977,9 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         foe.poisonBy = u.idx;
         break;
       }
-      case 'headbutt': {
-        const foe = enemyMainOf(u);
-        u.nextHitPct += scaled(20, level);
-        const seen = events.length;
-        attack(u, foe, 'melee');
-        // Like Power Surge: only a hit that landed (even blocked) stuns.
-        const landed = events.slice(seen).some((e) => (e.t === 'hit' || e.t === 'block') && e.actor === u.idx && e.target === foe.idx);
-        if (landed && alive(foe)) foe.stunned = true;
+      case 'headbutt':
+        stunningHit(u, scaled(20, level));
         break;
-      }
       case 'pickpocket': {
         const foe = enemyMainOf(u);
         // They can't lose more energy than they have, and the thief can't go over the max.
@@ -997,16 +1002,9 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         u.nextHitSure = keepSure;
         break;
       }
-      case 'power_surge': {
-        const foe = enemyMainOf(u);
-        u.nextHitPct += 10 * (level - 1);
-        const seen = events.length;
-        attack(u, foe, 'melee');
-        // Only a hit that landed (even blocked) stuns; a dodge or a blinded miss doesn't.
-        const landed = events.slice(seen).some((e) => (e.t === 'hit' || e.t === 'block') && e.actor === u.idx && e.target === foe.idx);
-        if (landed && alive(foe)) foe.stunned = true;
+      case 'power_surge':
+        stunningHit(u, 10 * (level - 1));
         break;
-      }
     }
   };
 

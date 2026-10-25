@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   CARDS,
+  FISTS_DAMAGE,
   ORIGINS,
   ORIGIN_IDS,
   RANKS,
@@ -1464,6 +1465,25 @@ describe('class branch skills and cards', () => {
     expect(after.slice(0, stunned).some((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge' || e.t === 'rest') && e.actor === 1)).toBe(false);
   });
 
+  it('Headbutt hits harder than a level 1 Power Surge with the same roll', () => {
+    // Both cards make one melee hit with no randomness before it, so on the same seed and
+    // tick they roll the same; Power Surge at level 1 has no bonus, Headbutt has +20%.
+    const me = fresh('brawler');
+    const strikeOf = (log: FightLog, card: string) =>
+      log.events.slice(cardIndex(log, card)).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.actor === 0)!;
+    let compared = 0;
+    for (const seed of seeds) {
+      const butt = strikeOf(play(me, 'headbutt', 15, seed), 'headbutt');
+      const surge = strikeOf(play(me, 'power_surge', 15, seed), 'power_surge');
+      expect(butt.t).toBe(surge.t);
+      if (butt.t === 'hit' && surge.t === 'hit') {
+        expect(butt.damage).toBeGreaterThan(surge.damage);
+        compared++;
+      }
+    }
+    expect(compared).toBeGreaterThanOrEqual(10);
+  });
+
   it('Pickpocket steals 2 energy from the enemy', () => {
     // Costs 3: playable at tick 0, when both sides have 3 energy.
     const me = fresh('parkour');
@@ -1487,6 +1507,36 @@ describe('class branch skills and cards', () => {
     for (const e of strikes) expect(e).toMatchObject({ actor: 0 });
     expect(strikes.some((e) => e.t === 'dodge')).toBe(false);
     expect(strikes.map((e) => (e.t === 'dodge' ? -1 : e.target))).toEqual(enemies);
+  });
+
+  it('Ground Pound is never dodged, even by a dodgy foe, and does 60% damage', () => {
+    // A bare-fisted Brawler: every hit starts from the same base damage, before the 80-120% roll.
+    const me = fresh('brawler');
+    const dodger = learn(createCharacter('P', look, 'parkour', 'rooftops'), 'sixth_sense');
+    const base = CLASSES.brawler.baseStats.strength + FISTS_DAMAGE;
+    const pound = Math.floor((base * 60) / 100);
+    const lowest = Math.floor((pound * 80) / 100);
+    const highest = Math.floor((pound * 120) / 100);
+    // A full-strength hit could never be this weak, so the range really checks the 60%.
+    expect(highest).toBeLessThan(Math.floor((base * 80) / 100));
+    let strikes = 0;
+    let plainDodges = 0;
+    for (const seed of seeds) {
+      const log = play(me, 'ground_pound', 10, seed, dodger);
+      const from = cardIndex(log, 'ground_pound');
+      expect(from).toBeGreaterThanOrEqual(0);
+      const strike = log.events.slice(from + 1).find((e) => e.t === 'hit' || e.t === 'block' || e.t === 'dodge')!;
+      expect(strike).toMatchObject({ t: 'hit', actor: 0, target: 1 });
+      if (strike.t === 'hit') {
+        expect(strike.damage).toBeGreaterThanOrEqual(lowest);
+        expect(strike.damage).toBeLessThanOrEqual(highest);
+      }
+      strikes++;
+      plainDodges += noPlay(me, 'ground_pound', seed, dodger).events.filter((e) => e.t === 'dodge' && e.actor === 0).length;
+    }
+    expect(strikes).toBe(seeds.length);
+    // This foe dodges plain hits often, so a dodgeable Ground Pound would have been dodged.
+    expect(plainDodges).toBeGreaterThan(seeds.length);
   });
 });
 
