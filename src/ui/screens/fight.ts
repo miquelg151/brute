@@ -14,6 +14,7 @@ import {
   simulateFight,
   traitsOf,
   type BreakChoice,
+  type FightResult,
   type Plan,
   type SaveData,
 } from '../../core';
@@ -22,6 +23,7 @@ import { cardSticker, levelOf } from '../cardView';
 import { h } from '../dom';
 import { icon, iconValue } from '../icons';
 import { playSpecialStrike } from '../minigames';
+import { confetti } from '../motion';
 import { planEditor, weaponPicker } from '../plan';
 import { PAL } from '../theme';
 
@@ -156,6 +158,35 @@ function breakSheet(save: SaveData, event: BreakEvent, fighters: [FighterState, 
   });
 }
 
+/** How long between one reward sticker and the next (ms). */
+const REWARD_STAGGER_MS = 150;
+
+/**
+ * What the player sees under the arena when the fight is over (the arena itself shows
+ * VICTORY or DEFEAT): a sticker headline, then the rewards (XP, card uses, card
+ * level-ups, level-up) slapped on one by one.
+ */
+function resultPanel(result: FightResult, foeName: string): HTMLElement[] {
+  const banner = h('div', { class: `result-banner ${result.won ? 'win' : 'loss'}` }, result.won ? `You beat ${foeName}!` : `${foeName} won`);
+
+  const rewards: HTMLElement[] = [h('span', { class: 'reward' }, icon('xp', 'Experience'), `+${result.xpGained} XP`)];
+  // One sticker per card played; it turns yellow when the card reached a new level.
+  for (const [card, count] of Object.entries(result.cardsPlayed)) {
+    const name = CARDS[card]?.name ?? card;
+    const up = result.cardLevelUps.find((u) => u.card === card);
+    rewards.push(
+      up
+        ? h('span', { class: 'reward reward-big' }, icon('skill', 'Card level'), `${name} → level ${up.level}!`)
+        : h('span', { class: 'reward' }, icon('skill', 'Card uses'), `${name} +${count}`),
+    );
+  }
+  if (result.levelsGained > 0) rewards.push(h('span', { class: 'reward reward-big' }, 'Level up!'));
+  // Each sticker waits a little longer than the one before (CSS: .reward).
+  rewards.forEach((el, i) => el.style.setProperty('--delay', `${300 + i * REWARD_STAGGER_MS}ms`));
+
+  return [banner, h('div', { class: 'rewards' }, ...rewards)];
+}
+
 /** Plays the started pending fight. Every input is saved as soon as it is made. */
 export function renderFight(root: HTMLElement, save: SaveData, store: () => void, onDone: () => void): void {
   const opponent = save.pendingFight!.opponent;
@@ -210,7 +241,9 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
   const summary = h('div', { class: 'card fight-summary hidden' });
   const continueBtn = h('button', { class: 'btn btn-primary btn-big hidden' }, 'Continue');
   // Everything under the arena. The special strike uses all of it as its tap area.
-  const zone = h('section', { class: 'fight-zone' }, controls, energyBar, cardRow, summary, continueBtn);
+  // Energy on the left and the speed buttons on the right share one row, to save height.
+  const topRow = h('div', { class: 'fight-top-row' }, energyBar, controls);
+  const zone = h('section', { class: 'fight-zone' }, topRow, cardRow, summary, continueBtn);
 
   /** The timing bar of the Special Strike card: hides the cards while it is up. */
   const specialQuality = async () => {
@@ -279,21 +312,14 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
     onFinished: () => {
       const result = finishFight(save);
       store();
-      summary.append(
-        h('div', { class: `result ${result.won ? 'win' : 'loss'}` }, result.won ? `You beat ${opponent.name}` : `${opponent.name} won`),
-        h('div', { class: 'dim' }, iconValue('xp', 'Experience', `+${result.xpGained}`), result.levelsGained > 0 ? ' Level up!' : ''),
-      );
-      for (const [card, count] of Object.entries(result.cardsPlayed)) {
-        summary.append(h('div', { class: 'small' }, `${CARDS[card]?.name ?? card} +${count} use${count > 1 ? 's' : ''}`));
-      }
-      for (const up of result.cardLevelUps) summary.append(h('div', { class: 'result win' }, `${CARDS[up.card]?.name ?? up.card} → level ${up.level}!`));
-      controls.classList.add('hidden');
-      energyBar.classList.add('hidden');
+      summary.append(...resultPanel(result, opponent.name));
+      topRow.classList.add('hidden');
       cardRow.classList.add('hidden');
       for (const el of [summary, continueBtn]) {
         el.classList.remove('hidden');
         el.classList.add('slap');
       }
+      if (result.won) confetti();
     },
   });
   const game = new Phaser.Game({

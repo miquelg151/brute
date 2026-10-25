@@ -17,6 +17,8 @@ const SCALE = 3;
 /** Main fighters stand this far from each side. */
 const MAIN_X = 82;
 const FONT = '"Shantell Sans Variable", sans-serif';
+/** Size of the VICTORY / DEFEAT banner at the end of a fight, in art pixels. */
+const RESULT_BANNER_SIZE = 32;
 /** Arena text looks like the "sticker" title style: dark outline, offset shadow. */
 const STICKER = { fontFamily: FONT, fontStyle: 'bold', stroke: PAL.black, resolution: ARENA_ZOOM };
 /** How long each idle (breathing) frame stays on screen (ms). */
@@ -167,8 +169,9 @@ export class ReplayScene extends Phaser.Scene {
       }
       const sprite = this.add.image(x, y, key).setOrigin(0.5, 1).setScale(SCALE).setFlipX(dir === -1).setDepth(y);
       if (info.summoned) sprite.setAlpha(0);
-      // Legend rank: a soft gold aura (WebGL only; the canvas renderer has no FX).
-      if (info.isMain && rankOf(info.level ?? 1).id === 'legend') sprite.preFX?.addGlow(num(PAL.yellow), 2, 0, false, 0.1, 6);
+      // Legend rank: a faint gold aura, close to the body (WebGL only; the canvas renderer has no FX).
+      // Arguments: colour, outer strength, inner strength, knockout, quality, distance in pixels.
+      if (info.isMain && rankOf(info.level ?? 1).id === 'legend') sprite.preFX?.addGlow(num(PAL.yellow), 1, 0, false, 0.1, 4);
 
       const view: UnitView = {
         sprite,
@@ -255,9 +258,10 @@ export class ReplayScene extends Phaser.Scene {
     this.tweens.add({ targets: t, y: y - 18, alpha: 0, duration: 750, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
   }
 
-  private async banner(text: string, color: string, ms: number): Promise<void> {
+  /** A big sticker word across the arena (`size` in art pixels). */
+  private async banner(text: string, color: string, ms: number, size = 22): Promise<void> {
     const label = this.add
-      .text(ARENA_W / 2, ARENA_H * 0.4, text, { ...STICKER, fontSize: '22px', color, strokeThickness: 6 })
+      .text(ARENA_W / 2, ARENA_H * 0.4, text, { ...STICKER, fontSize: `${size}px`, color, strokeThickness: 6 })
       .setShadow(2, 2, PAL.pink, 0, true, true)
       .setOrigin(0.5)
       .setAngle(-3)
@@ -308,7 +312,7 @@ export class ReplayScene extends Phaser.Scene {
     const won = this.log.winner === 0;
     // Back to normal speed, so the result banner stays up even after Skip.
     this.setSpeed(1);
-    void this.banner(won ? 'VICTORY' : 'DEFEAT', won ? PAL.yellow : PAL.coral, 60_000);
+    void this.banner(won ? 'VICTORY' : 'DEFEAT', won ? PAL.yellow : PAL.coral, 60_000, RESULT_BANNER_SIZE);
     this.hooks.onFinished(this.log);
   }
 

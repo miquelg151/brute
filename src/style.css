@@ -84,7 +84,7 @@ h2 {
   font-family: var(--font);
   font-weight: var(--heavy);
   font-size: var(--t-xl);
-  line-height: 1.2;
+  line-height: 1.15;
   margin: calc(var(--step) * 3) 0 var(--step);
 }
 
@@ -261,7 +261,9 @@ a {
 .spot {
   --sticker-edge: 3px; /* width of the paper outline */
   --gold-edge: var(--yellow); /* a Legend's outline */
-  --gold-halo: color-mix(in srgb, var(--amber) 60%, transparent); /* a Legend's soft halo */
+  --gold-edge-width: 1px; /* how thick the gold line is, outside the paper outline */
+  --gold-halo: color-mix(in srgb, var(--amber) 35%, transparent); /* a Legend's faint halo */
+  --gold-halo-blur: 4px; /* how far the halo spreads */
   display: flex;
   justify-content: center;
   align-items: flex-end;
@@ -276,11 +278,13 @@ a {
     drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.3));
 }
 
-/* Legend rank: the sticker edge turns gold, with a soft gold halo. */
+/* Legend rank: the paper outline gets a thin gold line around it, and a faint gold halo. */
 .spot.legend canvas {
-  filter: drop-shadow(var(--sticker-edge) 0 0 var(--gold-edge)) drop-shadow(calc(var(--sticker-edge) * -1) 0 0 var(--gold-edge))
-    drop-shadow(0 var(--sticker-edge) 0 var(--gold-edge)) drop-shadow(0 calc(var(--sticker-edge) * -1) 0 var(--gold-edge))
-    drop-shadow(0 0 6px var(--gold-halo)) drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(var(--sticker-edge) 0 0 var(--paper-lit)) drop-shadow(calc(var(--sticker-edge) * -1) 0 0 var(--paper-lit))
+    drop-shadow(0 var(--sticker-edge) 0 var(--paper-lit)) drop-shadow(0 calc(var(--sticker-edge) * -1) 0 var(--paper-lit))
+    drop-shadow(var(--gold-edge-width) 0 0 var(--gold-edge)) drop-shadow(calc(var(--gold-edge-width) * -1) 0 0 var(--gold-edge))
+    drop-shadow(0 var(--gold-edge-width) 0 var(--gold-edge)) drop-shadow(0 calc(var(--gold-edge-width) * -1) 0 var(--gold-edge))
+    drop-shadow(0 0 var(--gold-halo-blur) var(--gold-halo)) drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.3));
 }
 
 .spot-big {
@@ -719,6 +723,7 @@ a {
 }
 
 .hud-side {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -807,10 +812,24 @@ a {
 .fight-zone {
   position: relative;
   flex: 1;
-  min-height: 200px;
+  /* A floor only: the zone grows to fill the screen, but must not push the page past
+     a small phone's height. */
+  min-height: 160px;
   display: flex;
   flex-direction: column;
   gap: var(--step);
+}
+
+/* The energy bar (it takes the free width) and the speed buttons, side by side. */
+.fight-top-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 1.5);
+}
+
+.fight-top-row .energy {
+  flex: 1;
+  min-width: 0;
 }
 
 .fight-controls {
@@ -953,7 +972,7 @@ body.sheet-open {
   font-family: var(--font);
   font-weight: var(--heavy);
   font-size: var(--t-xl);
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--yellow);
   text-align: center;
   text-shadow: 2px 2px 0 var(--outline);
@@ -1262,6 +1281,7 @@ h2:not(.card h2),
 .poster-name,
 .stat-value,
 .result,
+.result-banner,
 .timing-label {
   color: var(--sticker-fill);
   -webkit-text-stroke: var(--sticker-outline) var(--sticker-ink);
@@ -1279,6 +1299,7 @@ h2:not(.card h2),
 .poster-name,
 .stat-value,
 .result,
+.result-banner,
 .timing-label {
   filter: drop-shadow(var(--sticker-drop) var(--sticker-drop) 0 var(--sticker-shadow));
 }
@@ -1827,6 +1848,134 @@ details.more[open] summary::after {
   }
 }
 
+/* The XP bar in the top bar fills from its old value after a fight (src/ui/shell.ts),
+   so its usual grow-in is switched off. */
+.bar-fill.xp-filling {
+  animation: none;
+}
+
+/* --- Fight result ---------------------------------------------------------------
+   A big sticker banner, the rewards slapped on one by one, and paper confetti on a win. */
+.fight-summary {
+  align-items: center;
+  text-align: center;
+  gap: 3px;
+  padding: 6px var(--step);
+}
+
+/* The Continue button sits a bit tighter here, so the result fits a small phone. */
+.fight-zone .btn-big {
+  margin-top: 0;
+  padding: 10px;
+}
+
+.result-banner {
+  font-family: var(--font);
+  font-weight: var(--heavy);
+  font-size: var(--t-xl);
+  line-height: 1.15;
+  transform: rotate(-2deg);
+  animation: banner-in 420ms var(--ease-bounce) 80ms backwards;
+}
+
+.result-banner.win {
+  color: var(--yellow);
+}
+
+.result-banner.loss {
+  color: var(--coral-lit);
+}
+
+.rewards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 5px;
+}
+
+/* One reward: a small paper sticker that slaps on after the one before it. */
+.reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px 2px 4px;
+  font-size: var(--t-xs);
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--ink);
+  background: var(--paper-lit);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.25);
+  transform: rotate(-1.5deg);
+  animation: slap 280ms var(--ease-bounce) var(--delay, 0ms) backwards;
+}
+
+/* Icons in a reward are drawn smaller than the usual "small" size, so many rewards
+   still fit a small phone. (!important beats the size pixelArt() writes on the canvas.) */
+.reward .icon canvas {
+  width: auto !important;
+  height: 16px !important;
+}
+
+.reward:nth-child(even) {
+  transform: rotate(1.5deg);
+}
+
+/* Card level-ups and the fighter's level-up stand out in yellow. */
+.reward-big {
+  background: var(--yellow);
+}
+
+@keyframes banner-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.8) rotate(-8deg);
+  }
+  60% {
+    opacity: 1;
+  }
+}
+
+/* Paper confetti: bits of paper falling over the whole screen (src/ui/motion.ts). */
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.confetti span {
+  position: absolute;
+  top: -16px;
+  width: 7px;
+  height: 11px;
+  border-radius: 1px 2px 1px 2px;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);
+  animation: confetti-fall var(--fall, 1300ms) cubic-bezier(0.3, 0.1, 0.6, 1) var(--delay, 0ms) both;
+}
+
+@keyframes confetti-fall {
+  from {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate(var(--drift, 0px), calc(100dvh + 32px)) rotate(var(--spin, 360deg));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-banner,
+  .reward {
+    animation: none;
+  }
+
+  .confetti {
+    display: none;
+  }
+}
+
 /* Title screen */
 .title {
   justify-content: center;
@@ -2057,8 +2206,13 @@ button.game-card {
   outline-offset: 2px;
 }
 
+/* It floats just under the foe's bars, over the arena's top edge, so the arena never moves. */
 .enemy-card {
-  align-self: flex-end;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  white-space: nowrap;
   padding: 2px 8px;
   font-weight: 800;
   color: var(--ink);
@@ -2123,7 +2277,7 @@ button.game-card {
 
 .top-portrait.legend {
   border-color: var(--yellow);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--amber) 60%, transparent);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--amber) 35%, transparent);
 }
 
 .top-info {

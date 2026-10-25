@@ -4,7 +4,7 @@
 import { rankOf, xpToNext, type SaveData } from '../core';
 import { h, pixelArt } from './dom';
 import { icon, type IconName } from './icons';
-import { tabIn } from './motion';
+import { reducedMotion, tabIn } from './motion';
 import { drawFighter } from './sprites';
 import { renderCardsTab } from './tabs/cardsTab';
 import { renderFightTab } from './tabs/fightTab';
@@ -35,6 +35,15 @@ const TABS: { id: TabId; label: string; icon: IconName }[] = [
 ];
 
 const TAB_KEY = 'brute.tab';
+
+/** How long the XP bar takes to fill after a fight (ms). */
+const XP_FILL_MS = 600;
+
+/**
+ * The level and XP the top bar showed last time, kept in memory only. When the shell is
+ * drawn again with more XP (back from a fight), the bar fills from the old value.
+ */
+let shownXp: { name: string; level: number; xp: number } | null = null;
 
 /** The tab that was open last time (Fight if none, or if storage is blocked). */
 function loadTab(): TabId {
@@ -74,6 +83,7 @@ export function renderShell(root: HTMLElement, save: SaveData, actions: ShellAct
     // Deleting the fighter also forgets the open tab.
     onReset: () => {
       forgetTab();
+      shownXp = null;
       actions.onReset();
     },
     openTab: (id) => open(id, true),
@@ -117,6 +127,18 @@ function topBar(save: SaveData): HTMLElement {
   const c = save.character;
   const need = xpToNext(c.level);
   const legend = rankOf(c.level).id === 'legend';
+  const fill = h('div', { class: 'bar-fill', style: `width:${percentOf(c.xp, need)}%` });
+  const bar = h('div', { class: 'bar top-xp', role: 'img', 'aria-label': `${c.xp} of ${need} XP` }, fill);
+
+  // Back from a fight with the same fighter: the bar grows from where it was.
+  const before = shownXp;
+  shownXp = { name: c.name, level: c.level, xp: c.xp };
+  if (before && before.name === c.name && (c.level > before.level || (c.level === before.level && c.xp > before.xp))) {
+    fillXp(bar, fill, before, c.level, c.xp).catch(() => {
+      // The screen changed before the bar finished: nothing to do.
+    });
+  }
+
   return h(
     'header',
     { class: 'top-bar' },
@@ -125,13 +147,38 @@ function topBar(save: SaveData): HTMLElement {
       'div',
       { class: 'top-info' },
       h('div', { class: 'top-line' }, h('span', { class: 'top-name sticker-sm' }, c.name), rankBadge(c.level)),
-      h(
-        'div',
-        { class: 'top-line' },
-        h('span', { class: 'top-level' }, `Level ${c.level}`),
-        h('div', { class: 'bar top-xp', role: 'img', 'aria-label': `${c.xp} of ${need} XP` }, h('div', { class: 'bar-fill', style: `width:${(100 * c.xp) / need}%` })),
-        h('span', { class: 'top-xp-text' }, `${c.xp}/${need}`),
-      ),
+      h('div', { class: 'top-line' }, h('span', { class: 'top-level' }, `Level ${c.level}`), bar, h('span', { class: 'top-xp-text' }, `${c.xp}/${need}`)),
     ),
   );
+}
+
+/** How full the bar is, from 0 to 100. */
+function percentOf(xp: number, need: number): number {
+  return Math.max(0, Math.min(100, (100 * xp) / need));
+}
+
+/**
+ * Fills the XP bar from the old value to the new one. On a level-up it fills to the end,
+ * jumps a little and starts again from 0. Nothing moves when the player asked for less motion.
+ */
+async function fillXp(bar: HTMLElement, fill: HTMLElement, before: { level: number; xp: number }, level: number, xp: number): Promise<void> {
+  if (reducedMotion()) return;
+  // The bar's usual "grow in" (CSS: .bar-fill) would fight with this one, so it is switched off.
+  fill.classList.add('xp-filling');
+  const from = `${percentOf(before.xp, xpToNext(before.level))}%`;
+  const to = `${percentOf(xp, xpToNext(level))}%`;
+  const grow = async (start: string, end: string, delay: number) => {
+    fill.style.width = start;
+    await fill.animate([{ width: start }, { width: end }], { duration: XP_FILL_MS, delay, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }).finished;
+    fill.style.width = end;
+  };
+  // The short wait lets the screen's entrance finish first.
+  if (level === before.level) {
+    await grow(from, to, 350);
+    return;
+  }
+  // Level-up: to the end, a small jump, then from 0 to the new XP.
+  await grow(from, '100%', 350);
+  await bar.animate([{ transform: 'none' }, { transform: 'translateY(-4px) scale(1.06)' }, { transform: 'none' }], { duration: 260, easing: 'ease-out' }).finished;
+  await grow('0%', to, 0);
 }

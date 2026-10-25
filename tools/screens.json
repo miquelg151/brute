@@ -274,7 +274,84 @@
       { "click": ".fight-go" },
       { "click": "text=Start fight" },
       { "wait": 6000 },
+      { "include": "no-page-scroll" },
       { "shot": "fight" }
+    ]
+  },
+  {
+    "name": "fight-to-end",
+    "helper": true,
+    "steps": [
+      { "click": "text=Start fight" },
+      { "eval": "new Promise((resolve, reject) => { const start = Date.now(); const check = () => { if (document.querySelector('.fight-summary:not(.hidden)')) return resolve(); if (Date.now() - start > 90000) return reject(new Error('the fight did not end')); const next = document.querySelector('.sheet-actions .btn'); if (next) next.click(); const card = document.querySelector('.card-button:not(:disabled):not(.queued)'); if (card) card.click(); setTimeout(check, 200); }; check(); })" }
+    ]
+  },
+  {
+    "name": "strong-legend",
+    "helper": true,
+    "steps": [
+      { "include": "setup" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 20; c.xp = 0; c.bonusStats.health += 300; c.bonusStats.strength += 80; c.bonusStats.speed += 20; c.cards = ['rage', 'patch_up', 'hurl', 'rush']; c.cardUses = { rush: 7, rage: 2 }; delete c.deck; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 }
+    ]
+  },
+  {
+    "name": "fight-win",
+    "steps": [
+      { "include": "strong-legend" },
+      { "include": "no-page-scroll" },
+      { "shot": "tab-fight-legend" },
+      { "click": ".fight-go" },
+      { "shot": "prefight-legend" },
+      { "click": "text=Start fight" },
+      { "wait": 2500 },
+      { "shot": "fight-legend" },
+      { "eval": "new Promise((resolve, reject) => { const start = Date.now(); const check = () => { if (document.querySelector('.fight-summary:not(.hidden)')) return resolve(); if (Date.now() - start > 90000) return reject(new Error('the fight did not end')); const next = document.querySelector('.sheet-actions .btn'); if (next) next.click(); const card = document.querySelector('.card-button:not(:disabled):not(.queued)'); if (card) card.click(); setTimeout(check, 200); }; check(); })" },
+      { "wait": 500 },
+      { "shot": "fight-win-celebration" },
+      { "wait": 2000 },
+      { "include": "no-page-scroll" },
+      { "shot": "fight-win" },
+      { "eval": "[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Continue')).click();" },
+      { "wait": 300 },
+      { "shot": "fight-win-xp-filling" },
+      { "wait": 1500 },
+      { "shot": "fight-win-xp" }
+    ]
+  },
+  {
+    "name": "fight-win-levelup",
+    "steps": [
+      { "include": "strong-legend" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.xp = 40; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "click": ".fight-go" },
+      { "include": "fight-to-end" },
+      { "wait": 2500 },
+      { "include": "no-page-scroll" },
+      { "shot": "fight-win-levelup" },
+      { "eval": "const row = document.querySelector('.rewards'); const xp = row.children[0]; for (const chip of [...row.children].slice(1)) if (!chip.textContent.includes('Level up')) chip.remove(); for (const name of ['Patch Up +1', 'Rage +2', 'Hurl +1', 'Rush → level 3!']) { const chip = xp.cloneNode(true); chip.lastChild.textContent = name; chip.style.animation = 'none'; if (name.includes('level')) chip.classList.add('reward-big'); row.insertBefore(chip, row.children[1] ?? null); }" },
+      { "include": "no-page-scroll" },
+      { "shot": "fight-win-many-rewards" },
+      { "click": "text=Continue" },
+      { "eval": "document.querySelector('.upgrade').click();" },
+      { "wait": 1200 },
+      { "shot": "fight-win-levelup-xp-jump" },
+      { "wait": 2000 },
+      { "shot": "fight-win-levelup-xp" }
+    ]
+  },
+  {
+    "name": "fight-loss",
+    "steps": [
+      { "include": "setup" },
+      { "click": ".fight-go" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const o = s.pendingFight.opponent; o.bonusStats.health += 300; o.bonusStats.strength += 80; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "include": "fight-to-end" },
+      { "wait": 2500 },
+      { "include": "no-page-scroll" },
+      { "shot": "fight-loss" }
     ]
   }
 ]
