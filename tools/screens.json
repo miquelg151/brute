@@ -88,6 +88,10 @@
     "steps": [
       { "save": null },
       { "click": "text=Start" },
+      { "click": ".carousel-card:nth-child(3)" },
+      { "click": ".create-next" },
+      { "click": ".create-panel .choice-grid .choice:nth-child(5)" },
+      { "click": ".create-next" },
       { "include": "no-page-scroll" },
       { "include": "no-step-scroll" },
       { "shot": "create-look" }
@@ -98,7 +102,6 @@
     "steps": [
       { "save": null },
       { "click": "text=Start" },
-      { "click": ".create-next" },
       { "click": ".carousel-card:nth-child(3)" },
       { "include": "no-page-scroll" },
       { "include": "no-step-scroll" },
@@ -110,7 +113,6 @@
     "steps": [
       { "save": null },
       { "click": "text=Start" },
-      { "click": ".create-next" },
       { "click": ".create-next" },
       { "click": ".create-panel .choice-grid .choice:nth-child(2)" },
       { "include": "no-page-scroll" },

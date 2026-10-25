@@ -1,4 +1,5 @@
-// Creating a fighter, in four steps: Look, Class, Origin, Name.
+// Creating a fighter, in four steps: Class, Origin, Look, Name.
+// The look comes after class and origin, so the player styles the fighter they will really get.
 // Your fighter stands on the street at the top the whole time and changes as you pick.
 import { CARDS, CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, originCard as originCardId, type Appearance, type ClassId, type SaveData } from '../../core';
 import { CARD_ICONS, cardSticker } from '../cardView';
@@ -24,7 +25,7 @@ const LOOK_COLORS: Partial<Record<keyof Appearance, string[]>> = {
 };
 
 /** The four steps, in order. The name is the big title shown over the street. */
-const STEP_TITLES = ['Look', 'Class', 'Origin', 'Name'];
+const STEP_TITLES = ['Class', 'Origin', 'Look', 'Name'];
 
 function randomLook(): Appearance {
   const r = (n: number) => Math.floor(Math.random() * n);
@@ -46,7 +47,7 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
   const look = randomLook();
   let classId: ClassId = 'brawler';
   let originId = ORIGIN_IDS[0]!;
-  /** Which step is open: 0 = Look, 1 = Class, 2 = Origin, 3 = Name. */
+  /** Which step is open: 0 = Class, 1 = Origin, 2 = Look, 3 = Name. */
   let step = 0;
 
   const preview = h('div', { class: 'spot' });
@@ -189,21 +190,6 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
   const panels = [
     h(
       'section',
-      { class: 'create-panel' },
-      h(
-        'div',
-        { class: 'card look-card' },
-        ...LOOK_ROWS.map((r) => lookRow(r.key, r.label)),
-        h(
-          'button',
-          { class: 'btn btn-small btn-with-icon', onclick: () => (Object.assign(look, randomLook()), refreshPreview()) },
-          icon('dice', 'Random', 'normal'),
-          'Random look',
-        ),
-      ),
-    ),
-    h(
-      'section',
       { class: 'create-panel create-centred' },
       h('p', { class: 'lede small' }, 'Your starting stats and skill, and the upgrades you see most.'),
       track,
@@ -218,6 +204,21 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
         refreshOriginDetail();
       }, originId),
       originDetail,
+    ),
+    h(
+      'section',
+      { class: 'create-panel' },
+      h(
+        'div',
+        { class: 'card look-card' },
+        ...LOOK_ROWS.map((r) => lookRow(r.key, r.label)),
+        h(
+          'button',
+          { class: 'btn btn-small btn-with-icon', onclick: () => (Object.assign(look, randomLook()), refreshPreview()) },
+          icon('dice', 'Random', 'normal'),
+          'Random look',
+        ),
+      ),
     ),
     h('section', { class: 'create-panel create-centred create-name' }, h('p', { class: 'lede small' }, 'What does the street call you?'), nameInput),
   ];
@@ -261,7 +262,7 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
       }
     }
     // The carousel lost its place while hidden: put the picked class back in the middle.
-    if (step === 1) centre(classCards[CLASS_IDS.indexOf(classId)]!, 'instant');
+    if (step === 0) centre(classCards[CLASS_IDS.indexOf(classId)]!, 'instant');
     if (last) nameInput.focus({ preventScroll: true });
   };
 
