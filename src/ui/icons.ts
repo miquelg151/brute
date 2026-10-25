@@ -196,8 +196,3 @@ export function statRow(hp: number, strength: number, agility: number, speed: nu
     iconValue('speed', 'Speed', speed),
   );
 }
-
-/** A section heading shown as an icon; the word stays for screen readers. */
-export function iconHeading(name: IconName, text: string): HTMLElement {
-  return h('h2', { class: 'section-icon' }, icon(name, text, 'normal'), h('span', { class: 'sr-only' }, text));
-}

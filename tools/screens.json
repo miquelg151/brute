@@ -209,6 +209,7 @@
       { "include": "setup" },
       { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.pendingLevelUps = 1; s.offer = ['card:patch_up', 'card:hurl', 'card:rush']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
       { "wait": 1500 },
+      { "include": "no-page-scroll" },
       { "shot": "levelup" }
     ]
   },

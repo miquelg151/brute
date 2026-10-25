@@ -63,7 +63,7 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
       ? h(
           'section',
           { class: 'rank-up' },
-          h('div', { class: rank.id === 'legend' ? 'spot spot-big legend' : 'spot spot-big' }, pixelArt(drawFighter({ ...c, level: reached }), 'big')),
+          h('div', { class: rank.id === 'legend' ? 'spot spot-big legend' : 'spot spot-big' }, pixelArt(drawFighter({ ...c, level: reached }), 'normal')),
           h('h2', {}, `You are now a ${rank.name}!`),
         )
       : '';

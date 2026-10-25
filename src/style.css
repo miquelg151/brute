@@ -396,6 +396,32 @@ a {
   margin-top: 0;
 }
 
+/* The level-up screen must fit a small phone without scrolling: a smaller fighter and tighter cards. */
+.levelup {
+  gap: 6px;
+}
+
+.levelup .spot-big {
+  min-height: 0;
+}
+
+.levelup .rank-up h2 {
+  margin-bottom: 0;
+}
+
+.levelup .choice-list {
+  gap: 8px;
+}
+
+.levelup .upgrade {
+  gap: var(--step);
+  padding: 8px 12px;
+}
+
+.levelup .upgrade-text {
+  gap: 2px;
+}
+
 /* Rank badge next to the level: small sticker letters, the colour grows with the rank. */
 .rank-badge {
   color: var(--rank);
@@ -929,13 +955,6 @@ body.sheet-open {
   }
 }
 
-.result {
-  font-family: var(--font);
-  font-weight: var(--heavy);
-  font-size: var(--t-xxl);
-  line-height: 1.15;
-}
-
 .win {
   color: var(--good);
 }
@@ -1280,7 +1299,6 @@ h2:not(.card h2),
 .choice-title,
 .poster-name,
 .stat-value,
-.result,
 .result-banner,
 .timing-label {
   color: var(--sticker-fill);
@@ -1298,7 +1316,6 @@ h2:not(.card h2),
 .choice-title,
 .poster-name,
 .stat-value,
-.result,
 .result-banner,
 .timing-label {
   filter: drop-shadow(var(--sticker-drop) var(--sticker-drop) 0 var(--sticker-shadow));
@@ -2233,7 +2250,8 @@ button.game-card {
 /* --- Shell: top bar, the open tab, tab bar ------------------------------------
    Once a fighter exists the game is one phone-sized frame: nothing scrolls but the
    Fighter and Cards tabs, inside their own area. */
-#app:has(> .shell) {
+/* The shell, creation and pre-fight fill the whole screen: main.ts puts .full-screen on #app. */
+#app.full-screen {
   padding: 0;
 }
 
@@ -2419,7 +2437,7 @@ button.game-card {
   transform: translateY(-4px) rotate(-2deg);
 }
 
-.tab:active {
+.tab:active:not([aria-current]) {
   transform: translateY(1px);
 }
 
@@ -2542,6 +2560,10 @@ button.game-card {
   .tab,
   .tab[aria-current='page'] {
     transition: none;
+  }
+
+  .tab:active {
+    transform: none;
   }
 
   .fight-go:active:not(:disabled) {
@@ -2868,10 +2890,6 @@ button.game-card {
    One phone-sized frame, like the shell: the street with your fighter on top (it stays
    while you pick), the open step under it, and the dots with Back and Next at the bottom.
    Only the step's own area scrolls, when it is too tall (the origins). */
-#app:has(> .create) {
-  padding: 0;
-}
-
 .screen.create {
   height: 100vh;
   height: 100dvh;
@@ -3096,10 +3114,6 @@ button.game-card {
    The poster, the opponent's trait stickers and the mini tabs stay put; only the open
    mini tab (Plan, Gear or Cards) scrolls, inside its own area. Start fight sits at the
    bottom. */
-#app:has(> .prefight) {
-  padding: 0;
-}
-
 .screen.prefight {
   height: 100vh;
   height: 100dvh;

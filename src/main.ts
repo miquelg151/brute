@@ -25,6 +25,8 @@ function show(): void {
   root.replaceChildren();
   window.scrollTo(0, 0);
   render();
+  // The shell, creation and pre-fight use the whole screen, so #app drops its padding (see style.css).
+  root.classList.toggle('full-screen', !!root.querySelector(':scope > .shell, :scope > .create, :scope > .prefight'));
   animateIn(root);
 }
 
@@ -96,7 +98,7 @@ function render(): void {
 }
 
 // Every game button gives a tiny buzz when pressed, on phones that can (iPhones cannot).
-document.addEventListener('pointerdown', (event) => {
+document.addEventListener('click', (event) => {
   const button = (event.target as Element | null)?.closest?.('.btn');
   if (!button || (button as HTMLButtonElement).disabled) return;
   try {
