@@ -154,8 +154,21 @@ const RECOVER_GAUGE = -40;
 const MAGIC_RESIST_CAP = 60;
 const GAUGE_FULL = 100;
 const DODGE_CAP = 40;
-/** Chance (%) that the Shield skill blocks a hit. */
+/** Chance (%) that the Shield skill blocks a hit, and with the Bulwark skill. */
 const SHIELD_BLOCK = 25;
+const BULWARK_BLOCK = 40;
+/** Jab: extra damage (%) of the first attack of each turn. */
+const JAB_PCT = 25;
+/** Thick Skull: less damage taken (%) below half health. */
+const THICK_SKULL_PCT = 15;
+/** Wall Run: extra counter damage (%). */
+const WALL_RUN_PCT = 50;
+/** Bond: the owner heals this share (%) of the damage their pets deal. */
+const BOND_PCT = 25;
+/** Feral: chance (%) that a pet hit does double damage. */
+const FERAL_CHANCE = 20;
+/** Arcane Flow: spells cost this share (%) of their mana, rounded down. */
+const ARCANE_FLOW_COST = 75;
 /** Casters' class mana grows by this much per level (less at the start, more later). */
 const MANA_PER_LEVEL = 1;
 /** A fighter's speed above this counts half, so very fast fighters don't get endless turns. Pets are not capped. */
@@ -254,8 +267,10 @@ interface Unit {
   poisonTurns: number;
   poisonDamage: number;
   poisonBy: number;
-  /** Power Surge: this unit loses its next turn. */
+  /** Power Surge, Headbutt: this unit loses its next turn. */
   stunned: boolean;
+  /** Jab skill: the next attack is the first one of this turn. */
+  jabReady: boolean;
   breaks: readonly BreakChoice[] | undefined;
   lastRes: string;
 }
@@ -321,7 +336,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
   const sum = (key: keyof GearDef) => gear.reduce((total, g) => total + ((g[key] as number | undefined) ?? 0), 0);
   const stats = addStats(cls.baseStats, c.bonusStats);
   const skills = new Set(c.skills);
-  const maxHp = maxHpFor(stats.health, origin.hpPercent);
+  const maxHp = maxHpFor(stats.health, origin.hpPercent, skills.has('thick_skull'));
   const maxMana = maxManaFor(c, gear);
   const owned = [...c.weapons];
 
@@ -401,6 +416,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     poisonDamage: 0,
     poisonBy: 0,
     stunned: false,
+    jabReady: false,
     breaks: opts.breaks,
     lastRes: '',
   };
@@ -576,8 +592,13 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (u.isMain && winner === null) winner = by.team;
   };
 
+  /** Health actually lost to the last hit that landed (after wards and Thick Skull). */
+  let lastDealt = 0;
+
   /** Applies damage through any ward, emits the hit, handles death and second wind. Returns true if the target survived. */
   const land = (att: Unit, def: Unit, kind: HitKind, damage: number, blocked: boolean): boolean => {
+    // Thick Skull: below half health, every hit does less.
+    if (def.skills.has('thick_skull') && def.hp * 2 < def.maxHp) damage = Math.floor((damage * (100 - THICK_SKULL_PCT)) / 100);
     // Weather the Wave: the next hits taken do less damage.
     if (def.waveHits > 0 && damage > 0) {
       def.waveHits--;
@@ -589,7 +610,9 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       damage -= absorbed;
       events.push({ t: 'ward', actor: def.idx, absorbed, left: def.ward });
     }
+    const before = def.hp;
     def.hp = Math.max(0, def.hp - damage);
+    lastDealt = before - def.hp;
     events.push({ t: blocked ? 'block' : 'hit', actor: att.idx, target: def.idx, kind, weapon: kind === 'spell' ? null : att.weapon, damage, hp: def.hp });
     if (def.hp === 0) {
       kill(def, att);
@@ -612,10 +635,17 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     return true;
   };
 
+  /** The fighter who owns a pet (spirits are summons, not pets). Undefined for anyone else. */
+  const petOwner = (u: Unit): Unit | undefined => (!u.isMain && roster[u.idx]!.defId !== 'spirit' ? units[u.owner] : undefined);
+
   /** Resolves one physical attack. Returns true if the target survived. Specials and throws cannot be dodged. */
   const attack = (att: Unit, def: Unit, kind: HitKind, quality = 0, specialBonus = SPECIAL_MAX_BONUS): boolean => {
     // The one-hit card bonus belongs to this attack only, even if it misses or is dodged.
-    const nextHitPct = att.nextHitPct;
+    // Jab (first attack of a turn) and Wall Run (counters) add to it.
+    const jabPct = att.jabReady ? JAB_PCT : 0;
+    att.jabReady = false;
+    const wallRunPct = kind === 'counter' && att.skills.has('wall_run') ? WALL_RUN_PCT : 0;
+    const nextHitPct = att.nextHitPct + jabPct + wallRunPct;
     const nextHitSure = att.nextHitSure;
     att.nextHitPct = 0;
     att.nextHitSure = false;
@@ -651,11 +681,14 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const armor = att.isMain && !quickHit ? fullArmor : Math.floor(fullArmor / 2);
     let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality, specialBonus, nextHitPct) * roll) / 100) - armor);
     if (!def.isMain) damage = Math.max(1, Math.floor((damage * TARGETS[att.plan.target].petDamagePct) / 100));
+    // Feral: a pet's hit may do double damage.
+    const owner = petOwner(att);
+    if (owner?.skills.has('feral') && rng.chance(FERAL_CHANCE)) damage *= 2;
     let blocked = false;
     if (def.sureBlocks > 0) {
       def.sureBlocks--;
       blocked = true;
-    } else blocked = def.skills.has('shield') && rng.chance(SHIELD_BLOCK);
+    } else blocked = def.skills.has('shield') && rng.chance(def.skills.has('bulwark') ? BULWARK_BLOCK : SHIELD_BLOCK);
     if (blocked) damage = Math.max(1, Math.floor(damage / 4));
     // Scrap Shield soaks up physical damage first.
     if (def.scrap > 0) {
@@ -664,7 +697,14 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       damage -= absorbed;
       events.push({ t: 'scrap', actor: def.idx, absorbed, left: def.scrap });
     }
+    lastDealt = 0;
     const survived = land(att, def, kind, damage, blocked);
+    // Bond: the owner heals part of what their pet dealt (never after a knockout).
+    if (owner?.skills.has('bond') && lastDealt > 0 && winner === null && alive(owner) && owner.hp < owner.maxHp) {
+      const amount = Math.min(owner.maxHp - owner.hp, Math.max(1, Math.floor((lastDealt * BOND_PCT) / 100)));
+      owner.hp += amount;
+      events.push({ t: 'heal', actor: owner.idx, amount, hp: owner.hp });
+    }
     if (survived && att.skills.has('disarm') && def.weapon && rng.chance(15)) {
       events.push({ t: 'disarm', actor: att.idx, target: def.idx, weapon: def.weapon });
       def.weapon = null;
@@ -690,10 +730,16 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     return { survived, dealt: before - def.hp };
   };
 
+  /** Mana a spell costs this fighter (Arcane Flow makes it cheaper). */
+  const spellCost = (u: Unit, id: string): number => {
+    const mana = SPELLS[id]!.mana;
+    return u.skills.has('arcane_flow') ? Math.floor((mana * ARCANE_FLOW_COST) / 100) : mana;
+  };
+
   /** Casts a spell if the fighter knows one worth casting now and has the mana. */
   const trySpell = (u: Unit): boolean => {
     if (u.spells.length === 0) return false;
-    const has = (id: string) => u.spells.includes(id) && u.mana >= SPELLS[id]!.mana;
+    const has = (id: string) => u.spells.includes(id) && u.mana >= spellCost(u, id);
     const foe = enemyMainOf(u);
     const hpPct = (u.hp * 100) / u.maxHp;
     const spirit = units.find((s) => s.owner === u.idx && roster[s.idx]!.summoned && roster[s.idx]!.defId === 'spirit');
@@ -706,7 +752,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     else if (has('spark') && rng.chance(85)) spell = 'spark';
     if (!spell) return false;
 
-    u.mana -= SPELLS[spell]!.mana;
+    u.mana -= spellCost(u, spell);
     const offensive = spell === 'spark' || spell === 'drain' || spell === 'flash';
     events.push({ t: 'cast', actor: u.idx, spell, target: offensive ? foe.idx : null });
     switch (spell) {
@@ -919,6 +965,38 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         foe.poisonBy = u.idx;
         break;
       }
+      case 'headbutt': {
+        const foe = enemyMainOf(u);
+        u.nextHitPct += scaled(20, level);
+        const seen = events.length;
+        attack(u, foe, 'melee');
+        // Like Power Surge: only a hit that landed (even blocked) stuns.
+        const landed = events.slice(seen).some((e) => (e.t === 'hit' || e.t === 'block') && e.actor === u.idx && e.target === foe.idx);
+        if (landed && alive(foe)) foe.stunned = true;
+        break;
+      }
+      case 'pickpocket': {
+        const foe = enemyMainOf(u);
+        // They can't lose more energy than they have, and the thief can't go over the max.
+        const stolen = Math.min(foe.energy, scaledCount(2, level));
+        foe.energy -= stolen;
+        u.energy = Math.min(MAX_ENERGY, u.energy + stolen);
+        emitEnergy();
+        break;
+      }
+      case 'ground_pound': {
+        // One weaker hit on each enemy unit standing, that can't be dodged. A pending bonus
+        // (Haymaker, Feint...) is used by the first hit; a pending "can't be dodged" is kept.
+        const keepSure = u.nextHitSure;
+        for (const target of units.filter((e) => e.team !== u.team && alive(e))) {
+          u.nextHitPct += scaled(60, level) - 100;
+          u.nextHitSure = true;
+          attack(u, target, 'melee');
+          if (winner !== null || !alive(u)) break;
+        }
+        u.nextHitSure = keepSure;
+        break;
+      }
       case 'power_surge': {
         const foe = enemyMainOf(u);
         u.nextHitPct += 10 * (level - 1);
@@ -1054,13 +1132,16 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         return;
       }
     }
-    // Power Surge: this turn is lost.
+    // Power Surge or Headbutt: this turn is lost.
     if (u.stunned) {
       u.stunned = false;
       events.push({ t: 'stunned', actor: u.idx });
       return;
     }
+    u.jabReady = u.skills.has('jab');
     takeTurnBody(u);
+    // A Jab not used this turn (a spell, a rest) is lost.
+    u.jabReady = false;
     if (u.rageTurns > 0) u.rageTurns--;
     if (u.trainTurns > 0) {
       u.trainTurns--;

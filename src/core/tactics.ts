@@ -27,7 +27,7 @@ export const TRAITS: Record<Trait, TraitDef> = {
 export function traitsOf(c: Character): Trait[] {
   const stats = addStats(CLASSES[c.classId].baseStats, c.bonusStats);
   const origin = ORIGINS[c.originId]!;
-  const hp = maxHpFor(stats.health, origin.hpPercent);
+  const hp = maxHpFor(stats.health, origin.hpPercent, c.skills.includes('thick_skull'));
   const armor = origin.armor + (c.skills.includes('iron_skin') ? 3 : 0);
   const traits: Trait[] = [];
   if (hp >= 80 || armor >= 3 || c.skills.includes('shield')) traits.push('tough');

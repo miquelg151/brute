@@ -47,6 +47,9 @@ the choices made at each break.
 | Body Slam | 5 | Bouncer | A heavy hit (+40%) that pushes their next turn back. |
 | Stray Dog | 6 | Tamer | A dog with 100% health joins until the round ends. |
 | Bolt | 5 | Mystic | A spell that can't be dodged and does +30%. |
+| Headbutt | 5 | Brawler (Brute) | A hit with +20%: if it lands (even blocked), they lose their next turn. |
+| Pickpocket | 3 | Parkour (Thief) | Steal 2 energy from them (only what they have; 3 at level 4). |
+| Ground Pound | 5 | Bouncer (Wrecker) | Hit them and every pet of theirs for 60% damage. Can't be dodged. |
 
 - The Special Strike shows a timing bar: the better the timing, the bigger the bonus.
   Below 25% timing it fails and the turn plays normally. It costs 20 stamina.
@@ -85,7 +88,7 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
 
 - Poison changes health directly: it ignores armor, shields and Scrap Shield, and it does
   not trigger Second Wind.
-- A stunned fighter (Power Surge) loses that turn entirely: no attack and no stamina,
+- A stunned fighter (Power Surge, Headbutt) loses that turn entirely: no attack and no stamina,
   mana or health regeneration that turn.
 - Leap and Last Train carry over to the next round if they are not used up; Scrap Shield
   and a stun (Power Surge) end with the round.
@@ -138,7 +141,14 @@ Every piece has an upside and often a downside (a riot vest is great armor but s
 - Armor is subtracted from every physical hit. It only counts **half** against pets,
   spirits and quick extra hits (double strikes and counters), because those are many
   small hits.
-- **Shield** blocks 25% of physical hits (the hit does a quarter of its damage).
+- **Shield** blocks 25% of physical hits (the hit does a quarter of its damage), 40% with
+  **Bulwark**.
+- **Jab**: the first attack of each of your turns does +25% (a spell or a rest uses up the turn).
+- **Thick Skull**: +10% max health; below half health every hit (physical or magic) does 15% less.
+- **Wall Run**: counters (also Leap's) do +50%.
+- **Bond**: when your pet (not a spirit) takes health off someone, you heal 25% of it (at least 1).
+- **Feral**: each hit of your pets has a 20% chance to do double damage.
+- **Arcane Flow**: spells cost 25% less mana, rounded down (Spark 12 → 9).
 - **Pets first** makes your fighter and your pets attack enemy pets, with +20% damage
   against them.
 - At each level-up, at least one of the three choices is a weapon, skill, pet or gear

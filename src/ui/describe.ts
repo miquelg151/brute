@@ -21,7 +21,7 @@ export function totalStats(c: Character): Stats {
 }
 
 export function maxHpOf(c: Character): number {
-  return maxHpFor(totalStats(c).health, ORIGINS[c.originId]?.hpPercent ?? 0);
+  return maxHpFor(totalStats(c).health, ORIGINS[c.originId]?.hpPercent ?? 0, c.skills.includes('thick_skull'));
 }
 
 /** Max mana counting the gear the fighter would wear by default. */

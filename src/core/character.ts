@@ -23,6 +23,7 @@ export function createCharacter(name: string, appearance: Appearance, classId: C
   };
 }
 
-export function maxHpFor(health: number, hpPercent: number): number {
-  return Math.floor(((30 + 5 * health) * (100 + hpPercent)) / 100);
+/** Max health from the health stat and the origin bonus (%). The Thick Skull skill adds 10% more. */
+export function maxHpFor(health: number, hpPercent: number, thickSkull = false): number {
+  return Math.floor(((30 + 5 * health) * (100 + hpPercent) * (thickSkull ? 110 : 100)) / 10000);
 }

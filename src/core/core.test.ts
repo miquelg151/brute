@@ -1362,6 +1362,134 @@ describe('class branches', () => {
   });
 });
 
+describe('class branch skills and cards', () => {
+  const deckOf = (...ids: string[]) => Object.fromEntries(ids.map((id) => [id, 1]));
+  /** A copy of a fighter that also knows a skill. */
+  const learn = (c: Character, skill: string): Character => ({ ...c, skills: [...c.skills, skill] });
+  const fresh = (classId: Character['classId']) => createCharacter('N', look, classId, 'port');
+  const foe = createCharacter('F', look, 'brawler', 'port');
+  const plain = (a: Character, b: Character, seed: number) => runFight(a, b, seed, { a: { deck: {} }, b: { deck: {} } });
+  const hitsBy = (log: FightLog, actor: number, kind?: string) =>
+    log.events.filter((e) => (e.t === 'hit' || e.t === 'block') && e.actor === actor && (kind === undefined || e.kind === kind));
+  const total = (events: FightEvent[]) => events.reduce((s, e) => s + (e.t === 'hit' || e.t === 'block' ? e.damage : 0), 0);
+  const seeds = Array.from({ length: 30 }, (_, i) => i + 1);
+
+  it('Jab makes the first attack of each turn hit harder', () => {
+    // Jab uses no randomness, so both runs roll the same hits.
+    const jab = hitsBy(plain(learn(fresh('brawler'), 'jab'), foe, 3), 0, 'melee').slice(0, 3);
+    const none = hitsBy(plain(fresh('brawler'), foe, 3), 0, 'melee').slice(0, 3);
+    expect(jab).toHaveLength(3);
+    expect(total(jab)).toBeGreaterThan(total(none));
+  });
+
+  it('Thick Skull gives more max health and less damage taken below half health', () => {
+    const skull = plain(learn(fresh('brawler'), 'thick_skull'), foe, 4);
+    const none = plain(fresh('brawler'), foe, 4);
+    expect(skull.roster[0]!.maxHp).toBe(Math.floor((none.roster[0]!.maxHp * 110) / 100));
+    // The same hits are rolled; once below half health they do less.
+    const taken = (log: FightLog) =>
+      log.events.filter((e) => (e.t === 'hit' || e.t === 'block') && e.target === 0).map((e) => (e.t === 'hit' || e.t === 'block' ? e.damage : 0));
+    const a = taken(skull);
+    const b = taken(none);
+    const n = Math.min(a.length, b.length);
+    let lower = 0;
+    for (let i = 0; i < n; i++) {
+      expect(a[i]!).toBeLessThanOrEqual(b[i]!);
+      if (a[i]! < b[i]!) lower++;
+    }
+    expect(lower).toBeGreaterThan(0);
+  });
+
+  it('Wall Run makes counters hit harder', () => {
+    const run = (c: Character) => seeds.reduce((s, seed) => s + total(hitsBy(plain(c, foe, seed), 0, 'counter')), 0);
+    expect(run(learn(fresh('parkour'), 'wall_run'))).toBeGreaterThan(run(fresh('parkour')));
+  });
+
+  it('Bulwark makes the Shield block more often', () => {
+    const blocks = (c: Character) => seeds.reduce((s, seed) => s + plain(foe, c, seed).events.filter((e) => e.t === 'block' && e.target === 1).length, 0);
+    expect(blocks(learn(fresh('bouncer'), 'bulwark'))).toBeGreaterThan(blocks(fresh('bouncer')));
+  });
+
+  it('Bond heals the owner right after a pet deals damage', () => {
+    const healsAfterPetHit = (c: Character) =>
+      seeds.some((seed) => {
+        const log = plain(c, foe, seed);
+        return log.events.some((e, i) => {
+          const next = log.events[i + 1];
+          return e.t === 'hit' && e.actor !== 0 && log.roster[e.actor]!.team === 0 && e.damage > 0 && next?.t === 'heal' && next.actor === 0;
+        });
+      });
+    expect(healsAfterPetHit(learn(fresh('tamer'), 'bond'))).toBe(true);
+    expect(healsAfterPetHit(fresh('tamer'))).toBe(false);
+  });
+
+  it('Feral makes some pet hits do double damage', () => {
+    // The tamer's dog is unit 1.
+    const average = (c: Character) => {
+      const hits = seeds.flatMap((seed) => plain(c, foe, seed).events.filter((e) => e.t === 'hit' && e.actor === 1));
+      return total(hits) / hits.length;
+    };
+    expect(average(learn(fresh('tamer'), 'feral'))).toBeGreaterThan(average(fresh('tamer')) * 1.1);
+  });
+
+  it('Arcane Flow makes spells cheaper, so more get cast', () => {
+    const casts = (c: Character) => seeds.reduce((s, seed) => s + plain(c, foe, seed).events.filter((e) => e.t === 'cast' && e.actor === 0).length, 0);
+    expect(casts(learn(fresh('mystic'), 'arcane_flow'))).toBeGreaterThan(casts(fresh('mystic')));
+  });
+
+  const play = (me: Character, card: string, tick: number, seed: number, other: Character = foe) =>
+    runFight(me, other, seed, { a: { interactive: true, deck: deckOf(card), plays: [{ tick, card }], breaks: [] }, b: { deck: {} } });
+  const noPlay = (me: Character, card: string, seed: number, other: Character = foe) =>
+    runFight(me, other, seed, { a: { interactive: true, deck: deckOf(card), plays: [], breaks: [] }, b: { deck: {} } });
+  const cardIndex = (log: FightLog, card: string) => log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0);
+  /** Everything before the card (and its energy event) is the same as without playing it. */
+  const sameBefore = (log: FightLog, without: FightLog, card: string) => {
+    const from = cardIndex(log, card) - 1;
+    expect(log.events[from]).toMatchObject({ t: 'energy', actor: 0 });
+    expect(log.events.slice(0, from)).toEqual(without.events.slice(0, from));
+  };
+
+  it('Headbutt makes the enemy lose their next turn when it lands', () => {
+    // Costs 5: playable at tick 10.
+    const me = fresh('brawler');
+    const log = play(me, 'headbutt', 10, 2);
+    sameBefore(log, noPlay(me, 'headbutt', 2), 'headbutt');
+    const from = cardIndex(log, 'headbutt');
+    const strike = log.events.slice(from).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.actor === 0)!;
+    expect(strike.t).not.toBe('dodge');
+    const after = log.events.slice(log.events.indexOf(strike) + 1);
+    const stunned = after.findIndex((e) => e.t === 'stunned' && e.actor === 1);
+    expect(stunned).toBeGreaterThanOrEqual(0);
+    // Before losing that turn, the enemy did not act.
+    expect(after.slice(0, stunned).some((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge' || e.t === 'rest') && e.actor === 1)).toBe(false);
+  });
+
+  it('Pickpocket steals 2 energy from the enemy', () => {
+    // Costs 3: playable at tick 0, when both sides have 3 energy.
+    const me = fresh('parkour');
+    const log = play(me, 'pickpocket', 0, 5);
+    sameBefore(log, noPlay(me, 'pickpocket', 5), 'pickpocket');
+    const after = log.events.slice(cardIndex(log, 'pickpocket'));
+    expect(after.find((e) => e.t === 'energy' && e.actor === 1)).toMatchObject({ energy: 1 });
+    expect(after.find((e) => e.t === 'energy' && e.actor === 0)).toMatchObject({ energy: 2 });
+  });
+
+  it('Ground Pound hits every enemy unit and is never dodged', () => {
+    // Costs 5: playable at tick 10. The tamer brings a dog.
+    const me = fresh('bouncer');
+    const tamer = fresh('tamer');
+    const log = play(me, 'ground_pound', 10, 6, tamer);
+    sameBefore(log, noPlay(me, 'ground_pound', 6, tamer), 'ground_pound');
+    const from = cardIndex(log, 'ground_pound');
+    const enemies = log.roster.map((u, i) => (u.team === 1 ? i : -1)).filter((i) => i >= 0);
+    // The strikes come right after the card, before anyone's turn.
+    const strikes = log.events.slice(from + 1).filter((e) => e.t === 'hit' || e.t === 'block' || e.t === 'dodge').slice(0, enemies.length);
+    for (const e of strikes) expect(e).toMatchObject({ actor: 0 });
+    expect(strikes.some((e) => e.t === 'dodge')).toBe(false);
+    expect(strikes.map((e) => (e.t === 'dodge' ? -1 : e.target))).toEqual(enemies);
+  });
+});
+
 /** True if the fighter already owns the upgrade (learning it again throws). */
 function ownsUpgrade(c: Character, upgradeId: string): boolean {
   try {
