@@ -36,10 +36,15 @@ export const APPEARANCE_OPTIONS: Record<keyof Appearance, number> = {
 
 export type ClassId = 'brawler' | 'parkour' | 'bouncer' | 'tamer' | 'mystic';
 
+/** Each class splits into two branches; a fighter picks one for good at level 5. */
+export type BranchId = 'boxer' | 'brute' | 'acrobat' | 'thief' | 'wall' | 'wrecker' | 'pack' | 'bond' | 'witch' | 'warden';
+
 export interface Character {
   name: string;
   appearance: Appearance;
   classId: ClassId;
+  /** The class branch chosen at level 5 (undefined before that, or until the player picks). */
+  branch?: BranchId;
   originId: string;
   level: number;
   /** XP accumulated towards the next level. */

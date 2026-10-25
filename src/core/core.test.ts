@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   CARDS,
@@ -58,6 +59,19 @@ import {
   type FightLog,
   type SaveData,
   type TeamOptions,
+  BRANCHES,
+  BRANCHES_BY_ID,
+  BRANCH_LEVEL,
+  CROSS_CLASS_LEVEL,
+  OFFER_SIZE,
+  OTHER_BRANCH_CHANCE,
+  SAVE_VERSION,
+  SKILLS,
+  SPELLS,
+  chooseBranch,
+  chooseFighterBranch,
+  isCrossClass,
+  needsBranch,
 } from './index';
 
 const look: Appearance = { skinTone: 0, hairStyle: 0, hairColor: 0, outfitColor: 0 };
@@ -178,6 +192,9 @@ describe('progression', () => {
   it('offers are biased towards the class pool', () => {
     const rng = new Rng(3);
     const c = createCharacter('B', look, 'bouncer', 'port');
+    // With a branch, so the class pool holds more than its two stat boosts.
+    c.level = BRANCH_LEVEL;
+    chooseBranch(c, 'wall');
     let classSlots = 0;
     let total = 0;
     for (let i = 0; i < 2000; i++) {
@@ -207,7 +224,8 @@ describe('progression', () => {
 
   it('applyUpgrade rejects duplicates', () => {
     const c = createCharacter('C', look, 'tamer', 'port');
-    expect(() => applyUpgrade(c, 'pet:dog')).toThrow();
+    applyUpgrade(c, 'pet:crow');
+    expect(() => applyUpgrade(c, 'pet:crow')).toThrow();
   });
 });
 
@@ -318,7 +336,7 @@ describe('game', () => {
     delete (v4.character as Partial<Character>).cards;
     delete (v4.character as Partial<Character>).cardUses;
     const save = migrateSave(JSON.parse(JSON.stringify(v4)))!;
-    expect(save.version).toBe(6);
+    expect(save.version).toBe(7);
     expect(save.character.name).toBe('Old');
     expect(save.character.cards).toEqual(['special', 'roll', 'weather_wave']);
     expect(save.character.cardUses).toEqual({});
@@ -333,7 +351,7 @@ describe('game', () => {
     save.version = 5;
     save.pendingFight = { anything: true };
     const migrated = migrateSave(save)!;
-    expect(migrated.version).toBe(6);
+    expect(migrated.version).toBe(7);
     expect(migrated.character.cards).toEqual(['special', 'wall', 'scrap_shield', 'patch_up', 'hurl', 'rush']);
     expect(migrated.pendingFight).toBeNull();
   });
@@ -651,8 +669,8 @@ describe('starting cards', () => {
 });
 
 describe('level-up cards', () => {
-  const me = generateOpponent(12, new Rng(61), 'brawler');
-  const foe = generateOpponent(12, new Rng(62), 'bouncer');
+  const me = generateOpponent(12, new Rng(261), 'brawler');
+  const foe = generateOpponent(12, new Rng(262), 'bouncer');
   // A fighter starts with 3 energy and gains 1 every 5 ticks, so a card costing c can first be played at tick 5 * (c - 3).
   const run = (c: Character, card: string, tick: number, opts: Partial<TeamOptions> = {}) =>
     runFight(c, foe, 5, { a: { interactive: true, deck: { [card]: 1 }, plays: [{ tick, card }], breaks: [], ...opts }, b: { deck: {} } });
@@ -768,7 +786,7 @@ describe('level-up cards', () => {
   });
 
   it("Bolt can't be dodged", () => {
-    const m = generateOpponent(12, new Rng(66), 'mystic');
+    const m = generateOpponent(12, new Rng(166), 'mystic');
     expect(dodgesOver(60, m, 'bolt', 10, false, true)).toBeGreaterThan(0);
     expect(dodgesOver(60, m, 'bolt', 10, true, true)).toBe(0);
   });
@@ -855,8 +873,8 @@ describe('level-up cards', () => {
   });
 
   it('Stray Dog cannot be played while its dog is fighting', () => {
-    const t = generateOpponent(12, new Rng(65), 'tamer');
-    const weak = { ...generateOpponent(3, new Rng(72), 'mystic'), pets: [] };
+    const t = generateOpponent(12, new Rng(765), 'tamer');
+    const weak = { ...generateOpponent(3, new Rng(272), 'mystic'), pets: [] };
     let checked = 0;
     for (let seed = 0; seed < 20; seed++) {
       // Energy is full (10) when round 2 starts at tick 45; a second play at tick 60 could afford it (7 energy).
@@ -1093,3 +1111,237 @@ describe('preferred deck', () => {
     expect(save.character.deck).toEqual(['rush', 'special']);
   });
 });
+
+describe('class branches', () => {
+  // The spec's branch table: every class item that is not a stat, with its branch ('' = class-common).
+  const TABLE: Record<string, [string, string]> = {
+    'skill:iron_fists': ['brawler', 'boxer'],
+    'skill:double_strike': ['brawler', 'boxer'],
+    'skill:jab': ['brawler', 'boxer'],
+    'card:haymaker': ['brawler', 'boxer'],
+    'skill:fury': ['brawler', 'brute'],
+    'skill:second_wind': ['brawler', 'brute'],
+    'skill:thick_skull': ['brawler', 'brute'],
+    'card:headbutt': ['brawler', 'brute'],
+    'gear:gloves': ['brawler', ''],
+    'skill:sixth_sense': ['parkour', 'acrobat'],
+    'skill:wall_run': ['parkour', 'acrobat'],
+    'card:flurry': ['parkour', 'acrobat'],
+    'skill:disarm': ['parkour', 'thief'],
+    'skill:quick_start': ['parkour', 'thief'],
+    'skill:thrower': ['parkour', 'thief'],
+    'card:pickpocket': ['parkour', 'thief'],
+    'gear:tracksuit': ['parkour', ''],
+    'skill:iron_skin': ['bouncer', 'wall'],
+    'skill:bulwark': ['bouncer', 'wall'],
+    'gear:riot_vest': ['bouncer', 'wall'],
+    'card:body_slam': ['bouncer', 'wall'],
+    'skill:heavy_hands': ['bouncer', 'wrecker'],
+    'weapon:traffic_sign': ['bouncer', 'wrecker'],
+    'weapon:extinguisher': ['bouncer', 'wrecker'],
+    'card:ground_pound': ['bouncer', 'wrecker'],
+    'skill:whistle': ['tamer', 'pack'],
+    'pet:raccoon': ['tamer', 'pack'],
+    'card:stray_dog': ['tamer', 'pack'],
+    'pet:crow': ['tamer', 'bond'],
+    'skill:bond': ['tamer', 'bond'],
+    'skill:feral': ['tamer', 'bond'],
+    'gear:treat_bag': ['tamer', ''],
+    'skill:drain': ['mystic', 'witch'],
+    'card:bolt': ['mystic', 'witch'],
+    'skill:arcane_flow': ['mystic', 'witch'],
+    'skill:ward': ['mystic', 'warden'],
+    'skill:mend': ['mystic', 'warden'],
+    'skill:flash': ['mystic', 'warden'],
+    'skill:spirit': ['mystic', 'warden'],
+    'gear:rune_hoodie': ['mystic', ''],
+  };
+
+  it('every non-stat class upgrade has the pool and branch of the spec table', () => {
+    const classItems = UPGRADES.filter((u) => u.kind !== 'stat' && u.pool !== 'general');
+    expect(classItems.map((u) => u.id).sort()).toEqual(Object.keys(TABLE).sort());
+    for (const u of classItems) {
+      const [pool, branch] = TABLE[u.id]!;
+      expect([u.id, u.pool, u.branch ?? '']).toEqual([u.id, pool, branch]);
+      if (u.branch) expect(BRANCHES_BY_ID[u.branch].classId).toBe(u.pool);
+    }
+    // Class stats are class-common.
+    expect(UPGRADES.filter((u) => u.kind === 'stat' && u.branch !== undefined)).toEqual([]);
+  });
+
+  it('every class has two branches with a name, a description and three known icons', () => {
+    // Icon names are read from the UI icon file, so core tests stay free of the browser.
+    const iconFile = readFileSync(new URL('../ui/icons.ts', import.meta.url), 'utf-8');
+    const iconNames = [...iconFile.matchAll(/^ {2}([a-zA-Z]+): [{F]/gm)].map((m) => m[1]);
+    for (const classId of CLASS_IDS) {
+      const pair = BRANCHES[classId];
+      expect(pair).toHaveLength(2);
+      for (const b of pair) {
+        expect(b.classId).toBe(classId);
+        expect(BRANCHES_BY_ID[b.id]).toBe(b);
+        expect(b.name.length).toBeGreaterThan(2);
+        expect(b.description.length).toBeGreaterThan(5);
+        expect(b.icons).toHaveLength(3);
+        for (const name of b.icons) expect(iconNames).toContain(name);
+      }
+    }
+  });
+
+  it('the general pool has no pet, no spell and no skill', () => {
+    const general = UPGRADES.filter((u) => u.pool === 'general');
+    expect(general.some((u) => u.kind === 'pet')).toBe(false);
+    expect(general.some((u) => u.kind === 'skill')).toBe(false);
+    expect(general.some((u) => u.kind !== 'stat' && SPELLS[u.ref])).toBe(false);
+    expect(UPGRADES_BY_ID['pet:dog']).toBeUndefined();
+  });
+
+  it('a Brawler never gets a pet or a spell from its own offers', () => {
+    for (let seed = 0; seed < 200; seed++) {
+      // Below the cross-class level: nothing from other classes at all.
+      const young = generateOpponent(CROSS_CLASS_LEVEL - 1, new Rng(seed), 'brawler');
+      expect(young.pets).toEqual([]);
+      expect(young.skills.filter((s) => SPELLS[s])).toEqual([]);
+      // At level 30 the only pet or spell can be the one from the level-15 cross-class slot.
+      const old = generateOpponent(30, new Rng(seed), 'brawler');
+      const petsAndSpells = old.pets.length + old.skills.filter((s) => SPELLS[s]).length;
+      expect(petsAndSpells).toBeLessThanOrEqual(1);
+      const crossOwned = UPGRADES.filter((u) => u.kind !== 'stat' && isCrossClass(old, u.id) && ownsUpgrade(old, u.id));
+      expect(crossOwned.length).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('before level 5 offers have no branch items; at level 5 without a branch one must be chosen', () => {
+    const rng = new Rng(4);
+    for (const classId of CLASS_IDS) {
+      const c = createCharacter('A', look, classId, 'port');
+      for (let level = 1; level < BRANCH_LEVEL; level++) {
+        c.level = level;
+        expect(needsBranch(c)).toBe(false);
+        for (let i = 0; i < 40; i++) {
+          for (const id of rollOffer(c, rng)) expect(UPGRADES_BY_ID[id]!.branch).toBeUndefined();
+        }
+      }
+      c.level = BRANCH_LEVEL;
+      expect(needsBranch(c)).toBe(true);
+      // Still no branch: still no branch items.
+      for (let i = 0; i < 40; i++) {
+        for (const id of rollOffer(c, rng)) expect(UPGRADES_BY_ID[id]!.branch).toBeUndefined();
+      }
+      chooseBranch(c, BRANCHES[classId][0].id);
+      expect(needsBranch(c)).toBe(false);
+    }
+  });
+
+  it("chooseBranch rejects another class's branch and a second choice", () => {
+    const c = createCharacter('A', look, 'brawler', 'port');
+    c.level = BRANCH_LEVEL;
+    expect(() => chooseBranch(c, 'witch')).toThrow();
+    expect(c.branch).toBeUndefined();
+    chooseBranch(c, 'brute');
+    expect(c.branch).toBe('brute');
+    expect(() => chooseBranch(c, 'boxer')).toThrow();
+    expect(c.branch).toBe('brute');
+  });
+
+  it('class slots come from the other branch about 15% of the time', () => {
+    const rng = new Rng(21);
+    const c = createCharacter('A', look, 'brawler', 'port');
+    c.level = 6;
+    chooseBranch(c, 'brute');
+    let classPicks = 0;
+    let boxer = 0;
+    while (classPicks < 2000) {
+      for (const id of rollOffer(c, rng)) {
+        const u = UPGRADES_BY_ID[id]!;
+        if (u.pool !== 'brawler') continue;
+        classPicks++;
+        if (u.branch === 'boxer') boxer++;
+      }
+    }
+    const share = boxer / classPicks;
+    expect(OTHER_BRANCH_CHANCE).toBe(15);
+    expect(share).toBeGreaterThan(0.08);
+    expect(share).toBeLessThan(0.22);
+  });
+
+  it('the offer for level 15 has exactly one upgrade from another class, and only that one', () => {
+    for (const classId of CLASS_IDS) {
+      for (let seed = 0; seed < 30; seed++) {
+        const c = generateOpponent(14, new Rng(seed), classId);
+        const cross = (forLevel: number) => rollOffer(c, new Rng(seed + 1000), OFFER_SIZE, forLevel).filter((id) => isCrossClass(c, id));
+        expect(cross(CROSS_CLASS_LEVEL - 1)).toEqual([]);
+        expect(cross(CROSS_CLASS_LEVEL)).toHaveLength(1);
+        expect(cross(CROSS_CLASS_LEVEL + 1)).toEqual([]);
+        const [id] = cross(CROSS_CLASS_LEVEL);
+        expect(UPGRADES_BY_ID[id!]!.kind).not.toBe('stat');
+      }
+    }
+  });
+
+  it('a save rolls the level-15 cross-class offer for the right level, even with level-ups waiting', () => {
+    const save = newGame('Me', look, 'parkour', 'port', 3);
+    const c = save.character;
+    c.level = 16;
+    c.branch = 'thief';
+    save.pendingLevelUps = 2;
+    expect(prepareLevelUp(save)).toBe(true);
+    expect(save.offer!.filter((id) => isCrossClass(c, id))).toHaveLength(1);
+    const pick = save.offer!.find((id) => !isCrossClass(c, id))!;
+    chooseUpgrade(save, pick);
+    expect(save.offer!.filter((id) => isCrossClass(c, id))).toEqual([]);
+  });
+
+  it('choosing the branch remakes a waiting offer', () => {
+    const save = newGame('Me', look, 'brawler', 'port', 8);
+    save.character.level = BRANCH_LEVEL;
+    save.pendingLevelUps = 1;
+    prepareLevelUp(save);
+    expect(save.offer!.every((id) => UPGRADES_BY_ID[id]!.branch === undefined)).toBe(true);
+    chooseFighterBranch(save, 'boxer');
+    expect(save.character.branch).toBe('boxer');
+    expect(save.offer).toHaveLength(3);
+  });
+
+  it('bots at level 5 and up have a branch of their class; younger bots have none', () => {
+    const rng = new Rng(17);
+    for (let i = 0; i < 100; i++) {
+      const level = 1 + (i % 30);
+      const bot = generateOpponent(level, rng);
+      if (level >= BRANCH_LEVEL) expect(BRANCHES[bot.classId].map((b) => b.id)).toContain(bot.branch);
+      else expect(bot.branch).toBeUndefined();
+    }
+  });
+
+  it('a version 6 save becomes version 7, keeping the fight in progress and no branch', () => {
+    const save = newGame('M', look, 'tamer', 'metro', 4) as unknown as Record<string, unknown>;
+    (save.character as Character).level = 9;
+    save.version = 6;
+    save.pendingFight = { anything: true };
+    const migrated = migrateSave(JSON.parse(JSON.stringify(save)))!;
+    expect(migrated.version).toBe(7);
+    expect(SAVE_VERSION).toBe(7);
+    expect(migrated.pendingFight).toEqual({ anything: true });
+    expect(migrated.character.branch).toBeUndefined();
+    expect(needsBranch(migrated.character)).toBe(true);
+  });
+
+  it('new skills and cards are defined with descriptions', () => {
+    for (const id of ['jab', 'thick_skull', 'wall_run', 'bulwark', 'bond', 'feral', 'arcane_flow']) {
+      expect(SKILLS[id]!.description.length).toBeGreaterThan(10);
+    }
+    expect(CARDS.headbutt!.cost).toBe(5);
+    expect(CARDS.pickpocket!.cost).toBe(3);
+    expect(CARDS.ground_pound!.cost).toBe(5);
+    expect(CARDS.pickpocket!.describe(4)).toContain('3');
+  });
+});
+
+/** True if the fighter already owns the upgrade (learning it again throws). */
+function ownsUpgrade(c: Character, upgradeId: string): boolean {
+  try {
+    applyUpgrade(JSON.parse(JSON.stringify(c)), upgradeId);
+    return false;
+  } catch {
+    return true;
+  }
+}

@@ -79,6 +79,9 @@ export const CARDS: Record<string, CardDef> = {
   body_slam: card('body_slam', 'Body Slam', 5, 'bouncer', false, (l) => `A heavy hit (+${scaled(40, l)}%) that pushes their next turn back.`),
   stray_dog: card('stray_dog', 'Stray Dog', 6, 'tamer', false, (l) => `A dog with ${scaled(100, l)}% health joins until the round ends.`),
   bolt: card('bolt', 'Bolt', 5, 'mystic', false, (l) => `A spell that can't be dodged and does +${scaled(30, l)}%.`),
+  headbutt: card('headbutt', 'Headbutt', 5, 'brawler', false, (l) => `A hit with +${scaled(20, l)}%: if it lands, they lose their next turn.`),
+  pickpocket: card('pickpocket', 'Pickpocket', 3, 'parkour', false, (l) => `Steal ${scaledCount(2, l)} energy from them.`),
+  ground_pound: card('ground_pound', 'Ground Pound', 5, 'bouncer', false, (l) => `Hit them and every pet of theirs for ${scaled(60, l)}% damage. Can't be dodged.`),
   // Origin cards: every fighter starts with the one from where they grew up.
   weather_wave: card('weather_wave', 'Weather the Wave', 3, 'origin', true, (l) => `The next ${scaledCount(2, l)} hits you take do ${weatherWavePct(l)}% less damage.`),
   leap: card('leap', 'Leap', 3, 'origin', true, (l) => `Dodge the next attack for sure and strike back with +${scaled(20, l)}%.`),

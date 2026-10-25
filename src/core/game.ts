@@ -2,12 +2,12 @@ import { DECK_SIZE, cardLevel, originCard, startingCards } from './cards';
 import { createCharacter } from './character';
 import { gearFor, loadoutFor, runFight, type BreakChoice, type CardPlay, type FightLog, type GearChoice } from './fight';
 import { generateOpponent } from './opponents';
-import { XP_LOSS, XP_WIN, addXp, applyUpgrade, rollOffer } from './progression';
+import { OFFER_SIZE, XP_LOSS, XP_WIN, addXp, applyUpgrade, chooseBranch, rollOffer } from './progression';
 import { Rng, mixSeed } from './rng';
 import { DEFAULT_PLAN, STANCE_IDS, TARGET_IDS, WEAPON_STYLE_IDS, type Plan } from './tactics';
-import type { Appearance, Character, ClassId } from './types';
+import type { Appearance, BranchId, Character, ClassId } from './types';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** What the player decides before a fight. Locked once the fight starts. */
 export interface Tactics extends Plan {
@@ -79,10 +79,23 @@ export function defaultTactics(c: Character): Tactics {
   return { ...DEFAULT_PLAN, weapons: loadoutFor(c), gear: gearFor(c), deck: preferredDeck(c) };
 }
 
-/** Offers are derived from the save seed and level, so reloading never rerolls them. */
+/**
+ * Offers are derived from the save seed and level, so reloading never rerolls them.
+ * With several level-ups waiting, the first offer is for the lowest of the new levels.
+ */
 function offerFor(save: SaveData): string[] {
   const rng = new Rng(mixSeed(save.seed, 1_000_000 + save.character.level * 31 + save.pendingLevelUps));
-  return rollOffer(save.character, rng);
+  const forLevel = save.character.level - save.pendingLevelUps + 1;
+  return rollOffer(save.character, rng, OFFER_SIZE, forLevel);
+}
+
+/**
+ * Picks the fighter's branch for good. A level-up offer already waiting is made again
+ * (from the same seed) so it can hold items of the new branch.
+ */
+export function chooseFighterBranch(save: SaveData, id: BranchId): void {
+  chooseBranch(save.character, id);
+  if (save.pendingLevelUps > 0 && save.offer) save.offer = offerFor(save);
 }
 
 /** The deck brought by default: the saved one (owned cards only), topped up in card order. */
@@ -241,6 +254,10 @@ export function migrateSave(raw: unknown): SaveData | null {
     // A fight started under the old rules can't continue under the new ones.
     save.pendingFight = null;
     save.version = 6;
+  }
+  if (save.version === 6) {
+    // Branches are new: the fighter has none yet and picks one in the game (from level 5).
+    save.version = 7;
   }
   return save.version === SAVE_VERSION ? (save as unknown as SaveData) : null;
 }

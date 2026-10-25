@@ -1,5 +1,5 @@
 import { CARDS } from './cards';
-import type { ClassId, Stats } from './types';
+import type { BranchId, ClassId, Stats } from './types';
 
 export interface WeaponDef {
   id: string;
@@ -84,9 +84,19 @@ export interface GearDef {
 
 export type UpgradePool = ClassId | 'general';
 
+/** `branch` is set on class items that belong to one branch; class-common and general items have none. */
 export type UpgradeDef =
-  | { id: string; kind: 'stat'; pool: UpgradePool; name: string; stats: Partial<Stats> }
-  | { id: string; kind: 'weapon' | 'skill' | 'pet' | 'gear' | 'card'; pool: UpgradePool; name: string; ref: string };
+  | { id: string; kind: 'stat'; pool: UpgradePool; branch?: BranchId; name: string; stats: Partial<Stats> }
+  | { id: string; kind: 'weapon' | 'skill' | 'pet' | 'gear' | 'card'; pool: UpgradePool; branch?: BranchId; name: string; ref: string };
+
+export interface BranchDef {
+  id: BranchId;
+  classId: ClassId;
+  name: string;
+  description: string;
+  /** Three icon names (from the UI icon set) that hint at what is inside. */
+  icons: [string, string, string];
+}
 
 /** Max weapons a fighter brings into one fight. */
 export const LOADOUT_SIZE = 3;
@@ -119,6 +129,13 @@ export const SKILLS: Record<string, SkillDef> = {
   whistle: { id: 'whistle', name: 'Whistle', description: 'Your pets act much faster.' },
   thrower: { id: 'thrower', name: 'Thrower', description: 'Throw weapons more often, for double damage.' },
   sixth_sense: { id: 'sixth_sense', name: 'Sixth Sense', description: '+6% dodge.' },
+  jab: { id: 'jab', name: 'Jab', description: 'The first attack of each of your turns does +25% damage.' },
+  thick_skull: { id: 'thick_skull', name: 'Thick Skull', description: '+10% max health. Below half health you take 15% less damage.' },
+  wall_run: { id: 'wall_run', name: 'Wall Run', description: 'Your counters do +50% damage.' },
+  bulwark: { id: 'bulwark', name: 'Bulwark', description: 'Your Shield blocks 40% of the time instead of 25%.' },
+  bond: { id: 'bond', name: 'Bond', description: 'When one of your pets deals damage, you heal 25% of it.' },
+  feral: { id: 'feral', name: 'Feral', description: "Your pets' hits have a 20% chance to do double damage." },
+  arcane_flow: { id: 'arcane_flow', name: 'Arcane Flow', description: 'Your spells cost 25% less mana.' },
   // Spells
   spark: { id: 'spark', name: 'Spark', description: 'Magic bolt: 4 + magic damage. 12 mana.' },
   ward: { id: 'ward', name: 'Ward', description: 'A rune barrier that absorbs 10 + magic damage. 20 mana.' },
@@ -234,8 +251,45 @@ export const CLASSES: Record<ClassId, ClassDef> = {
 };
 
 export const CLASS_IDS = Object.keys(CLASSES) as ClassId[];
+
+const branch = (id: BranchId, classId: ClassId, name: string, description: string, icons: [string, string, string]): BranchDef => ({
+  id,
+  classId,
+  name,
+  description,
+  icons,
+});
+
+/** The two branches of each class. The items of each branch are tagged in UPGRADES below. */
+export const BRANCHES: Record<ClassId, [BranchDef, BranchDef]> = {
+  brawler: [
+    branch('boxer', 'brawler', 'Boxer', 'Quick chained punches.', ['fist', 'manyHits', 'damage']),
+    branch('brute', 'brawler', 'Brute', 'Endure and come back.', ['rage', 'health', 'heavy']),
+  ],
+  parkour: [
+    branch('acrobat', 'parkour', 'Acrobat', 'Dodge everything.', ['dodge', 'counter', 'agility']),
+    branch('thief', 'parkour', 'Thief', 'Steal and annoy.', ['weapon', 'fast', 'stamina']),
+  ],
+  bouncer: [
+    branch('wall', 'bouncer', 'Wall', 'Nothing gets through.', ['armor', 'stance', 'health']),
+    branch('wrecker', 'bouncer', 'Wrecker', 'Heavy weapons, heavy hits.', ['heavy', 'weapon', 'damage']),
+  ],
+  tamer: [
+    branch('pack', 'tamer', 'Pack', 'Many pets.', ['pet', 'manyHits', 'speed']),
+    branch('bond', 'tamer', 'Bond', 'Few pets, but strong ones.', ['pet', 'health', 'rage']),
+  ],
+  mystic: [
+    branch('witch', 'mystic', 'Witch', 'Damage magic.', ['magic', 'mana', 'damage']),
+    branch('warden', 'mystic', 'Warden', 'Protect and heal.', ['armor', 'health', 'magic']),
+  ],
+};
+
+export const BRANCHES_BY_ID = Object.fromEntries(
+  Object.values(BRANCHES).flatMap((pair) => pair.map((b) => [b.id, b])),
+) as Record<BranchId, BranchDef>;
 export const ORIGIN_IDS = Object.keys(ORIGINS);
 
+// Class stats never belong to a branch: every fighter of the class can get them.
 const stat = (id: string, pool: UpgradePool, name: string, stats: Partial<Stats>): UpgradeDef => ({
   id,
   kind: 'stat',
@@ -244,14 +298,21 @@ const stat = (id: string, pool: UpgradePool, name: string, stats: Partial<Stats>
   stats,
 });
 
-const ref = (kind: 'weapon' | 'skill' | 'pet' | 'gear' | 'card', pool: UpgradePool, refId: string): UpgradeDef => {
+// A weapon, skill, pet, gear or card. Pass a branch for items only that branch gets.
+const ref = (kind: 'weapon' | 'skill' | 'pet' | 'gear' | 'card', pool: UpgradePool, refId: string, branchId?: BranchId): UpgradeDef => {
   const table = { weapon: WEAPONS, skill: SKILLS, pet: PETS, gear: GEAR, card: CARDS }[kind];
   const name = table[refId]?.name;
   if (!name) throw new Error(`Unknown ${kind} '${refId}'`);
-  return { id: `${kind}:${refId}`, kind, pool, name, ref: refId };
+  const u: UpgradeDef = { id: `${kind}:${refId}`, kind, pool, name, ref: refId };
+  if (branchId) u.branch = branchId;
+  return u;
 };
 
-/** Every upgrade belongs to exactly one pool: a class pool or the general pool. */
+/**
+ * Every upgrade belongs to exactly one pool: a class pool or the general pool.
+ * Class items are either class-common (no branch) or belong to one of the class's two branches.
+ * Starting skills, pets and cards (Pack Leader, the dog, Spark...) are never offered.
+ */
 export const UPGRADES: UpgradeDef[] = [
   // General
   stat('gen_health', 'general', '+2 Health', { health: 2 }),
@@ -262,11 +323,6 @@ export const UPGRADES: UpgradeDef[] = [
   ref('weapon', 'general', 'chain'),
   ref('weapon', 'general', 'skateboard'),
   ref('weapon', 'general', 'umbrella'),
-  ref('skill', 'general', 'thrower'),
-  ref('skill', 'general', 'sixth_sense'),
-  ref('skill', 'general', 'flash'),
-  ref('skill', 'general', 'mend'),
-  ref('pet', 'general', 'dog'),
   ref('gear', 'general', 'leather_jacket'),
   ref('gear', 'general', 'sneakers'),
   ref('gear', 'general', 'charm'),
@@ -275,47 +331,71 @@ export const UPGRADES: UpgradeDef[] = [
   ref('card', 'general', 'rush'),
   ref('card', 'general', 'feint'),
   ref('card', 'general', 'second_breath'),
-  // Brawler
+  // Brawler: common
   stat('brawler_strength', 'brawler', '+1 Strength, +1 Health', { strength: 1, health: 1 }),
   stat('brawler_health', 'brawler', '+3 Health', { health: 3 }),
-  ref('skill', 'brawler', 'iron_fists'),
-  ref('skill', 'brawler', 'fury'),
-  ref('skill', 'brawler', 'second_wind'),
   ref('gear', 'brawler', 'gloves'),
-  ref('card', 'brawler', 'haymaker'),
-  // Parkour
+  // Brawler: Boxer
+  ref('skill', 'brawler', 'iron_fists', 'boxer'),
+  ref('skill', 'brawler', 'double_strike', 'boxer'),
+  ref('skill', 'brawler', 'jab', 'boxer'),
+  ref('card', 'brawler', 'haymaker', 'boxer'),
+  // Brawler: Brute
+  ref('skill', 'brawler', 'fury', 'brute'),
+  ref('skill', 'brawler', 'second_wind', 'brute'),
+  ref('skill', 'brawler', 'thick_skull', 'brute'),
+  ref('card', 'brawler', 'headbutt', 'brute'),
+  // Parkour: common
   stat('parkour_agility', 'parkour', '+2 Agility', { agility: 2 }),
   stat('parkour_speed', 'parkour', '+2 Speed, +2 Strength', { speed: 2, strength: 2 }),
-  ref('skill', 'parkour', 'double_strike'),
-  ref('skill', 'parkour', 'quick_start'),
-  ref('skill', 'parkour', 'disarm'),
   ref('gear', 'parkour', 'tracksuit'),
-  ref('card', 'parkour', 'flurry'),
-  // Bouncer
+  // Parkour: Acrobat
+  ref('skill', 'parkour', 'sixth_sense', 'acrobat'),
+  ref('skill', 'parkour', 'wall_run', 'acrobat'),
+  ref('card', 'parkour', 'flurry', 'acrobat'),
+  // Parkour: Thief
+  ref('skill', 'parkour', 'disarm', 'thief'),
+  ref('skill', 'parkour', 'quick_start', 'thief'),
+  ref('skill', 'parkour', 'thrower', 'thief'),
+  ref('card', 'parkour', 'pickpocket', 'thief'),
+  // Bouncer: common
   stat('bouncer_health', 'bouncer', '+4 Health', { health: 4 }),
   stat('bouncer_strength', 'bouncer', '+2 Strength, +1 Health', { strength: 2, health: 1 }),
-  ref('skill', 'bouncer', 'heavy_hands'),
-  ref('skill', 'bouncer', 'iron_skin'),
-  ref('weapon', 'bouncer', 'traffic_sign'),
-  ref('weapon', 'bouncer', 'extinguisher'),
-  ref('gear', 'bouncer', 'riot_vest'),
-  ref('card', 'bouncer', 'body_slam'),
-  // Tamer
+  // Bouncer: Wall
+  ref('skill', 'bouncer', 'iron_skin', 'wall'),
+  ref('skill', 'bouncer', 'bulwark', 'wall'),
+  ref('gear', 'bouncer', 'riot_vest', 'wall'),
+  ref('card', 'bouncer', 'body_slam', 'wall'),
+  // Bouncer: Wrecker
+  ref('skill', 'bouncer', 'heavy_hands', 'wrecker'),
+  ref('weapon', 'bouncer', 'traffic_sign', 'wrecker'),
+  ref('weapon', 'bouncer', 'extinguisher', 'wrecker'),
+  ref('card', 'bouncer', 'ground_pound', 'wrecker'),
+  // Tamer: common
   stat('tamer_agility', 'tamer', '+2 Agility', { agility: 2 }),
   stat('tamer_health', 'tamer', '+2 Health, +1 Speed', { health: 2, speed: 1 }),
-  ref('skill', 'tamer', 'whistle'),
-  ref('pet', 'tamer', 'crow'),
-  ref('pet', 'tamer', 'raccoon'),
   ref('gear', 'tamer', 'treat_bag'),
-  ref('card', 'tamer', 'stray_dog'),
-  // Mystic
+  // Tamer: Pack
+  ref('skill', 'tamer', 'whistle', 'pack'),
+  ref('pet', 'tamer', 'raccoon', 'pack'),
+  ref('card', 'tamer', 'stray_dog', 'pack'),
+  // Tamer: Bond
+  ref('pet', 'tamer', 'crow', 'bond'),
+  ref('skill', 'tamer', 'bond', 'bond'),
+  ref('skill', 'tamer', 'feral', 'bond'),
+  // Mystic: common
   stat('mystic_magic', 'mystic', '+3 Magic', { magic: 3 }),
   stat('mystic_health', 'mystic', '+2 Health, +1 Agility', { health: 2, agility: 1 }),
-  ref('skill', 'mystic', 'ward'),
-  ref('skill', 'mystic', 'drain'),
-  ref('skill', 'mystic', 'spirit'),
   ref('gear', 'mystic', 'rune_hoodie'),
-  ref('card', 'mystic', 'bolt'),
+  // Mystic: Witch
+  ref('skill', 'mystic', 'drain', 'witch'),
+  ref('card', 'mystic', 'bolt', 'witch'),
+  ref('skill', 'mystic', 'arcane_flow', 'witch'),
+  // Mystic: Warden
+  ref('skill', 'mystic', 'ward', 'warden'),
+  ref('skill', 'mystic', 'mend', 'warden'),
+  ref('skill', 'mystic', 'flash', 'warden'),
+  ref('skill', 'mystic', 'spirit', 'warden'),
 ];
 
 export const UPGRADES_BY_ID: Record<string, UpgradeDef> = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));

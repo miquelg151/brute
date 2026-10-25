@@ -1,6 +1,6 @@
-import { CLASS_IDS, ORIGIN_IDS } from './catalog';
+import { BRANCHES, CLASS_IDS, ORIGIN_IDS } from './catalog';
 import { createCharacter } from './character';
-import { applyUpgrade, rollOffer } from './progression';
+import { OFFER_SIZE, applyUpgrade, chooseBranch, needsBranch, rollOffer } from './progression';
 import type { Rng } from './rng';
 import { APPEARANCE_OPTIONS, type Appearance, type Character, type ClassId } from './types';
 
@@ -20,7 +20,7 @@ export function randomAppearance(rng: Rng): Appearance {
 
 /**
  * Builds a bot opponent by levelling a fresh character with the same offer
- * system players use, picking randomly at each level-up.
+ * system players use, picking randomly at each level-up (and a random branch at level 5).
  */
 export function generateOpponent(level: number, rng: Rng, classId?: ClassId, originId?: string): Character {
   const c = createCharacter(
@@ -31,7 +31,8 @@ export function generateOpponent(level: number, rng: Rng, classId?: ClassId, ori
   );
   while (c.level < level) {
     c.level++;
-    applyUpgrade(c, rng.pick(rollOffer(c, rng)));
+    if (needsBranch(c)) chooseBranch(c, rng.pick(BRANCHES[c.classId]).id);
+    applyUpgrade(c, rng.pick(rollOffer(c, rng, OFFER_SIZE, c.level)));
   }
   return c;
 }
