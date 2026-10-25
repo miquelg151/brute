@@ -2,6 +2,7 @@
 // what stands out about the opponent, three mini tabs (Plan · Gear · Cards) and Start fight.
 // Only the open mini tab scrolls, inside its own area, when its content is too tall.
 import {
+  BRANCHES_BY_ID,
   CLASSES,
   DECK_SIZE,
   DEFAULT_PLAN,
@@ -104,7 +105,11 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
         'dl',
         { class: 'card intel' },
         h('dt', {}, 'Class'),
-        h('dd', { class: 'intel-class', style: `color:${CLASS_COLORS[foe.classId]}` }, CLASSES[foe.classId].name),
+        h(
+          'dd',
+          { class: 'intel-class', style: `color:${CLASS_COLORS[foe.classId]}` },
+          foe.branch ? `${CLASSES[foe.classId].name} · ${BRANCHES_BY_ID[foe.branch].name}` : CLASSES[foe.classId].name,
+        ),
         h('dt', {}, icon('stance', 'Plan')),
         // In live fights the opponent chooses at the same time, so their plan stays a mystery.
         h(

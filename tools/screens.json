@@ -17,7 +17,7 @@
     "helper": true,
     "steps": [
       { "include": "setup" },
-      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 10; s.character.xp = 9; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 10; s.character.xp = 9; s.character.branch = 'brute'; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
       { "wait": 1500 }
     ]
   },
@@ -40,7 +40,7 @@
     "helper": true,
     "steps": [
       { "include": "setup" },
-      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 10; c.xp = 9; c.weapons = ['bat', 'chain', 'traffic_sign']; c.pets = ['dog']; c.gear = ['riot_vest', 'sneakers']; c.skills = ['combo', 'iron_skin', 'spark']; c.cards = ['special', 'rage', 'weather_wave', 'patch_up', 'hurl', 'rush', 'haymaker']; c.cardUses = { special: 4, rage: 9, patch_up: 26, hurl: 1 }; delete c.deck; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 10; c.xp = 9; c.branch = 'brute'; c.weapons = ['bat', 'chain', 'traffic_sign']; c.pets = ['dog']; c.gear = ['riot_vest', 'sneakers']; c.skills = ['combo', 'iron_skin', 'spark']; c.cards = ['special', 'rage', 'weather_wave', 'patch_up', 'hurl', 'rush', 'haymaker']; c.cardUses = { special: 4, rage: 9, patch_up: 26, hurl: 1 }; delete c.deck; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
       { "wait": 1500 }
     ]
   },
@@ -160,7 +160,7 @@
     "name": "tab-fight-levelup",
     "steps": [
       { "include": "setup" },
-      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.pendingLevelUps = 1; s.offer = null; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.character.branch = 'brute'; s.pendingLevelUps = 1; s.offer = null; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
       { "wait": 1500 },
       { "include": "no-page-scroll" },
       { "shot": "tab-fight-levelup" },
@@ -209,10 +209,57 @@
     "name": "levelup",
     "steps": [
       { "include": "setup" },
-      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.pendingLevelUps = 1; s.offer = ['card:patch_up', 'card:hurl', 'card:rush']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.character.branch = 'brute'; s.pendingLevelUps = 1; s.offer = ['card:patch_up', 'card:hurl', 'card:rush']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
       { "wait": 1500 },
       { "include": "no-page-scroll" },
       { "shot": "levelup" }
+    ]
+  },
+  {
+    "name": "branch-choice",
+    "steps": [
+      { "include": "setup" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.character.xp = 0; delete s.character.branch; s.pendingLevelUps = 1; s.offer = ['card:patch_up', 'card:hurl', 'card:rush']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "include": "no-page-scroll" },
+      { "shot": "branch-choice" }
+    ]
+  },
+  {
+    "name": "branch-picked",
+    "steps": [
+      { "include": "setup" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.character.xp = 0; delete s.character.branch; s.pendingLevelUps = 1; s.offer = ['card:patch_up', 'card:hurl', 'card:rush']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "click": ".branch-choice:nth-child(2)" },
+      { "include": "no-page-scroll" },
+      { "shot": "branch-picked" },
+      { "click": ".branch-confirm" },
+      { "eval": "if (!document.querySelector('.levelup')) throw new Error('confirming the branch did not open the level-up choice'); if (JSON.parse(localStorage.getItem('brute.save')).character.branch !== 'brute') throw new Error('the branch was not saved');" },
+      { "shot": "branch-then-levelup" }
+    ]
+  },
+  {
+    "name": "levelup-cross",
+    "steps": [
+      { "include": "setup" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 15; s.character.xp = 0; s.character.branch = 'boxer'; s.pendingLevelUps = 1; s.offer = null; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "click": ".fight-go" },
+      { "eval": "if (![...document.querySelectorAll('.levelup .tag')].some((t) => t.textContent === 'From another class')) throw new Error('the level-15 offer has no slot from another class');" },
+      { "shot": "levelup-cross" }
+    ]
+  },
+  {
+    "name": "tab-fighter-branch",
+    "steps": [
+      { "include": "rich" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.branch = 'boxer'; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "click": ".tab-fighter" },
+      { "include": "no-page-scroll" },
+      { "eval": "if (!document.querySelector('.fighter-id').textContent.includes('Brawler · Boxer')) throw new Error('the Fighter tab does not show the branch');" },
+      { "shot": "tab-fighter-branch" }
     ]
   },
   {
@@ -294,7 +341,7 @@
     "helper": true,
     "steps": [
       { "include": "setup" },
-      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 20; c.xp = 0; c.bonusStats.health += 300; c.bonusStats.strength += 80; c.bonusStats.speed += 20; c.cards = ['rage', 'patch_up', 'hurl', 'rush']; c.cardUses = { rush: 7, rage: 2 }; delete c.deck; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 20; c.xp = 0; c.branch = 'brute'; c.bonusStats.health += 300; c.bonusStats.strength += 80; c.bonusStats.speed += 20; c.cards = ['rage', 'patch_up', 'hurl', 'rush']; c.cardUses = { rush: 7, rage: 2 }; delete c.deck; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
       { "wait": 1500 }
     ]
   },

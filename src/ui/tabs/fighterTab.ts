@@ -1,6 +1,6 @@
 // The Fighter tab: who your fighter is, their stats, and everything they own laid out like
 // an inventory. Tap any square to read what it does.
-import { CLASSES, GEAR, ORIGINS, PETS, SKILLS, SPELLS, WEAPONS, type SaveData } from '../../core';
+import { BRANCHES_BY_ID, CLASSES, GEAR, ORIGINS, PETS, SKILLS, SPELLS, WEAPONS, type SaveData } from '../../core';
 import { gearEffects, maxHpOf, maxManaOf, petDetail, totalStats, weaponDetail } from '../describe';
 import { h, pixelArt } from '../dom';
 import { icon, type IconName } from '../icons';
@@ -134,6 +134,8 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
         'p',
         { class: 'fighter-id' },
         h('span', { class: 'sticker-sm', style: `color:${CLASS_COLORS[c.classId]}` }, CLASSES[c.classId].name),
+        // The branch (from level 5) follows the class, in a softer shade of the class colour.
+        c.branch ? h('span', { class: 'fighter-branch', style: `--branch:${CLASS_COLORS[c.classId]}` }, ` · ${BRANCHES_BY_ID[c.branch].name}`) : '',
         ' ',
         h('span', { class: 'dim' }, `from ${ORIGINS[c.originId]?.name ?? ''}`),
       ),

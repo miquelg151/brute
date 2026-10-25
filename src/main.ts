@@ -1,9 +1,10 @@
 import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
-import { chooseUpgrade, prepareFight, prepareLevelUp, startFight, type SaveData } from './core';
+import { chooseFighterBranch, chooseUpgrade, needsBranch, prepareFight, prepareLevelUp, startFight, type SaveData } from './core';
 import { loadArt } from './ui/art';
 import { animateIn } from './ui/motion';
 import { applyTheme } from './ui/theme';
+import { renderBranch } from './ui/screens/branch';
 import { renderCreate } from './ui/screens/create';
 import { renderFight } from './ui/screens/fight';
 import { renderGallery } from './ui/screens/gallery';
@@ -25,8 +26,8 @@ function show(): void {
   root.replaceChildren();
   window.scrollTo(0, 0);
   render();
-  // The shell, creation and pre-fight use the whole screen, so #app drops its padding (see style.css).
-  root.classList.toggle('full-screen', !!root.querySelector(':scope > .shell, :scope > .create, :scope > .prefight'));
+  // The shell, creation, the branch choice and pre-fight use the whole screen, so #app drops its padding (see style.css).
+  root.classList.toggle('full-screen', !!root.querySelector(':scope > .shell, :scope > .create, :scope > .branch, :scope > .prefight'));
   animateIn(root);
 }
 
@@ -50,6 +51,23 @@ function render(): void {
     return;
   }
 
+  // A fight already locked in plays first, so reloading never skips or changes it.
+  const fight = current.pendingFight;
+  if (fight?.tactics) {
+    renderFight(root, current, () => storeSave(current), show);
+    return;
+  }
+
+  // At level 5 the fighter picks a path, before the level-up choice (so the offer can hold its items).
+  if (needsBranch(current.character)) {
+    renderBranch(root, current, (branchId) => {
+      chooseFighterBranch(current, branchId);
+      storeSave(current);
+      show();
+    });
+    return;
+  }
+
   if (current.offer) {
     renderLevelUp(root, current, (upgradeId) => {
       chooseUpgrade(current, upgradeId);
@@ -59,11 +77,6 @@ function render(): void {
     return;
   }
 
-  const fight = current.pendingFight;
-  if (fight?.tactics) {
-    renderFight(root, current, () => storeSave(current), show);
-    return;
-  }
   if (fight) {
     renderPrefight(root, current, {
       onStart: (plan, weapons, gear, deck) => {

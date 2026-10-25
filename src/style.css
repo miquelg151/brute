@@ -1366,6 +1366,11 @@ h2:not(.card h2),
   color: var(--wall-dim);
 }
 
+/* The fighter's branch next to the class: a softer, lighter shade of the class colour. */
+.fighter-branch {
+  color: color-mix(in srgb, var(--branch) 40%, var(--sticker-fill));
+}
+
 /* 3. Echo: plain text written on the wall gets a small dark shadow... */
 body {
   text-shadow: 1px 1.5px 0 var(--outline);
@@ -2890,7 +2895,8 @@ button.game-card {
    One phone-sized frame, like the shell: the street with your fighter on top (it stays
    while you pick), the open step under it, and the dots with Back and Next at the bottom.
    Only the step's own area scrolls, when it is too tall (the origins). */
-.screen.create {
+.screen.create,
+.screen.branch {
   height: 100vh;
   height: 100dvh;
   gap: 0;
@@ -3347,3 +3353,61 @@ button.game-card {
     padding: 6px 10px;
   }
 }
+
+/* --- Branch choice (level 5) ------------------------------------------------------
+   Built like creation: the street with your fighter on top, the two paths under it,
+   and the confirm button at the bottom. */
+.branch-choices {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 2);
+}
+
+.branch-choice {
+  min-height: 44px;
+  padding: 10px 14px 12px;
+  transform: rotate(var(--tilt, 0deg));
+}
+
+/* The path's name, with three icons of what it holds on the right. */
+.branch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.branch-icons {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The street takes the room the paths do not need, so tall phones get no empty band. */
+.screen.branch .create-stage {
+  flex: 1 0 30%;
+}
+
+.screen.branch .create-body {
+  flex: 0 1 auto;
+}
+
+.branch-final {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--wall-dim);
+}
+
+.branch-footer {
+  justify-content: center;
+}
+
+.branch-confirm {
+  flex: 1;
+  max-width: 320px;
+}
+

@@ -1,4 +1,4 @@
-import { CLASSES, GEAR, SPELLS, UPGRADES_BY_ID, rankOf, type SaveData } from '../../core';
+import { CLASSES, GEAR, SPELLS, UPGRADES_BY_ID, isCrossClass, rankOf, type SaveData } from '../../core';
 import { cardSticker } from '../cardView';
 import { upgradeDetail, upgradeKindLabel } from '../describe';
 import { h, pixelArt } from '../dom';
@@ -47,7 +47,12 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
         h(
           'div',
           { class: 'tag', style: classPool ? `--tag:${CLASS_COLORS[classPool]}` : '' },
-          classPool ? `${upgradeKindLabel(id)}, ${CLASSES[classPool].name} only` : upgradeKindLabel(id),
+          // The level-15 slot from another class says so, in that class's colour.
+          isCrossClass(c, id)
+            ? 'From another class'
+            : classPool
+              ? `${upgradeKindLabel(id)}, ${CLASSES[classPool].name} only`
+              : upgradeKindLabel(id),
         ),
       ),
     );
