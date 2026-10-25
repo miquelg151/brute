@@ -77,6 +77,22 @@
     ]
   },
   {
+    "name": "card-names-fit",
+    "helper": true,
+    "steps": [
+      { "eval": "const bad = []; for (const el of document.querySelectorAll('.card-name')) { if (!el.offsetParent) continue; const wrap = el.style.overflowWrap; el.style.overflowWrap = 'normal'; el.style.hyphens = 'manual'; if (el.scrollWidth > el.clientWidth + 1) bad.push(`${el.textContent} (${el.scrollWidth}px in ${el.clientWidth}px)`); el.style.overflowWrap = wrap; el.style.hyphens = ''; } if (bad.length) throw new Error(`card names do not fit their card without breaking a word: ${[...new Set(bad)].join(', ')}`);" }
+    ]
+  },
+  {
+    "name": "all-cards",
+    "helper": true,
+    "steps": [
+      { "include": "rich" },
+      { "eval": "import('/src/core/index.ts').then((core) => { const s = JSON.parse(localStorage.getItem('brute.save')); s.character.cards = Object.keys(core.CARDS); s.character.deck = ['pickpocket', 'overcharge', 'headbutt', 'haymaker']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload(); });" },
+      { "wait": 1500 }
+    ]
+  },
+  {
     "name": "title",
     "steps": [
       { "save": null },
@@ -247,6 +263,7 @@
       { "wait": 1500 },
       { "click": ".fight-go" },
       { "eval": "if (![...document.querySelectorAll('.levelup .tag')].some((t) => t.textContent === 'From another class')) throw new Error('the level-15 offer has no slot from another class');" },
+      { "include": "card-names-fit" },
       { "shot": "levelup-cross" }
     ]
   },
@@ -260,6 +277,36 @@
       { "include": "no-page-scroll" },
       { "eval": "if (!document.querySelector('.fighter-id').textContent.includes('Brawler · Boxer')) throw new Error('the Fighter tab does not show the branch');" },
       { "shot": "tab-fighter-branch" }
+    ]
+  },
+  {
+    "name": "card-names",
+    "steps": [
+      { "include": "all-cards" },
+      { "include": "card-names-fit" },
+      { "shot": "card-names-fight-tab" },
+      { "click": ".tab-cards" },
+      { "include": "card-names-fit" },
+      { "shot": "card-names-cards-tab" },
+      { "click": ".tab-fight" },
+      { "click": ".fight-go" },
+      { "click": ".mini-tab-cards" },
+      { "include": "card-names-fit" },
+      { "shot": "card-names-prefight" },
+      { "click": "text=Start fight" },
+      { "wait": 1500 },
+      { "include": "card-names-fit" },
+      { "shot": "card-names-fight" }
+    ]
+  },
+  {
+    "name": "card-names-levelup",
+    "steps": [
+      { "include": "setup" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.character.branch = 'brute'; s.pendingLevelUps = 1; s.offer = ['card:pickpocket', 'card:haymaker', 'card:headbutt']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "include": "card-names-fit" },
+      { "shot": "card-names-levelup" }
     ]
   },
   {

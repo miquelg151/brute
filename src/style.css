@@ -422,6 +422,11 @@ a {
   gap: 2px;
 }
 
+/* A card offered keeps its full width; the text beside it wraps instead. */
+.levelup .upgrade > .game-card {
+  flex: none;
+}
+
 /* Rank badge next to the level: small sticker letters, the colour grows with the rank. */
 .rank-badge {
   color: var(--rank);
@@ -2087,16 +2092,14 @@ details.more[open] summary::after {
 }
 
 .card-name {
-  /* The name may use the card's side padding too, and a long word breaks rather than
-     sticking out of the card. */
+  /* The name may use the card's side padding too. Names wrap only between words: a card
+     with a long word gets a smaller name instead (--name-fit, set by cardSticker in cardView.ts). */
   max-width: calc(100% + 4px);
   margin: 0 -2px;
-  font-size: var(--t-xs);
+  font-size: calc(var(--t-xs) * var(--name-fit, 1));
   font-weight: 800;
   line-height: 1.1;
   text-align: center;
-  overflow-wrap: anywhere;
-  hyphens: auto;
 }
 
 /* Small cards (in the deck slots) get a smaller name, so words like "Weather" fit. */
@@ -2108,12 +2111,12 @@ details.more[open] summary::after {
 /* The Cards tab's four-across grid makes its cards a little narrower too. */
 .deck-tray .card-name,
 .card-grid .card-name {
-  font-size: 12px;
+  font-size: calc(12px * var(--name-fit, 1));
   letter-spacing: -0.4px;
 }
 
 .game-card.small .card-name {
-  font-size: 11px;
+  font-size: calc(11px * var(--name-fit, 1));
   letter-spacing: -0.4px;
 }
 
@@ -3384,13 +3387,20 @@ button.game-card {
   gap: 8px;
 }
 
-/* The street takes the room the paths do not need, so tall phones get no empty band. */
+/* The street takes the room the paths do not need, up to a cap, so tall phones do not
+   show a sky of nothing. */
 .screen.branch .create-stage {
   flex: 1 0 30%;
+  max-height: 380px;
 }
 
 .screen.branch .create-body {
   flex: 0 1 auto;
+}
+
+/* Any spare room (tall phones) goes above the button, so the paths stay right under the street. */
+.screen.branch .create-footer {
+  margin-top: auto;
 }
 
 .branch-final {
