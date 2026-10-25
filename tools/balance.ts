@@ -5,8 +5,10 @@
 //   npm run balance -- 2000 advice    whether each strategy option's advice is true
 //   npm run balance -- 2000 cards     how much each card helps the fighter who brings it
 //                                     (origin cards are measured with fighters of their own origin)
+//   npm run balance -- 2000 branches  each class branch vs random fighters, and each class's two branches head to head
 // The number is fights per measurement. Exits with code 1 if anything is out of range.
 import {
+  BRANCHES,
   CARDS,
   CLASS_IDS,
   ORIGIN_IDS,
@@ -25,6 +27,8 @@ import {
   runFight,
   startingCards,
   traitsOf,
+  type BranchId,
+  type Character,
   type ClassId,
   type Plan,
   type TacticOption,
@@ -116,6 +120,61 @@ Origins: win rate against the same class from a random origin`);
     console.log(`${String(level).padEnd(8)}${cells.join('')}`);
   }
   console.log(`Targets: ${Math.round(ORIGIN_MIN * 100)}-${Math.round(ORIGIN_MAX * 100)}%`);
+}
+
+// --- Branches ---------------------------------------------------------------
+// Each branch (bots forced to it) against random fighters of random classes, and each
+// class's two branches against each other. Branches only exist from level 5.
+const BRANCH_LEVELS = [5, 10, 20];
+const BRANCH_MIN = 0.45;
+const BRANCH_MAX = 0.55;
+const BRANCH_MIRROR_MIN = 0.4;
+const BRANCH_MIRROR_MAX = 0.6;
+
+// Win rate of `branch` fighters against fighters made by `makeFoe`.
+function branchWinRate(classId: ClassId, branch: BranchId, level: number, seed: number, makeFoe: (rng: Rng) => Character): number {
+  let wins = 0;
+  for (let i = 0; i < FIGHTS; i++) {
+    const rng = new Rng(mixSeed(seed, i));
+    const ca = generateOpponent(level, rng, classId, undefined, branch);
+    const cb = makeFoe(rng);
+    const aFirst = i % 2 === 0;
+    const log = aFirst ? runFight(ca, cb, rng.next()) : runFight(cb, ca, rng.next());
+    if (log.winner === (aFirst ? 0 : 1)) wins++;
+  }
+  return wins / FIGHTS;
+}
+
+if (section('branches')) {
+  console.log(`
+Branches: win rate vs random fighters of random classes (${FIGHTS} fights each)`);
+  console.log(`${''.padEnd(20)}${BRANCH_LEVELS.map((l) => `level ${l}`.padStart(11)).join('')}`);
+  for (const classId of CLASS_IDS) {
+    for (const b of BRANCHES[classId]) {
+      const cells = BRANCH_LEVELS.map((level) => {
+        const seed = level * 6007 + CLASS_IDS.indexOf(classId) * 53 + (b === BRANCHES[classId][0] ? 0 : 1);
+        const rate = branchWinRate(classId, b.id, level, seed, (rng) => generateOpponent(level, rng));
+        const flag = rate < BRANCH_MIN || rate > BRANCH_MAX ? '!' : ' ';
+        if (flag === '!') problems++;
+        return `${pct(rate)}${flag}`.padStart(11);
+      });
+      console.log(`${`${classId} ${b.id}`.padEnd(20)}${cells.join('')}`);
+    }
+  }
+  console.log(`
+Branch mirrors: first branch vs second branch of the same class`);
+  for (const classId of CLASS_IDS) {
+    const [first, second] = BRANCHES[classId];
+    const cells = BRANCH_LEVELS.map((level) => {
+      const seed = level * 3301 + CLASS_IDS.indexOf(classId) * 71;
+      const rate = branchWinRate(classId, first.id, level, seed, (rng) => generateOpponent(level, rng, classId, undefined, second.id));
+      const flag = rate < BRANCH_MIRROR_MIN || rate > BRANCH_MIRROR_MAX ? '!' : ' ';
+      if (flag === '!') problems++;
+      return `${pct(rate)}${flag}`.padStart(11);
+    });
+    console.log(`${`${first.id} v ${second.id}`.padEnd(20)}${cells.join('')}`);
+  }
+  console.log(`Targets: branches ${Math.round(BRANCH_MIN * 100)}-${Math.round(BRANCH_MAX * 100)}%, mirrors ${Math.round(BRANCH_MIRROR_MIN * 100)}-${Math.round(BRANCH_MIRROR_MAX * 100)}%`);
 }
 
 // --- Player skill -----------------------------------------------------------

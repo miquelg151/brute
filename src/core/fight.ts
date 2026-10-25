@@ -71,7 +71,7 @@ export type FightEvent =
   | { t: 'scrap'; actor: number; absorbed: number; left: number }
   /** Poison from Toxic Spit hurt a fighter at the start of their turn. */
   | { t: 'poison'; actor: number; damage: number; hp: number }
-  /** A fighter lost a turn to Power Surge. */
+  /** A fighter lost a turn to Power Surge or Headbutt. */
   | { t: 'stunned'; actor: number }
   | { t: 'death'; actor: number };
 
@@ -246,6 +246,8 @@ interface Unit {
   /** Bonus damage (%) and "can't be dodged" for the unit's next hit only. */
   nextHitPct: number;
   nextHitSure: boolean;
+  /** Headbutt: if the unit's next hit lands on the enemy fighter, they lose their next turn. */
+  nextHitStuns: boolean;
   /** Overcharge card: bonus (%) for the next spell. */
   spellBonusPct: number;
   /** Flurry card: strikes left on the next turn, and each one's damage change (%). */
@@ -402,6 +404,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     sureBlocks: 0,
     nextHitPct: 0,
     nextHitSure: false,
+    nextHitStuns: false,
     spellBonusPct: 0,
     flurryHits: 0,
     flurryPct: 0,
@@ -648,8 +651,10 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const wallRunPct = kind === 'counter' && att.skills.has('wall_run') ? WALL_RUN_PCT : 0;
     const nextHitPct = att.nextHitPct + jabPct + wallRunPct;
     const nextHitSure = att.nextHitSure;
+    const nextHitStuns = att.nextHitStuns;
     att.nextHitPct = 0;
     att.nextHitSure = false;
+    att.nextHitStuns = false;
     if (missesBlind(att, def)) return true;
     const sure = kind === 'special' || kind === 'throw' || nextHitSure;
     // Leap: this attack is dodged for sure, then the defender strikes back at once.
@@ -700,6 +705,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     }
     lastDealt = 0;
     const survived = land(att, def, kind, damage, blocked);
+    // Headbutt: a hit that lands (even blocked) on the enemy fighter makes them lose their next turn.
+    if (nextHitStuns && survived && def.isMain) def.stunned = true;
     // Bond: the owner heals part of what their pet dealt (never after a knockout).
     if (owner?.skills.has('bond') && lastDealt > 0 && winner === null && alive(owner) && owner.hp < owner.maxHp) {
       const amount = Math.min(owner.maxHp - owner.hp, Math.max(1, Math.floor((lastDealt * BOND_PCT) / 100)));
@@ -850,7 +857,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     return true;
   };
 
-  /** Power Surge and Headbutt: a hit with a bonus (%) that makes the enemy lose their next turn if it lands. */
+  /** Power Surge: a hit with a bonus (%) that makes the enemy lose their next turn if it lands. */
   const stunningHit = (u: Unit, bonusPct: number): void => {
     const foe = enemyMainOf(u);
     u.nextHitPct += bonusPct;
@@ -978,7 +985,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         break;
       }
       case 'headbutt':
-        stunningHit(u, scaled(20, level));
+        u.nextHitPct += scaled(10, level);
+        u.nextHitStuns = true;
         break;
       case 'pickpocket': {
         const foe = enemyMainOf(u);

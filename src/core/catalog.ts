@@ -372,8 +372,8 @@ export const UPGRADES: UpgradeDef[] = [
   ref('weapon', 'bouncer', 'extinguisher', 'wrecker'),
   ref('card', 'bouncer', 'ground_pound', 'wrecker'),
   // Tamer: common
-  stat('tamer_agility', 'tamer', '+2 Agility', { agility: 2 }),
-  stat('tamer_health', 'tamer', '+2 Health, +1 Speed', { health: 2, speed: 1 }),
+  stat('tamer_agility', 'tamer', '+2 Agility, +1 Health', { agility: 2, health: 1 }),
+  stat('tamer_health', 'tamer', '+3 Health, +1 Speed', { health: 3, speed: 1 }),
   ref('gear', 'tamer', 'treat_bag'),
   // Tamer: Pack
   ref('skill', 'tamer', 'whistle', 'pack'),
@@ -384,7 +384,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('skill', 'tamer', 'bond', 'bond'),
   ref('skill', 'tamer', 'feral', 'bond'),
   // Mystic: common
-  stat('mystic_magic', 'mystic', '+3 Magic', { magic: 3 }),
+  stat('mystic_magic', 'mystic', '+3 Magic, +1 Health', { magic: 3, health: 1 }),
   stat('mystic_health', 'mystic', '+2 Health, +1 Agility', { health: 2, agility: 1 }),
   ref('gear', 'mystic', 'rune_hoodie'),
   // Mystic: Witch

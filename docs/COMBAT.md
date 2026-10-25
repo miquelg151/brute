@@ -47,7 +47,7 @@ the choices made at each break.
 | Body Slam | 5 | Bouncer | A heavy hit (+40%) that pushes their next turn back. |
 | Stray Dog | 6 | Tamer | A dog with 100% health joins until the round ends. |
 | Bolt | 5 | Mystic | A spell that can't be dodged and does +30%. |
-| Headbutt | 5 | Brawler (Brute) | A hit with +20%: if it lands (even blocked), they lose their next turn. |
+| Headbutt | 6 | Brawler (Brute) | Your next hit does +10%: if it lands (even blocked) on their fighter, they lose their next turn. |
 | Pickpocket | 3 | Parkour (Thief) | Steal 2 energy from them (only what they have; 3 at level 4). |
 | Ground Pound | 5 | Bouncer (Wrecker) | Hit them and every pet of theirs for 60% damage. Can't be dodged. |
 
@@ -91,11 +91,58 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
 - A stunned fighter (Power Surge, Headbutt) loses that turn entirely: no attack and no stamina,
   mana or health regeneration that turn.
 - Leap and Last Train carry over to the next round if they are not used up; Scrap Shield
-  and a stun (Power Surge) end with the round.
+  and a stun (Power Surge, Headbutt) end with the round. A Headbutt waiting for its hit
+  carries over like Haymaker; a dodged or missed hit uses it up.
 - Leap can be used up by an enemy pet's attack, like Roll.
 - Pets and spirits don't get their owner's origin passive.
 - **Ranks** (rookie, regular, veteran, champion, legend) only change how a fighter looks
   and is named; they have no effect in fights.
+
+## Branches
+
+At level 5 every fighter picks one of its class's two branches, for good (`BRANCHES` and
+the branch tags in `UPGRADES` in `catalog.ts`; the offer rules in `progression.ts`).
+
+| Class | Branch | Theme | Items |
+|---|---|---|---|
+| Brawler | Boxer | quick chained punches | Iron Fists, Double Strike, Jab, card Haymaker |
+| Brawler | Brute | endure and come back | Fury, Second Wind, Thick Skull, card Headbutt |
+| Parkour | Acrobat | dodging | Sixth Sense, Wall Run, card Flurry |
+| Parkour | Thief | steal and annoy | Disarm, Quick Start, Thrower, card Pickpocket |
+| Bouncer | Wall | defence | Iron Skin, Bulwark, Riot Vest, card Body Slam |
+| Bouncer | Wrecker | heavy weapons | Heavy Hands, Traffic Sign, Fire Extinguisher, card Ground Pound |
+| Tamer | Pack | many pets | Whistle, Raccoon, card Stray Dog |
+| Tamer | Bond | few strong pets | Crow, Bond, Feral |
+| Mystic | Witch | damage magic | Drain, Arcane Flow, card Bolt |
+| Mystic | Warden | protect and heal | Ward, Mend, Flash, Spirit |
+
+- **Class common** (both branches): the class stat boosts, the class gear (Fight Gloves,
+  Tracksuit, Treat Bag, Rune Hoodie) and the starting card. **General** (everyone):
+  general stat boosts, the normal weapons, Leather Jacket, Sneakers, Lucky Charm and the
+  cards Patch Up, Hurl, Rush, Feint and Second Breath. No pets, spells or class skills are
+  general.
+- **Offers:** each of the three slots is a class slot 60% of the time and a general slot
+  otherwise. Before level 5 a class slot only offers class-common items. From level 5 a
+  class slot offers the fighter's branch and class-common items 85% of the time, and the
+  other branch 15% of the time.
+- **Level 15:** the offer for reaching level 15 has one slot from another class (any other
+  class's skill, spell, pet, weapon, gear or card the fighter doesn't own). Once only.
+- **Bots** pick a random branch at level 5 and follow the same offer rules.
+
+New skills and cards of the branches (cards at card level 1):
+
+| Skill or card | Branch | Effect |
+|---|---|---|
+| Jab | Boxer | The first attack of each of your turns does +25%. |
+| Thick Skull | Brute | +10% max health; below half health you take 15% less damage. |
+| Headbutt (card, 6) | Brute | Your next hit does +10%: if it lands on their fighter, they lose their next turn. |
+| Wall Run | Acrobat | Your counters do +50%. |
+| Pickpocket (card, 3) | Thief | Steal 2 energy from them (3 at card level 4). |
+| Bulwark | Wall | Your Shield blocks 40% of the time instead of 25%. |
+| Ground Pound (card, 5) | Wrecker | Hit them and every pet of theirs for 60%. Can't be dodged. |
+| Bond | Bond | When one of your pets deals damage, you heal 25% of it. |
+| Feral | Bond | Your pets' hits have a 20% chance to do double damage. |
+| Arcane Flow | Witch | Your spells cost 25% less mana (rounded down). |
 
 ## Breaks
 

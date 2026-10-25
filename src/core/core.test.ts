@@ -1339,6 +1339,17 @@ describe('class branches', () => {
     }
   });
 
+  it('a bot can be made with a chosen branch (the balance tool uses this)', () => {
+    const rng = new Rng(23);
+    for (let i = 0; i < 20; i++) {
+      const bot = generateOpponent(10, rng, 'tamer', undefined, 'bond');
+      expect(bot.branch).toBe('bond');
+      expect(bot.classId).toBe('tamer');
+    }
+    // Below the branch level there is no branch yet.
+    expect(generateOpponent(4, rng, 'tamer', undefined, 'bond').branch).toBeUndefined();
+  });
+
   it('a version 6 save becomes version 7, keeping the fight in progress and no branch', () => {
     const save = newGame('M', look, 'tamer', 'metro', 4) as unknown as Record<string, unknown>;
     (save.character as Character).level = 9;
@@ -1356,7 +1367,7 @@ describe('class branches', () => {
     for (const id of ['jab', 'thick_skull', 'wall_run', 'bulwark', 'bond', 'feral', 'arcane_flow']) {
       expect(SKILLS[id]!.description.length).toBeGreaterThan(10);
     }
-    expect(CARDS.headbutt!.cost).toBe(5);
+    expect(CARDS.headbutt!.cost).toBe(6);
     expect(CARDS.pickpocket!.cost).toBe(3);
     expect(CARDS.ground_pound!.cost).toBe(5);
     expect(CARDS.pickpocket!.describe(4)).toContain('3');
@@ -1450,38 +1461,57 @@ describe('class branch skills and cards', () => {
     expect(log.events.slice(0, from)).toEqual(without.events.slice(0, from));
   };
 
-  it('Headbutt makes the enemy lose their next turn when it lands', () => {
-    // Costs 5: playable at tick 10.
+  /** The first attack the fighter (actor 0) makes after the given event index. */
+  const nextStrike = (log: FightLog, from: number) =>
+    log.events.slice(from).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge' || e.t === 'miss') && e.actor === 0)!;
+
+  it('Headbutt makes the enemy lose their next turn when the next hit lands', () => {
+    // Costs 6: playable at tick 15. The card itself does not attack: the next hit carries it.
     const me = fresh('brawler');
-    const log = play(me, 'headbutt', 10, 2);
-    sameBefore(log, noPlay(me, 'headbutt', 2), 'headbutt');
-    const from = cardIndex(log, 'headbutt');
-    const strike = log.events.slice(from).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.actor === 0)!;
-    expect(strike.t).not.toBe('dodge');
-    const after = log.events.slice(log.events.indexOf(strike) + 1);
-    const stunned = after.findIndex((e) => e.t === 'stunned' && e.actor === 1);
-    expect(stunned).toBeGreaterThanOrEqual(0);
-    // Before losing that turn, the enemy did not act.
-    expect(after.slice(0, stunned).some((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge' || e.t === 'rest') && e.actor === 1)).toBe(false);
+    let stuns = 0;
+    for (const seed of seeds) {
+      const log = play(me, 'headbutt', 15, seed);
+      sameBefore(log, noPlay(me, 'headbutt', seed), 'headbutt');
+      const from = cardIndex(log, 'headbutt');
+      expect(log.events[from + 1]?.t).not.toMatch(/^(hit|block|dodge)$/);
+      const strike = nextStrike(log, from);
+      const after = log.events.slice(log.events.indexOf(strike) + 1);
+      const stunned = after.findIndex((e) => e.t === 'stunned' && e.actor === 1);
+      if ((strike.t === 'hit' || strike.t === 'block') && strike.hp > 0) {
+        expect(stunned).toBeGreaterThanOrEqual(0);
+        // Before losing that turn, the enemy did not act.
+        expect(after.slice(0, stunned).some((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge' || e.t === 'rest') && e.actor === 1)).toBe(false);
+        stuns++;
+      } else if (strike.t === 'dodge' || strike.t === 'miss') {
+        // A dodged or missed hit uses the Headbutt up without stunning.
+        expect(log.events.some((e) => e.t === 'stunned')).toBe(false);
+      }
+    }
+    expect(stuns).toBeGreaterThanOrEqual(10);
   });
 
-  it('Headbutt hits harder than a level 1 Power Surge with the same roll', () => {
-    // Both cards make one melee hit with no randomness before it, so on the same seed and
-    // tick they roll the same; Power Surge at level 1 has no bonus, Headbutt has +20%.
+  it('Headbutt makes the next hit stronger, with the same roll', () => {
+    // Playing Headbutt uses no randomness, so the next hit rolls the same as without it.
+    // A stronger Brawler, so the +10% is at least one more point before the roll.
     const me = fresh('brawler');
-    const strikeOf = (log: FightLog, card: string) =>
-      log.events.slice(cardIndex(log, card)).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.actor === 0)!;
+    me.bonusStats = { ...me.bonusStats, strength: 5 };
     let compared = 0;
+    let stronger = 0;
     for (const seed of seeds) {
-      const butt = strikeOf(play(me, 'headbutt', 15, seed), 'headbutt');
-      const surge = strikeOf(play(me, 'power_surge', 15, seed), 'power_surge');
-      expect(butt.t).toBe(surge.t);
-      if (butt.t === 'hit' && surge.t === 'hit') {
-        expect(butt.damage).toBeGreaterThan(surge.damage);
+      const log = play(me, 'headbutt', 15, seed);
+      const without = noPlay(me, 'headbutt', seed);
+      const butt = nextStrike(log, cardIndex(log, 'headbutt'));
+      const tick = without.events.findIndex((e) => e.t === 'tick' && e.n === 15);
+      const plainHit = nextStrike(without, tick);
+      expect(butt.t).toBe(plainHit.t);
+      if (butt.t === 'hit' && plainHit.t === 'hit') {
+        expect(butt.damage).toBeGreaterThanOrEqual(plainHit.damage);
+        if (butt.damage > plainHit.damage) stronger++;
         compared++;
       }
     }
     expect(compared).toBeGreaterThanOrEqual(10);
+    expect(stronger).toBeGreaterThan(0);
   });
 
   it('Pickpocket steals 2 energy from the enemy', () => {

@@ -2,7 +2,7 @@ import { BRANCHES, CLASS_IDS, ORIGIN_IDS } from './catalog';
 import { createCharacter } from './character';
 import { OFFER_SIZE, applyUpgrade, chooseBranch, needsBranch, rollOffer } from './progression';
 import type { Rng } from './rng';
-import { APPEARANCE_OPTIONS, type Appearance, type Character, type ClassId } from './types';
+import { APPEARANCE_OPTIONS, type Appearance, type BranchId, type Character, type ClassId } from './types';
 
 const NAMES = [
   'Rusty', 'Neon', 'Tank', 'Pixel', 'Viper', 'Bolt', 'Mango', 'Shade', 'Rocco', 'Juno',
@@ -21,8 +21,9 @@ export function randomAppearance(rng: Rng): Appearance {
 /**
  * Builds a bot opponent by levelling a fresh character with the same offer
  * system players use, picking randomly at each level-up (and a random branch at level 5).
+ * Pass `branchId` (a branch of `classId`) to force the branch instead of picking one.
  */
-export function generateOpponent(level: number, rng: Rng, classId?: ClassId, originId?: string): Character {
+export function generateOpponent(level: number, rng: Rng, classId?: ClassId, originId?: string, branchId?: BranchId): Character {
   const c = createCharacter(
     rng.pick(NAMES),
     randomAppearance(rng),
@@ -31,7 +32,7 @@ export function generateOpponent(level: number, rng: Rng, classId?: ClassId, ori
   );
   while (c.level < level) {
     c.level++;
-    if (needsBranch(c)) chooseBranch(c, rng.pick(BRANCHES[c.classId]).id);
+    if (needsBranch(c)) chooseBranch(c, branchId ?? rng.pick(BRANCHES[c.classId]).id);
     applyUpgrade(c, rng.pick(rollOffer(c, rng, OFFER_SIZE, c.level)));
   }
   return c;
