@@ -380,6 +380,16 @@ export class ReplayScene extends Phaser.Scene {
         return this.onPoison(e.actor, e.damage, e.hp);
       case 'stunned':
         return this.onStunned(e.actor);
+      case 'bleed':
+        return this.onBleed(e.actor, e.damage, e.hp);
+      case 'rhythm':
+        return this.onRhythm(e.actor, e.stacks);
+      case 'momentum':
+        return this.onShortText(e.actor, '+1 ENERGY', PAL.cyan);
+      case 'steal':
+        return this.onSteal(e.actor, e.energy, e.stamina);
+      case 'thorns':
+        return this.onThorns(e.target, e.damage, e.hp);
       case 'death':
         this.hooks.onUnitAlive(e.actor, false);
         return this.onDeath(e.actor);
@@ -553,6 +563,47 @@ export class ReplayScene extends Phaser.Scene {
     this.drawBars(v);
     await this.wait(350);
     v.sprite.clearTint();
+  }
+
+  /** Bleed hurts at the start of the bleeding fighter's turn. */
+  private async onBleed(actor: number, damage: number, hp: number): Promise<void> {
+    const v = this.view(actor);
+    v.sprite.setTint(num(PAL.crimson));
+    this.floatText(v.sprite.x, this.headY(v), `BLEED -${damage}`, PAL.crimson);
+    v.hp = hp;
+    this.drawBars(v);
+    await this.wait(350);
+    v.sprite.clearTint();
+  }
+
+  /** Rhythm stacks went up (a short text) or were lost (nothing to show). */
+  private async onRhythm(actor: number, stacks: number): Promise<void> {
+    if (stacks === 0) return;
+    const v = this.view(actor);
+    this.floatText(v.sprite.x, this.headY(v) - 8, `RHYTHM x${stacks}`, PAL.orange);
+  }
+
+  /** A short coloured text over a fighter, without slowing the replay. */
+  private async onShortText(actor: number, text: string, color: string): Promise<void> {
+    const v = this.view(actor);
+    this.floatText(v.sprite.x, this.headY(v) - 8, text, color);
+  }
+
+  /** Quick Hands and Heist: STOLEN over the thief, with what was taken. */
+  private async onSteal(actor: number, energy: number, stamina: number): Promise<void> {
+    const thief = this.view(actor);
+    const parts = [energy > 0 ? `${energy} ENERGY` : '', stamina > 0 ? `${stamina} STAMINA` : ''].filter(Boolean);
+    this.floatText(thief.sprite.x, this.headY(thief) - 8, parts.length ? `STOLEN ${parts.join(' + ')}` : 'STOLEN', PAL.sand);
+    await this.wait(200);
+  }
+
+  /** Thorns: the attacker who just hit a spiky fighter is hurt. */
+  private async onThorns(attacker: number, damage: number, hp: number): Promise<void> {
+    const v = this.view(attacker);
+    this.floatText(v.sprite.x, this.headY(v), `THORNS -${damage}`, PAL.green);
+    v.hp = hp;
+    this.drawBars(v);
+    await this.wait(250);
   }
 
   /** Power Surge: the fighter loses this turn. */

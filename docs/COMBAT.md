@@ -50,6 +50,11 @@ the choices made at each break.
 | Headbutt | 6 | Brawler (Brute) | Your next hit does +10%: if it lands (even blocked) on their fighter, they lose their next turn. |
 | Pickpocket | 3 | Parkour (Thief) | Steal 2 energy from them (only what they have; 3 at level 4). |
 | Ground Pound | 5 | Bouncer (Wrecker) | Hit them and every pet of theirs for 60% damage. Can't be dodged. |
+| Jab Flurry | 4 | Brawler (Boxer) | 3 quick hits at 60% damage each. Every hit that lands adds a rhythm stack. |
+| Street Bite | 4 | Brawler (Brute) | A hit: if it lands (even blocked), they bleed 5 on each of their next 3 turns. |
+| Backflip | 4 | Parkour (Acrobat) | Dodge the next 2 attacks for sure (3 at level 4) and gain +2 energy. |
+| Heist | 4 | Parkour (Thief) | Steal 2 energy (3 at level 4) and 15 stamina (only what they have). |
+| Taunt | 3 | Bouncer (Wall) | For your next 2 turns enemy pets must attack you, and your thorns against them are doubled. |
 
 - The Special Strike shows a timing bar: the better the timing, the bigger the bonus.
   Below 25% timing it fails and the turn plays normally. It costs 20 stamina.
@@ -63,8 +68,9 @@ the choices made at each break.
   1. Health below 35% and Patch Up in the deck: Patch Up.
   2. The enemy played Rage, Haymaker, Flurry or a Special Strike in the last 5 ticks
      (a bot sees a card from the next tick on, never in the tick it was played): a
-     defence (Wall, Roll, Feint, Weather the Wave, Leap or Scrap Shield) if they have
-     one. Roll and Leap are not used against a Special Strike, which can't be dodged.
+     defence (Wall, Roll, Feint, Weather the Wave, Leap, Scrap Shield, Backflip or Taunt) if
+     they have one. Roll, Leap and Backflip are not used against a Special Strike, which
+     can't be dodged.
   3. Energy 8 or more: the card they have played least this fight; among those, the
      most expensive they can afford. Second Breath only counts while their stamina is
      below 50. A bot's Special Strike timing is rolled (40–90%).
@@ -97,6 +103,23 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
 - Pets and spirits don't get their owner's origin passive.
 - **Ranks** (rookie, regular, veteran, champion, legend) only change how a fighter looks
   and is named; they have no effect in fights.
+
+## Signature mechanics (Boxer, Brute, Acrobat, Thief, Wall)
+
+- **Rhythm** (Rhythm skill, Boxing Wraps): every attack that lands adds a stack, up to 5, and each
+  stack is +5% damage. Any damage taken (hits, poison, bleed, thorns) resets the stacks. The
+  skill or the wraps are needed for stacks to add damage; Boxing Wraps start every round with 2
+  stacks. Jab Flurry adds stacks even without them.
+- **Bleed** (Bone Breaker: 25% chance on a landed melee hit, bleed 3; Street Bite): the target
+  loses N health at the start of each of its next 3 turns, right after poison. Armor, wards and
+  Second Wind are ignored. A new bleed restarts the 3 turns and keeps the higher N. Bleed and poison
+  are separate effects.
+- **Momentum**: every dodge (even a sure one) gives the dodger +1 energy, up to the maximum.
+- **Steal** (Quick Hands: 30% chance on a landed hit, 5 stamina from their fighter; Heist): the
+  thief gains what the target loses, never more than the target had or the thief's maximum.
+- **Thorns** (Thorns skill 20%, Dumpster Lid 10%, they add up): an attacker that lands a melee
+  hit (not a throw) takes that share of the health lost by the target, at least 1. It ignores
+  armor and wards. Taunt doubles the share against enemy pets and makes them pick the taunter.
 
 ## Branches
 

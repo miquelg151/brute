@@ -31,6 +31,11 @@ export const CARD_ICONS: Record<string, IconName> = {
   headbutt: 'heavy',
   pickpocket: 'accessory',
   ground_pound: 'manyHits',
+  jab_flurry: 'manyHits',
+  street_bite: 'fragile',
+  backflip: 'dodge',
+  heist: 'accessory',
+  taunt: 'armor',
 };
 
 /**

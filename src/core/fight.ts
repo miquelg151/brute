@@ -71,6 +71,16 @@ export type FightEvent =
   | { t: 'scrap'; actor: number; absorbed: number; left: number }
   /** Poison from Toxic Spit hurt a fighter at the start of their turn. */
   | { t: 'poison'; actor: number; damage: number; hp: number }
+  /** Bleed (Bone Breaker, Street Bite) hurt a fighter at the start of their turn. */
+  | { t: 'bleed'; actor: number; damage: number; hp: number }
+  /** A fighter's rhythm stacks changed (Rhythm skill, Boxing Wraps, Jab Flurry). */
+  | { t: 'rhythm'; actor: number; stacks: number }
+  /** A dodge gave the fighter +1 energy (Momentum skill). */
+  | { t: 'momentum'; actor: number; energy: number }
+  /** The actor stole energy and/or stamina from the target (Quick Hands, Heist). */
+  | { t: 'steal'; actor: number; target: number; energy: number; stamina: number }
+  /** Thorns: the actor's armor hurt `target`, who just hit them. */
+  | { t: 'thorns'; actor: number; target: number; damage: number; hp: number }
   /** A fighter lost a turn to Power Surge or Headbutt. */
   | { t: 'stunned'; actor: number }
   | { t: 'death'; actor: number };
@@ -161,6 +171,18 @@ const BULWARK_BLOCK = 40;
 const JAB_PCT = 25;
 /** Thick Skull: less damage taken (%) below half health. */
 const THICK_SKULL_PCT = 15;
+/** Rhythm: extra damage (%) per stack, and the most stacks. */
+const RHYTHM_PCT = 5;
+const RHYTHM_MAX = 5;
+/** Bleed lasts this many turns. Bone Breaker: chance (%) of a bleed on a landed hit, and its damage per turn. */
+const BLEED_TURNS = 3;
+const BONE_BREAKER_CHANCE = 25;
+const BONE_BREAKER_BLEED = 3;
+/** Quick Hands: chance (%) that a landed hit steals stamina, and how much. */
+const QUICK_HANDS_CHANCE = 30;
+const QUICK_HANDS_STAMINA = 5;
+/** Thorns skill: share (%) of the damage dealt that goes back to the attacker. */
+const THORNS_PCT = 20;
 /** Wall Run: extra counter damage (%). */
 const WALL_RUN_PCT = 50;
 /** Bond: the owner heals this share (%) of the damage their pets deal. */
@@ -269,6 +291,18 @@ interface Unit {
   poisonTurns: number;
   poisonDamage: number;
   poisonBy: number;
+  /** Bleed on this unit: turns left, damage per turn, and who caused it. */
+  bleedTurns: number;
+  bleedDamage: number;
+  bleedBy: number;
+  /** Rhythm: current stacks, whether they add damage (skill or Boxing Wraps), and the stacks every round starts with. */
+  rhythm: number;
+  rhythmWorks: boolean;
+  startRhythm: number;
+  /** Thorns (%) of the damage dealt that goes back to a melee attacker. */
+  thorns: number;
+  /** Taunt: turns left in which enemy pets must attack this unit. */
+  tauntTurns: number;
   /** Power Surge, Headbutt: this unit loses its next turn. */
   stunned: boolean;
   /** Jab skill: the next attack is the first one of this turn. */
@@ -418,6 +452,14 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     poisonTurns: 0,
     poisonDamage: 0,
     poisonBy: 0,
+    bleedTurns: 0,
+    bleedDamage: 0,
+    bleedBy: 0,
+    rhythm: 0,
+    rhythmWorks: skills.has('rhythm') || sum('startRhythm') > 0,
+    startRhythm: sum('startRhythm'),
+    thorns: (skills.has('thorns') ? THORNS_PCT : 0) + sum('thorns'),
+    tauntTurns: 0,
     stunned: false,
     jabReady: false,
     breaks: opts.breaks,
@@ -455,8 +497,11 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
       deck: {},
       plays: [],
       breaks: undefined,
-      // Companions don't share their owner's origin passive.
+      // Companions don't share their owner's origin passive, rhythm or thorns.
       hpRegen: 0,
+      rhythmWorks: false,
+      startRhythm: 0,
+      thorns: 0,
     };
     applyPlan(u, main.plan);
     units.push(u);
@@ -560,6 +605,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
   };
 
   const pickTarget = (u: Unit): Unit => {
+    // Taunt: enemy pets must attack the fighter who taunted.
+    if (!u.isMain && enemyMainOf(u).tauntTurns > 0) return enemyMainOf(u);
     const others = units.filter((e) => e.team !== u.team && alive(e) && !e.isMain);
     if (others.length === 0 || rng.chance(u.fighterChance)) return enemyMainOf(u);
     return rng.pick(others);
@@ -585,7 +632,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (kind === 'special') dmg = Math.floor((dmg * (100 + (quality * specialBonus) / 100)) / 100);
     if (att.skills.has('fury') && att.hp * 100 < att.maxHp * 30) dmg = Math.floor((dmg * 130) / 100);
     if (tired(att)) dmg = Math.floor((dmg * 75) / 100);
-    const cardBonus = (att.rageTurns > 0 ? att.ragePct : 0) + nextHitPct;
+    const rhythmPct = att.rhythmWorks ? RHYTHM_PCT * att.rhythm : 0;
+    const cardBonus = (att.rageTurns > 0 ? att.ragePct : 0) + nextHitPct + rhythmPct;
     if (cardBonus) dmg = Math.floor((dmg * (100 + cardBonus)) / 100);
     return Math.floor((dmg * att.damagePct) / 100);
   };
@@ -593,6 +641,31 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
   const kill = (u: Unit, by: Unit) => {
     events.push({ t: 'death', actor: u.idx });
     if (u.isMain && winner === null) winner = by.team;
+  };
+
+  /** Sets a fighter's rhythm stacks and tells the replay when they change. */
+  const setRhythm = (u: Unit, stacks: number) => {
+    const next = Math.max(0, Math.min(RHYTHM_MAX, stacks));
+    if (next === u.rhythm) return;
+    u.rhythm = next;
+    events.push({ t: 'rhythm', actor: u.idx, stacks: next });
+  };
+
+  /** A new bleed restarts the 3 turns; a stronger one replaces a weaker bleed. */
+  const applyBleed = (def: Unit, damage: number, by: Unit) => {
+    def.bleedDamage = def.bleedTurns > 0 ? Math.max(def.bleedDamage, damage) : damage;
+    def.bleedTurns = BLEED_TURNS;
+    def.bleedBy = by.idx;
+  };
+
+  /** Dodge event, plus Momentum: a dodging fighter with the skill gains 1 energy. */
+  const dodged = (att: Unit, def: Unit, kind: HitKind) => {
+    events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
+    if (def.isMain && def.skills.has('momentum') && def.energy < MAX_ENERGY) {
+      def.energy++;
+      events.push({ t: 'momentum', actor: def.idx, energy: def.energy });
+      emitEnergy();
+    }
   };
 
   /** Health actually lost to the last hit that landed (after wards and Thick Skull). */
@@ -614,6 +687,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       damage -= absorbed;
       events.push({ t: 'ward', actor: def.idx, absorbed, left: def.ward });
     }
+    // Taking damage breaks the rhythm.
+    if (damage > 0) setRhythm(def, 0);
     const before = def.hp;
     def.hp = Math.max(0, def.hp - damage);
     lastDealt = before - def.hp;
@@ -661,18 +736,18 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (!sure && def.leapPct > 0) {
       const bonus = def.leapPct;
       def.leapPct = 0;
-      events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
+      dodged(att, def, kind);
       def.nextHitPct += bonus;
       attack(def, att, 'counter');
       return true;
     }
     if (!sure && def.sureDodges > 0) {
       def.sureDodges--;
-      events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
+      dodged(att, def, kind);
       return true;
     }
     if (!sure && rng.chance(dodgeChance(att, def))) {
-      events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
+      dodged(att, def, kind);
       if (kind !== 'counter' && def.skills.has('counter') && canPay(def, STAMINA_COST.counter) && rng.chance(50)) {
         pay(def, STAMINA_COST.counter);
         attack(def, att, 'counter');
@@ -707,13 +782,36 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const survived = land(att, def, kind, damage, blocked);
     // Headbutt: a hit that lands (even blocked) on the enemy fighter makes them lose their next turn.
     if (nextHitStuns && survived && def.isMain) def.stunned = true;
+    // Rhythm: every landed hit adds a stack.
+    if (att.rhythmWorks && winner === null && alive(att)) setRhythm(att, att.rhythm + 1);
+    // Bone Breaker: a landed melee hit may make the target bleed.
+    if (survived && kind !== 'throw' && att.skills.has('bone_breaker') && rng.chance(BONE_BREAKER_CHANCE)) applyBleed(def, BONE_BREAKER_BLEED, att);
+    // Quick Hands: a landed hit may steal some of the fighter's stamina.
+    if (survived && def.isMain && att.skills.has('quick_hands') && rng.chance(QUICK_HANDS_CHANCE)) {
+      const stolen = Math.min(def.stamina, QUICK_HANDS_STAMINA);
+      if (stolen > 0) {
+        def.stamina -= stolen;
+        att.stamina = Math.min(att.maxStamina, att.stamina + stolen);
+        events.push({ t: 'steal', actor: att.idx, target: def.idx, energy: 0, stamina: stolen });
+      }
+    }
+    // Thorns: a melee attacker takes part of the damage back (at least 1), ignoring armor and wards.
+    if (survived && kind !== 'throw' && def.thorns > 0 && alive(att)) {
+      // Taunt doubles the thorns against enemy pets.
+      const pct = def.tauntTurns > 0 && !att.isMain ? def.thorns * 2 : def.thorns;
+      const back = Math.max(1, Math.floor((lastDealt * pct) / 100));
+      att.hp = Math.max(0, att.hp - back);
+      setRhythm(att, 0);
+      events.push({ t: 'thorns', actor: def.idx, target: att.idx, damage: back, hp: att.hp });
+      if (att.hp === 0) kill(att, def);
+    }
     // Bond: the owner heals part of what their pet dealt (never after a knockout).
     if (owner?.skills.has('bond') && lastDealt > 0 && winner === null && alive(owner) && owner.hp < owner.maxHp) {
       const amount = Math.min(owner.maxHp - owner.hp, Math.max(1, Math.floor((lastDealt * BOND_PCT) / 100)));
       owner.hp += amount;
       events.push({ t: 'heal', actor: owner.idx, amount, hp: owner.hp });
     }
-    if (survived && att.skills.has('disarm') && def.weapon && rng.chance(15)) {
+    if (survived && alive(att) && att.skills.has('disarm') && def.weapon && rng.chance(15)) {
       events.push({ t: 'disarm', actor: att.idx, target: def.idx, weapon: def.weapon });
       def.weapon = null;
     }
@@ -727,7 +825,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     att.spellBonusPct = 0;
     if (missesBlind(att, def)) return { survived: true, dealt: 0 };
     if (!sure && rng.chance(dodgeChance(att, def, true))) {
-      events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind: 'spell' });
+      dodged(att, def, 'spell');
       return { survived: true, dealt: 0 };
     }
     const roll = rng.int(85, 116);
@@ -1013,11 +1111,55 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       case 'power_surge':
         stunningHit(u, 10 * (level - 1));
         break;
+      case 'jab_flurry': {
+        // Three quick hits right now. Every hit that lands adds a rhythm stack, even without the skill
+        // (with the skill, attack() already added it). A pending bonus is used by the first hit.
+        const foe = enemyMainOf(u);
+        for (let hit = 0; hit < 3; hit++) {
+          u.nextHitPct += scaled(60, level) - 100;
+          const seen = events.length;
+          attack(u, foe, 'double');
+          const landed = events.slice(seen).some((e) => (e.t === 'hit' || e.t === 'block') && e.actor === u.idx && e.target === foe.idx);
+          if (landed && !u.rhythmWorks && winner === null && alive(u)) setRhythm(u, u.rhythm + 1);
+          if (winner !== null || !alive(u) || !alive(foe)) break;
+        }
+        break;
+      }
+      case 'street_bite': {
+        const foe = enemyMainOf(u);
+        const seen = events.length;
+        attack(u, foe, 'melee');
+        // Only a hit that landed (even blocked) makes them bleed.
+        const landed = events.slice(seen).some((e) => (e.t === 'hit' || e.t === 'block') && e.actor === u.idx && e.target === foe.idx);
+        if (landed && alive(foe)) applyBleed(foe, scaled(5, level), u);
+        break;
+      }
+      case 'backflip':
+        u.sureDodges += scaledCount(2, level);
+        u.energy = Math.min(MAX_ENERGY, u.energy + 2);
+        emitEnergy();
+        break;
+      case 'heist': {
+        const foe = enemyMainOf(u);
+        // They can't lose more than they have, and the thief can't go over the max.
+        const energy = Math.min(foe.energy, scaledCount(2, level));
+        const stamina = Math.min(foe.stamina, scaled(15, level));
+        foe.energy -= energy;
+        foe.stamina -= stamina;
+        u.energy = Math.min(MAX_ENERGY, u.energy + energy);
+        u.stamina = Math.min(u.maxStamina, u.stamina + stamina);
+        events.push({ t: 'steal', actor: u.idx, target: foe.idx, energy, stamina });
+        emitEnergy();
+        break;
+      }
+      case 'taunt':
+        u.tauntTurns = 2;
+        break;
     }
   };
 
   const OFFENSIVE = new Set(['rage', 'haymaker', 'flurry', 'special']);
-  const DEFENSIVE = ['wall', 'roll', 'feint', 'weather_wave', 'leap', 'scrap_shield'];
+  const DEFENSIVE = ['wall', 'roll', 'feint', 'weather_wave', 'leap', 'scrap_shield', 'backflip', 'taunt'];
 
   /** A bot's choice for this tick, from what it can see: its own state and the enemy's last card. */
   const botChoice = (u: Unit, tick: number): { card: string; quality?: number } | null => {
@@ -1026,8 +1168,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (u.hp * 100 < u.maxHp * 35 && can('patch_up')) return pick('patch_up');
     const enemyLast = seenLastCard[u.team === 0 ? 1 : 0];
     if (enemyLast && tick - enemyLast.tick <= BOT_REACTION_TICKS && OFFENSIVE.has(enemyLast.card)) {
-      // A Special Strike can't be dodged, so Roll and Leap do not answer it.
-      const defence = DEFENSIVE.find((id) => can(id) && (enemyLast.card !== 'special' || (id !== 'roll' && id !== 'leap')));
+      // A Special Strike can't be dodged, so Roll, Leap and Backflip do not answer it.
+      const defence = DEFENSIVE.find((id) => can(id) && (enemyLast.card !== 'special' || (id !== 'roll' && id !== 'leap' && id !== 'backflip')));
       if (defence) return pick(defence);
     }
     if (u.energy >= BOT_SPEND_AT) {
@@ -1132,9 +1274,21 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (u.poisonTurns > 0) {
       u.poisonTurns--;
       u.hp = Math.max(0, u.hp - u.poisonDamage);
+      setRhythm(u, 0);
       events.push({ t: 'poison', actor: u.idx, damage: u.poisonDamage, hp: u.hp });
       if (u.hp === 0) {
         kill(u, units[u.poisonBy]!);
+        return;
+      }
+    }
+    // Bleed hurts right after poison, the same way.
+    if (u.bleedTurns > 0) {
+      u.bleedTurns--;
+      u.hp = Math.max(0, u.hp - u.bleedDamage);
+      setRhythm(u, 0);
+      events.push({ t: 'bleed', actor: u.idx, damage: u.bleedDamage, hp: u.hp });
+      if (u.hp === 0) {
+        kill(u, units[u.bleedBy]!);
         return;
       }
     }
@@ -1149,6 +1303,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     // A Jab not used this turn (a spell, a rest) is lost.
     u.jabReady = false;
     if (u.rageTurns > 0) u.rageTurns--;
+    if (u.tauntTurns > 0) u.tauntTurns--;
     if (u.trainTurns > 0) {
       u.trainTurns--;
       u.gauge += u.trainGauge;
@@ -1169,6 +1324,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
   rounds: for (let round = 1; round <= ROUNDS; round++) {
     events.push({ t: 'round', round });
     for (const u of units) u.roundTurns = 0;
+    // Every round starts with the rhythm stacks of the gear (Boxing Wraps), or none.
+    for (const m of mains) setRhythm(m, m.startRhythm);
     for (let tick = 0; tick < ROUND_TICKS; tick++) {
       startTick(globalTick);
       for (const u of units) if (alive(u)) u.gauge += gaugeGain(u.speed, u.isMain);

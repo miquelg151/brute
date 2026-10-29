@@ -1715,3 +1715,331 @@ describe('content expansion data', () => {
     expect(a && a.t === 'hit' && b && b.t === 'hit' && b.damage > a.damage).toBe(true);
   });
 });
+
+describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
+  const learn = (c: Character, ...skills: string[]): Character => ({ ...c, skills: [...c.skills, ...skills] });
+  const fresh = (classId: Character['classId']) => createCharacter('N', look, classId, 'port');
+  /** A fighter with big stats, so percentages of damage are not rounded away. */
+  const strong = (c: Character): Character => ({ ...c, bonusStats: { health: 40, strength: 40, agility: 0, speed: 0, magic: 0 } });
+  const seeds = Array.from({ length: 30 }, (_, i) => i + 1);
+  const plain = (a: Character, b: Character, seed: number, opts: { a?: TeamOptions; b?: TeamOptions } = {}) =>
+    runFight(a, b, seed, { a: { deck: {}, ...opts.a }, b: { deck: {}, ...opts.b } });
+  const play = (me: Character, card: string, tick: number, seed: number, other: Character, level = 1) =>
+    runFight(me, other, seed, { a: { interactive: true, deck: { [card]: level }, plays: [{ tick, card }], breaks: [] }, b: { deck: {} } });
+  const noPlay = (me: Character, card: string, seed: number, other: Character, level = 1) =>
+    runFight(me, other, seed, { a: { interactive: true, deck: { [card]: level }, plays: [], breaks: [] }, b: { deck: {} } });
+  const cardIndex = (log: FightLog, card: string) => log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0);
+  /** Everything before the card (and its energy event) is the same as without playing it. */
+  const sameBefore = (log: FightLog, without: FightLog, card: string) => {
+    const from = cardIndex(log, card) - 1;
+    expect(log.events[from]).toMatchObject({ t: 'energy', actor: 0 });
+    expect(log.events.slice(0, from)).toEqual(without.events.slice(0, from));
+  };
+  type Strike = Extract<FightEvent, { t: 'hit' | 'block' | 'dodge' }>;
+  const isStrike = (e: FightEvent): e is Strike => e.t === 'hit' || e.t === 'block' || e.t === 'dodge';
+  const strikes = (log: FightLog, actor: number) => log.events.filter((e) => (e.t === 'hit' || e.t === 'block') && e.actor === actor);
+  const sum = (events: FightEvent[]) => events.reduce((s, e) => s + (e.t === 'hit' || e.t === 'block' ? e.damage : 0), 0);
+  const foe = fresh('brawler');
+
+  // --- Rhythm (Boxer) ---
+  it('Rhythm stacks up to 5 on landed hits and resets when the fighter takes damage', () => {
+    const boxer = learn(fresh('brawler'), 'rhythm');
+    let maxStacks = 0;
+    let resets = 0;
+    for (const seed of seeds) {
+      const log = plain(boxer, foe, seed);
+      let stacks = 0;
+      log.events.forEach((e, i) => {
+        if (e.t === 'rhythm' && e.actor === 0) {
+          // One step up at a time, or straight to zero.
+          expect(e.stacks === 0 || e.stacks === stacks + 1).toBe(true);
+          if (e.stacks === 0) resets++;
+          stacks = e.stacks;
+          maxStacks = Math.max(maxStacks, stacks);
+        }
+        // A hit on the boxer that did damage: the stacks are gone right away.
+        if (e.t === 'hit' && e.target === 0 && e.damage > 0) {
+          if (stacks > 0) expect(log.events[i + 1]).toMatchObject({ t: 'rhythm', actor: 0, stacks: 0 });
+          stacks = 0;
+        }
+      });
+    }
+    expect(maxStacks).toBe(5);
+    expect(resets).toBeGreaterThan(0);
+  });
+
+  it('Rhythm stacks add 5% damage each, only with the skill', () => {
+    const boxer = learn(fresh('brawler'), 'rhythm');
+    // Rhythm uses no randomness: the same dice, but every stack makes the hits stronger.
+    const first = (c: Character) => seeds.reduce((s, seed) => s + sum(strikes(plain(c, foe, seed), 0).slice(0, 6)), 0);
+    expect(first(boxer)).toBeGreaterThan(first(fresh('brawler')));
+    expect(seeds.some((seed) => plain(fresh('brawler'), foe, seed).events.some((e) => e.t === 'rhythm'))).toBe(false);
+  });
+
+  it('Boxing Wraps start every round with 2 rhythm stacks and make them count', () => {
+    const wrapped: Character = { ...fresh('brawler'), gear: ['boxing_wraps'] };
+    const worn = { gear: { armor: null, accessory: 'boxing_wraps' } };
+    const log = runFight(wrapped, foe, 3, { a: { deck: {}, ...worn, interactive: true, plays: [], breaks: [keep([])] }, b: { deck: {} } });
+    const round1 = log.events.findIndex((e) => e.t === 'round' && e.round === 1);
+    expect(log.events[round1 + 1]).toMatchObject({ t: 'rhythm', actor: 0, stacks: 2 });
+    const round2 = log.events.findIndex((e) => e.t === 'round' && e.round === 2);
+    expect(round2).toBeGreaterThan(0);
+    expect(log.events.slice(round2, round2 + 3)).toContainEqual({ t: 'rhythm', actor: 0, stacks: 2 });
+    // Two stacks are +10% from the very first hit, with no skill (big stats, so 10% is not rounded away).
+    const first = (c: Character, gear: TeamOptions['gear']) =>
+      seeds.reduce((s, seed) => s + sum(strikes(plain(strong(c), foe, seed, { a: { gear } }), 0).slice(0, 1)), 0);
+    expect(first(wrapped, worn.gear)).toBeGreaterThan(first(fresh('brawler'), undefined));
+  });
+
+  it('Jab Flurry strikes 3 times at 60% and adds rhythm stacks even without the skill', () => {
+    // Costs 4: playable at tick 5. A bare-fisted Brawler: every hit starts from the same base damage.
+    const me = fresh('brawler');
+    const base = CLASSES.brawler.baseStats.strength + FISTS_DAMAGE;
+    const jab = Math.floor((base * 60) / 100);
+    const highest = Math.floor((jab * 120) / 100);
+    expect(highest).toBeLessThan(Math.floor((base * 80) / 100));
+    let allLanded = 0;
+    for (const seed of seeds) {
+      const log = play(me, 'jab_flurry', 5, seed, foe);
+      sameBefore(log, noPlay(me, 'jab_flurry', seed, foe), 'jab_flurry');
+      const from = cardIndex(log, 'jab_flurry');
+      const flurry = log.events.slice(from + 1).filter((e): e is Strike => isStrike(e) && e.actor === 0).slice(0, 3);
+      expect(flurry).toHaveLength(3);
+      for (const e of flurry) {
+        expect(e.kind).toBe('double');
+        if (e.t === 'hit') expect(e.damage).toBeLessThanOrEqual(highest);
+      }
+      const stacks = log.events.slice(from).filter((e) => e.t === 'rhythm' && e.actor === 0);
+      const landed = flurry.filter((e) => e.t !== 'dodge').length;
+      expect(stacks.slice(0, landed).map((e) => (e.t === 'rhythm' ? e.stacks : -1))).toEqual(Array.from({ length: landed }, (_, k) => k + 1));
+      if (landed === 3) allLanded++;
+    }
+    expect(allLanded).toBeGreaterThan(0);
+  });
+
+  // --- Bleed (Brute) ---
+  it('Street Bite makes them bleed 5 on each of their next 3 turns when it lands, ignoring armor', () => {
+    const me = fresh('brawler');
+    let landed = 0;
+    let dodged = 0;
+    for (const seed of seeds) {
+      const log = play(me, 'street_bite', 5, seed, foe);
+      sameBefore(log, noPlay(me, 'street_bite', seed, foe), 'street_bite');
+      const from = cardIndex(log, 'street_bite');
+      const strike = log.events.slice(from + 1).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge' || e.t === 'miss') && e.actor === 0)!;
+      const bleeds = log.events.slice(from).filter((e) => e.t === 'bleed');
+      if (strike.t === 'dodge') {
+        dodged++;
+        expect(bleeds).toHaveLength(0);
+      } else {
+        landed++;
+        // Three bleeds, unless the fight ended first.
+        if (log.events.some((e) => e.t === 'death')) expect(bleeds.length).toBeLessThanOrEqual(3);
+        else expect(bleeds).toHaveLength(3);
+        expect(bleeds.length).toBeGreaterThan(0);
+        for (const b of bleeds) expect(b).toMatchObject({ actor: 1, damage: 5 });
+      }
+    }
+    expect(landed).toBeGreaterThan(0);
+    expect(dodged).toBeGreaterThan(0);
+  });
+
+  it('Bone Breaker makes some landed hits bleed 3, and a weaker bleed never replaces a stronger one', () => {
+    const brute = learn(fresh('brawler'), 'bone_breaker');
+    const none = seeds.reduce((s, seed) => s + plain(fresh('brawler'), foe, seed).events.filter((e) => e.t === 'bleed').length, 0);
+    expect(none).toBe(0);
+    const bleeds = seeds.flatMap((seed) => plain(brute, foe, seed).events.filter((e) => e.t === 'bleed'));
+    expect(bleeds.length).toBeGreaterThan(0);
+    for (const b of bleeds) expect(b).toMatchObject({ actor: 1, damage: 3 });
+    // Street Bite (5) first, then Bone Breaker (3) lands more bleeds: the 5 stays, and the turns restart.
+    let refreshed = 0;
+    for (const seed of seeds) {
+      const log = play(brute, 'street_bite', 5, seed, foe);
+      const after = log.events.slice(cardIndex(log, 'street_bite')).filter((e) => e.t === 'bleed');
+      // Only fights where the bite landed (its bleed is the first one, and it is 5).
+      if (after.length === 0 || after[0]!.t !== 'bleed' || after[0]!.damage !== 5) continue;
+      for (const b of after.slice(0, 3)) expect(b).toMatchObject({ damage: 5 });
+      if (after.length > 3) refreshed++;
+    }
+    expect(refreshed).toBeGreaterThan(0);
+  });
+
+  it('Brass Knuckles and Switchblade are drawn and hit harder than bare fists', () => {
+    const avg = (c: Character) => {
+      const hits = seeds.flatMap((seed) => strikes(plain(c, foe, seed), 0).filter((e) => e.t === 'hit' && e.kind === 'melee'));
+      return { mean: sum(hits) / hits.length, weapons: new Set(hits.map((e) => (e.t === 'hit' ? e.weapon : null))) };
+    };
+    const bare = avg({ ...fresh('brawler'), weapons: [] });
+    const knuckles = avg({ ...fresh('brawler'), weapons: ['knuckles'] });
+    expect(knuckles.weapons.has('knuckles')).toBe(true);
+    expect(knuckles.mean).toBeGreaterThan(bare.mean);
+    const bareThief = avg({ ...fresh('parkour'), weapons: [] });
+    const blade = avg({ ...fresh('parkour'), weapons: ['switchblade'] });
+    expect(blade.weapons.has('switchblade')).toBe(true);
+    expect(blade.mean).toBeGreaterThan(bareThief.mean);
+  });
+
+  // --- Momentum (Acrobat) ---
+  it('Momentum gives +1 energy on every dodge', () => {
+    const acrobat = learn(fresh('parkour'), 'momentum', 'sixth_sense');
+    let dodges = 0;
+    for (const seed of seeds) {
+      const log = plain(acrobat, foe, seed);
+      let energy = 3;
+      log.events.forEach((e, i) => {
+        if (e.t === 'energy' && e.actor === 0) energy = e.energy;
+        // With a full energy bar (nobody plays cards here) there is nothing to give.
+        if (e.t === 'dodge' && e.target === 0 && energy < 10) {
+          dodges++;
+          const next = log.events[i + 1]!;
+          expect(next).toMatchObject({ t: 'momentum', actor: 0 });
+          expect(log.events[i + 2]).toMatchObject({ t: 'energy', actor: 0, energy: next.t === 'momentum' ? next.energy : -1 });
+        }
+      });
+      // The same fighter without the skill never gets one.
+      expect(plain(learn(fresh('parkour'), 'sixth_sense'), foe, seed).events.some((e) => e.t === 'momentum')).toBe(false);
+    }
+    expect(dodges).toBeGreaterThan(10);
+  });
+
+  it('Backflip dodges the next 2 attacks for sure and gives +2 energy', () => {
+    // Costs 4: playable at tick 5, when the fighter has 4 energy.
+    const me = fresh('bouncer');
+    const attacksOn0 = (log: FightLog) =>
+      log.events.slice(cardIndex(log, 'backflip')).filter((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.target === 0 && e.kind !== 'counter');
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const log = play(me, 'backflip', 5, seed, foe);
+      sameBefore(log, noPlay(me, 'backflip', seed, foe), 'backflip');
+      expect(log.events.slice(cardIndex(log, 'backflip')).find((e) => e.t === 'energy' && e.actor === 0)).toMatchObject({ energy: 2 });
+      expect(attacksOn0(log).slice(0, 2).map((e) => e.t)).toEqual(['dodge', 'dodge']);
+    }
+    // Card level 4 dodges one more.
+    expect(attacksOn0(play(me, 'backflip', 5, 2, foe, 4)).slice(0, 3).map((e) => e.t)).toEqual(['dodge', 'dodge', 'dodge']);
+  });
+
+  // --- Steal (Thief) ---
+  it('Quick Hands steals 5 stamina from some landed hits', () => {
+    const thief = learn(fresh('parkour'), 'quick_hands');
+    const steals = seeds.flatMap((seed) => plain(thief, foe, seed).events.filter((e) => e.t === 'steal'));
+    expect(steals.length).toBeGreaterThan(0);
+    for (const s of steals) expect(s).toMatchObject({ actor: 0, target: 1, energy: 0, stamina: 5 });
+    expect(seeds.some((seed) => plain(fresh('parkour'), foe, seed).events.some((e) => e.t === 'steal'))).toBe(false);
+  });
+
+  it('Heist steals 2 energy and 15 stamina (3 and 19 at card level 4)', () => {
+    // Costs 4: playable at tick 5. Nobody else spends energy, so the foe has 4 energy then.
+    const me = fresh('parkour');
+    const log = play(me, 'heist', 5, 5, foe);
+    sameBefore(log, noPlay(me, 'heist', 5, foe), 'heist');
+    const after = log.events.slice(cardIndex(log, 'heist'));
+    expect(after.find((e) => e.t === 'steal')).toMatchObject({ actor: 0, target: 1, energy: 2, stamina: 15 });
+    expect(after.find((e) => e.t === 'energy' && e.actor === 1)).toMatchObject({ energy: 2 });
+    expect(after.find((e) => e.t === 'energy' && e.actor === 0)).toMatchObject({ energy: 2 });
+    const log4 = play(me, 'heist', 5, 5, foe, 4);
+    expect(log4.events.slice(cardIndex(log4, 'heist')).find((e) => e.t === 'steal')).toMatchObject({ energy: 3, stamina: 19 });
+  });
+
+  // --- Thorns (Wall) ---
+  /** For every thorns event of the bearer: the hit that caused it, found right before. */
+  const thornsPairs = (log: FightLog, bearer: number) =>
+    log.events.flatMap((e, i) => {
+      if (e.t !== 'thorns' || e.actor !== bearer) return [];
+      const cause = log.events.slice(0, i).reverse().find((x) => (x.t === 'hit' || x.t === 'block') && x.target === bearer && x.actor === e.target);
+      return [{ thorns: e, hit: cause as Extract<FightEvent, { t: 'hit' }> }];
+    });
+
+  it('Thorns reflects 20% of the damage dealt, at least 1', () => {
+    const wall = learn(fresh('bouncer'), 'thorns');
+    let seen = 0;
+    for (const seed of seeds) {
+      for (const { thorns, hit } of thornsPairs(plain(wall, foe, seed), 0)) {
+        seen++;
+        expect(thorns).toMatchObject({ target: 1, damage: Math.max(1, Math.floor((hit.damage * 20) / 100)) });
+      }
+      expect(plain(fresh('bouncer'), foe, seed).events.some((e) => e.t === 'thorns')).toBe(false);
+    }
+    expect(seen).toBeGreaterThan(10);
+    // Against a heavy hitter the share really is 20%.
+    const big = thornsPairs(plain(strong(wall), strong(foe), 4), 0);
+    expect(big.some((p) => p.hit.damage >= 20 && p.thorns.damage === Math.floor(p.hit.damage / 5))).toBe(true);
+  });
+
+  it('Dumpster Lid gives 10% thorns, and stacks with the skill to 30%', () => {
+    const lid = (c: Character): Character => ({ ...c, gear: ['dumpster_lid'] });
+    const worn = { gear: { armor: 'dumpster_lid', accessory: null } };
+    const check = (c: Character, pct: number) => {
+      const pairs = thornsPairs(plain(strong(c), strong(foe), 4, { a: worn }), 0);
+      expect(pairs.length).toBeGreaterThan(0);
+      for (const { thorns, hit } of pairs) expect(thorns.damage).toBe(Math.max(1, Math.floor((hit.damage * pct) / 100)));
+    };
+    check(lid(fresh('bouncer')), 10);
+    check(learn(lid(fresh('bouncer')), 'thorns'), 30);
+  });
+
+  it('Taunt forces enemy pets onto you for 2 turns and doubles your thorns against them', () => {
+    // A test-only armor with 100% thorns, so doubling is easy to see in the numbers.
+    GEAR.test_spikes = { id: 'test_spikes', name: 'Test Spikes', slot: 'armor', thorns: 100 };
+    try {
+      const me: Character = { ...fresh('bouncer'), pets: ['dog'], gear: ['test_spikes'] };
+      const tamer = fresh('tamer');
+      const worn = { gear: { armor: 'test_spikes', accessory: null } };
+      const run = (taunt: boolean, seed: number) =>
+        runFight(me, tamer, seed, { a: { interactive: true, deck: { taunt: 1 }, plays: taunt ? [{ tick: 0, card: 'taunt' }] : [], breaks: [], ...worn }, b: { deck: {} } });
+      const enemyPets = (log: FightLog) => log.roster.map((u, i) => (u.team === 1 && !u.isMain ? i : -1)).filter((i) => i >= 0);
+      /** Events from the card to the end of the fighter's second turn after it (Taunt lasts 2 turns). */
+      const window = (log: FightLog) => {
+        const from = cardIndex(log, 'taunt');
+        /** A turn of the fighter (mine) or of someone else: a plain attack or a rest. */
+        const turnOf = (e: FightEvent, mine: boolean) =>
+          (e.t === 'rest' && (e.actor === 0) === mine) ||
+          ((e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && (e.actor === 0) === mine && (e.kind === 'melee' || e.kind === 'throw'));
+        let turns = 0;
+        for (let i = from + 1; i < log.events.length; i++) {
+          const e = log.events[i]!;
+          if (turns < 2 && turnOf(e, true)) turns++;
+          // The first thing that is not part of the fighter's second turn closes the window.
+          else if (turns === 2 && (e.t === 'tick' || turnOf(e, false))) return log.events.slice(from, i);
+        }
+        return log.events.slice(from);
+      };
+      const petStrike = (pets: number[]) => (e: FightEvent): e is Strike => isStrike(e) && pets.includes(e.actor) && e.kind !== 'counter';
+      let spared = 0;
+      let doubled = 0;
+      for (const seed of seeds) {
+        const log = run(true, seed);
+        const without = run(false, seed);
+        sameBefore(log, without, 'taunt');
+        const pets = enemyPets(log);
+        const inWindow = window(log);
+        for (const e of inWindow.filter(petStrike(pets))) expect(e).toMatchObject({ target: 0 });
+        // Without Taunt, pets sometimes pick the fighter's own pet instead.
+        if (without.events.slice(0, inWindow.length + cardIndex(log, 'taunt')).filter(petStrike(pets)).some((e) => e.t !== 'dodge' && e.target !== 0)) spared++;
+        // Thorns from a pet's hit: 100% normally, 200% while taunting.
+        for (const { thorns, hit } of thornsPairs({ ...log, events: inWindow }, 0)) {
+          if (pets.includes(thorns.target)) {
+            expect(thorns.damage).toBe(Math.max(1, hit.damage * 2));
+            doubled++;
+          }
+        }
+      }
+      expect(spared).toBeGreaterThan(0);
+      expect(doubled).toBeGreaterThan(0);
+      // Without Taunt, the same armor reflects exactly the damage dealt.
+      const plainPairs = seeds.flatMap((seed) => thornsPairs(run(false, seed), 0));
+      expect(plainPairs.length).toBeGreaterThan(0);
+      for (const { thorns, hit } of plainPairs) expect(thorns.damage).toBe(Math.max(1, hit.damage));
+    } finally {
+      delete GEAR.test_spikes;
+    }
+  });
+
+  it('bots answer an enemy Rage with Backflip or Taunt', () => {
+    const bot = fresh('parkour');
+    const log = runFight(foe, bot, 5, {
+      a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: 10, card: 'rage' }], breaks: [] },
+      b: { deck: { backflip: 1, taunt: 1 } },
+    });
+    const reaction = log.events.find((e) => e.t === 'card' && e.actor === 1);
+    expect(reaction).toMatchObject({ card: expect.stringMatching(/^(backflip|taunt)$/) });
+  });
+});
