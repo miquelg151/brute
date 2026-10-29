@@ -350,7 +350,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     maxHp,
     hp: maxHp,
     power: stats.strength + sum('strength'),
-    magic: stats.magic,
+    magic: stats.magic + sum('magic'),
     agility: stats.agility,
     speed: Math.max(0, stats.speed + sum('speed')),
     base: {

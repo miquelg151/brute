@@ -672,7 +672,7 @@ describe('starting cards', () => {
 });
 
 describe('level-up cards', () => {
-  const me = generateOpponent(12, new Rng(261), 'brawler');
+  const me = generateOpponent(12, new Rng(16), 'brawler');
   const foe = generateOpponent(12, new Rng(262), 'bouncer');
   // A fighter starts with 3 energy and gains 1 every 5 ticks, so a card costing c can first be played at tick 5 * (c - 3).
   const run = (c: Character, card: string, tick: number, opts: Partial<TeamOptions> = {}) =>
@@ -876,7 +876,7 @@ describe('level-up cards', () => {
   });
 
   it('Stray Dog cannot be played while its dog is fighting', () => {
-    const t = generateOpponent(12, new Rng(765), 'tamer');
+    const t = generateOpponent(12, new Rng(768), 'tamer');
     const weak = { ...generateOpponent(3, new Rng(272), 'mystic'), pets: [] };
     let checked = 0;
     for (let seed = 0; seed < 20; seed++) {

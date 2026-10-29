@@ -53,6 +53,9 @@ export function gearEffects(g: GearDef): string {
   add(g.staminaRegen, 'stamina per turn');
   add(g.staminaCost, 'stamina use', '%');
   add(g.petHealth, 'pet health', '%');
+  add(g.thorns, 'thorns', '%');
+  add(g.magic, 'magic');
+  add(g.startRhythm, 'starting rhythm');
   return parts.join(', ');
 }
 
