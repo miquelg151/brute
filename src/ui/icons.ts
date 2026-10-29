@@ -14,135 +14,424 @@ interface IconDef {
 
 // Every icon is drawn on the same 7 × 7 grid (a few are narrower), only with palette
 // colours, lit from the top left: L is the light side, D the dark side.
+
 const ICONS = {
   health: {
-    rows: ['.RR.RR.', 'RLRRRRR', 'RLRRRRD', 'RRRRRRD', '.RRRRD.', '..RRD..', '...D...'],
-    colors: { R: PAL.red, L: PAL.blush, D: PAL.crimson },
+    rows: [
+      '.RR.RR.',
+      'RLRRRLR',
+      'RRRRRRR',
+      '.RRRRR.',
+      '..RRR..',
+      '...R...',
+      '.......',
+    ],
+    colors: { R: PAL.red, L: PAL.blush },
   },
+
   strength: {
-    rows: ['.L...L.', 'LG...GL', 'GGLLLGG', 'GGDDDGG', 'GD...DG', '.D...D.'],
-    colors: { G: PAL.fog, L: PAL.white, D: PAL.stone },
+    rows: [
+      '...L...',
+      '..LG L..'.replace(/ /g, ''),
+      '.LGGG L.'.replace(/ /g, ''),
+      'LGGGGGL',
+      '.LGGG L.'.replace(/ /g, ''),
+      '..LG L..'.replace(/ /g, ''),
+      '...L...',
+    ],
+    colors: { G: PAL.fog, L: PAL.white },
   },
+
   agility: {
-    rows: ['.....LT', '....LTT', '...LTTD', '..LTTD.', '.LTTD..', '.TD....', 'T......'],
-    colors: { T: PAL.teal, L: PAL.cyan, D: PAL.forest },
+    rows: [
+      '......T',
+      '.....TT',
+      '....TTD',
+      '...TTD.',
+      '..TTD..',
+      '.TD....',
+      'T......',
+    ],
+    colors: { T: PAL.teal, D: PAL.forest },
   },
+
   speed: {
-    rows: ['....LY.', '...LY..', '..LYYY.', '.YYYYD.', '...YD..', '..YD...', '.YD....'],
-    colors: { Y: PAL.yellow, L: PAL.white, D: PAL.orange },
+    rows: [
+      '.....Y.',
+      '....YY.',
+      '...YYY.',
+      '.YYYYYD',
+      '...YYD.',
+      '..YYD..',
+      '.YD....',
+    ],
+    colors: { Y: PAL.yellow, D: PAL.orange },
   },
+
   armor: {
-    rows: ['LLLLLLS', 'LSSSSSD', 'LSSSSSD', 'LSSSSSD', '.SSSSD.', '..SSD..', '...D...'],
+    rows: [
+      '..LLL..',
+      '.LSSSL.',
+      'LSSSSSD',
+      'LSSSSSD',
+      '.SSSSD.',
+      '..SSD..',
+      '...D...',
+    ],
     colors: { S: PAL.mist, L: PAL.white, D: PAL.smoke },
   },
+
   damage: {
-    rows: ['O.....O', '.OO.OO.', '.OYYYO.', '..YLY..', '.OYYYO.', '.OO.OO.', 'O.....O'],
+    rows: [
+      '...O...',
+      '..OOO..',
+      '.OYYYO.',
+      'OYYLYYO',
+      '.OYYYO.',
+      '..OOO..',
+      '...O...',
+    ],
     colors: { O: PAL.orange, Y: PAL.yellow, L: PAL.white },
   },
+
   dodge: {
-    rows: ['LCC....', '...CCC.', 'LCCCCCC', '...CCC.', 'LCC....'],
+    rows: [
+      'LCC....',
+      '.LCCC..',
+      '..LCCCC',
+      '.LCCC..',
+      'LCC....',
+      '.......',
+      '.......',
+    ],
     colors: { C: PAL.cyan, L: PAL.white },
   },
+
   skill: {
-    rows: ['...P...', '..PLP..', 'PPPLPPP', '.PPPPD.', '..PPD..', '.PD.PD.', '.D...D.'],
+    rows: [
+      '...P...',
+      '..PLP..',
+      '.PPLPP.',
+      'PPPLPPP',
+      '..PPD..',
+      '.PD.PD.',
+      '.D...D.',
+    ],
     colors: { P: PAL.pink, L: PAL.blush, D: PAL.magenta },
   },
+
   weapon: {
-    rows: ['.....LB', '....LBD', '...LBD.', '..LBD..', '.HBD...', 'HH.....', 'H......'],
+    rows: [
+      '.....LB',
+      '....LBD',
+      '...LBD.',
+      '..LBD..',
+      '.HBD...',
+      'HH.....',
+      'H......',
+    ],
     colors: { B: PAL.wood, L: PAL.tan, D: PAL.brown, H: PAL.brownDark },
   },
+
   pet: {
-    rows: ['.L.L.L.', '.P.P.P.', '.......', '..LPP..', '.LPPPP.', '.PPPPD.', '..PDD..'],
+    rows: [
+      '.L...L.',
+      '.P...P.',
+      '..LPL..',
+      '.LPPPL.',
+      'LPPPPPL',
+      '.PPPPD.',
+      '..PDD..',
+    ],
     colors: { P: PAL.tan, L: PAL.sand, D: PAL.wood },
   },
+
   xp: {
-    rows: ['...L...', '..LBB..', '.LBBBD.', 'LBBBBBD', '..BBD..', '..BBD..', '..BBD..'],
+    rows: [
+      '...L...',
+      '..LBB..',
+      '.LBBBD.',
+      'LBBBBBD',
+      '..BBD..',
+      '..BBD..',
+      '...D...',
+    ],
     colors: { B: PAL.sky, L: PAL.white, D: PAL.blue },
   },
+
   fights: {
-    rows: ['.LLRR..', 'LRRRRR.', 'LRRRRRD', 'RRRRRRD', '.RRRRD.', '.WWWW..', '.WWWW..'],
+    rows: [
+      '..LLRR.',
+      '.LRRRRL',
+      'LRRRRRD',
+      'RRRRRRD',
+      '.RRRRD.',
+      '..WW...',
+      '.WWWW..',
+    ],
     colors: { R: PAL.red, L: PAL.coral, D: PAL.crimson, W: PAL.white },
   },
+
   target: {
-    rows: ['..PPP..', '.P...P.', 'P..P..P', 'P.PLP.P', 'P..P..P', '.P...P.', '..PPP..'],
+    rows: [
+      '..PPP..',
+      '.P...P.',
+      'P..P..P',
+      'P.PLP.P',
+      'P..P..P',
+      '.P...P.',
+      '..PPP..',
+    ],
     colors: { P: PAL.pink, L: PAL.white },
   },
+
   origin: {
-    rows: ['...H...', '..HLH..', '.HLLHH.', 'HHHHHHH', '.WWWWW.', '.WWDWW.', '.WWDWW.'],
+    rows: [
+      '...H...',
+      '..HLH..',
+      '.HLLLH.',
+      'HHHHHHH',
+      '.WWWWW.',
+      '.WWDWW.',
+      '..WDW..',
+    ],
     colors: { H: PAL.crimson, L: PAL.coral, W: PAL.paper2, D: PAL.brown },
   },
+
   stance: {
-    rows: ['...W...', '..WWW..', '.W.W.W.', '...W...', '..W.W..', '.W...W.'],
+    rows: [
+      '...W...',
+      '..WWW..',
+      '.W.W.W.',
+      '...W...',
+      '..W.W..',
+      '.W...W.',
+      '.......',
+    ],
     colors: { W: PAL.coral },
   },
+
   fragile: {
-    rows: ['.RR.RR.', 'RLRR.RR', 'RLR.RRD', 'RRR.RRD', '.RRR.D.', '..R.D..', '...D...'],
+    rows: [
+      '.RR.RR.',
+      'RLRRLRR',
+      'RLR.RRD',
+      'RRR.RRD',
+      '.RRR.D.',
+      '..R.D..',
+      '...D...',
+    ],
     colors: { R: PAL.red, L: PAL.blush, D: PAL.crimson },
   },
+
   heavy: {
-    rows: ['..LLL..', '..L.D..', 'LLLLLLG', 'LGGGGGD', 'LGGGGGD', 'LGGGGGD', 'GDDDDDD'],
+    rows: [
+      '..LLL..',
+      '.L...L.',
+      'LGGGGGL',
+      'LGGGGGD',
+      'LGGGGGD',
+      '.GGGGG.',
+      '..DDD..',
+    ],
     colors: { G: PAL.stone, L: PAL.fog, D: PAL.asphalt },
   },
+
   manyHits: {
-    rows: ['L..L..L', 'O..O..O', 'O..O..O', 'O..O..O', 'D..D..D'],
+    rows: [
+      'L.L.L.L',
+      'O.O.O.O',
+      'O.O.O.O',
+      'OOOOOOO',
+      '.D.D.D.',
+      '..D.D..',
+      '.......',
+    ],
     colors: { O: PAL.orange, L: PAL.yellow, D: PAL.crimson },
   },
+
   stamina: {
-    rows: ['...G...', '..GGG..', '.GLGGG.', 'GLGGGGD', 'GGGGGGD', '.GGGGD.', '..DDD..'],
+    rows: [
+      '...G...',
+      '..GGG..',
+      '.GLGGG.',
+      'GLGGGGD',
+      'GGGGGGD',
+      '.GGGGD.',
+      '..DDD..',
+    ],
     colors: { G: PAL.lime, L: PAL.white, D: PAL.green },
   },
+
   mana: {
-    rows: ['...L...', '..LBB..', '.LBBBD.', 'LBBBBBD', '.BBBBD.', '..BBD..', '...D...'],
+    rows: [
+      '...L...',
+      '..LBB..',
+      '.LBBBD.',
+      'LBBBBBD',
+      '.BBBB D'.replace(/ /g, ''),
+      '..BBD..',
+      '...D...',
+    ],
     colors: { B: PAL.blue, L: PAL.sky, D: PAL.navy },
   },
+
   magic: {
-    rows: ['...P...', '...P...', '..PLP..', 'PPLLLPP', '..PPD..', '...D...', '...D...'],
+    rows: [
+      '...P...',
+      '..PLP..',
+      '.PPLPP.',
+      'PPLLLPP',
+      '..PPD..',
+      '...D...',
+      '...D...',
+    ],
     colors: { P: PAL.purple, L: PAL.lilac, D: PAL.violet },
   },
+
   magicResist: {
-    rows: ['LLLLLLP', 'LPPPPPD', 'LPPWPPD', 'LPWWWPD', '.PPWPD.', '..PPD..', '...D...'],
+    rows: [
+      '..LLL..',
+      '.LPPPL.',
+      'LPPWPPD',
+      'LPPWPPD',
+      '.LPPPD.',
+      '..PPD..',
+      '...D...',
+    ],
     colors: { P: PAL.purple, L: PAL.lilac, D: PAL.violet, W: PAL.white },
   },
+
   accessory: {
-    rows: ['..PPP..', '...P...', '.LYYYY.', 'LY...YD', 'Y.....D', 'YD...DD', '.DDDDD.'],
+    rows: [
+      '..PPP..',
+      '...P...',
+      '.LYYYL.',
+      'LY...YD',
+      'Y.....D',
+      'YD...DD',
+      '.DDDDD.',
+    ],
     colors: { Y: PAL.yellow, L: PAL.white, D: PAL.amber, P: PAL.pink },
   },
+
   round: {
-    rows: ['.LLLLL.', 'LWWKWWS', 'LWWKWWS', 'LWWKKWS', 'LWWWWWS', '.SSSSS.'],
+    rows: [
+      '..LLL..',
+      '.LWWWS.',
+      'LWWKWS.',
+      'LWWKWS.',
+      '.LWWWS.',
+      '..SSS..',
+      '.......',
+    ],
     colors: { W: PAL.paper, L: PAL.white, K: PAL.ink, S: PAL.paperEdge },
   },
+
   counter: {
-    rows: ['..L....', '.LT....', 'LTTTTT.', '.TD..T.', '..D..T.', '.....T.', '.TTTTD.'],
+    rows: [
+      '..L....',
+      '.LT....',
+      'LTTTTT.',
+      '.TD..T.',
+      '..D..T.',
+      '.....T.',
+      '.TTTTD.',
+    ],
     colors: { T: PAL.teal, L: PAL.cyan, D: PAL.forest },
   },
+
   rage: {
-    rows: ['...R...', '..RR...', '..RRR.R', '.RRYRRR', 'RRYYYRR', 'RYYWYYR', '.RYYYR.'],
+    rows: [
+      '...R...',
+      '..RRR..',
+      '..RRR.R',
+      '.RRYRRR',
+      'RRYYYRR',
+      'RYYWYYR',
+      '.RYYYR.',
+    ],
     colors: { R: PAL.red, Y: PAL.yellow, W: PAL.white },
   },
+
   fist: FIST,
+
   left: {
-    rows: ['...W', '..WW', '.WWW', 'WWWW', '.WWW', '..WW', '...W'],
+    rows: [
+      '...W...',
+      '..WW...',
+      '.WWWWWW',
+      'WWWWWWW',
+      '.WWWWWW',
+      '..WW...',
+      '...W...',
+    ],
     colors: { W: PAL.pink },
   },
+
   right: {
-    rows: ['W...', 'WW..', 'WWW.', 'WWWW', 'WWW.', 'WW..', 'W...'],
+    rows: [
+      '...W...',
+      '...WW..',
+      'WWWWWW.',
+      'WWWWWWW',
+      'WWWWWW.',
+      '...WW..',
+      '...W...',
+    ],
     colors: { W: PAL.pink },
   },
+
   fast: {
-    rows: ['W..W...', 'WW.WW..', 'WWWWWWW', 'WW.WW..', 'W..W...'],
+    rows: [
+      'W..W...',
+      'WW.WW..',
+      'WWWWWWW',
+      'WW.WW..',
+      'W..W...',
+      '.......',
+      '.......',
+    ],
     colors: { W: PAL.pink },
   },
+
   skip: {
-    rows: ['W...WW', 'WW..WW', 'WWW.WW', 'WW..WW', 'W...WW'],
+    rows: [
+      'W...WW.',
+      'WW..WW.',
+      'WWW.WW.',
+      'WW..WW.',
+      'W...WW.',
+      '.......',
+      '.......',
+    ],
     colors: { W: PAL.pink },
   },
+
   dice: {
-    rows: ['WWWWWWW', 'WKWWWKW', 'WWWWWWW', 'WWWKWWW', 'WWWWWWW', 'WKWWWKW', 'WWWWWWW'],
+    rows: [
+      'WWWWWWW',
+      'WK...KW',
+      'W.....W',
+      'W..K..W',
+      'W.....W',
+      'WK...KW',
+      'WWWWWWW',
+    ],
     colors: { W: PAL.white, K: PAL.ink },
   },
+
   // A padlock, for things you don't have yet.
   lock: {
-    rows: ['..SSS..', '.S...S.', '.S...S.', 'LYYYYYY', 'LYYKYYD', 'LYYKYYD', '.DDDDD.'],
+    rows: [
+      '..SSS..',
+      '.S...S.',
+      '.S...S.',
+      'LYYYYYY',
+      'LYYKYYD',
+      'LYYKYYD',
+      '.DDDDD.',
+    ],
     colors: { S: PAL.fog, L: PAL.white, Y: PAL.sand, D: PAL.wood, K: PAL.brownDark },
   },
 } satisfies Record<string, IconDef>;
