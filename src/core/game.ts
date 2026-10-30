@@ -1,17 +1,14 @@
 import { DECK_SIZE, cardLevel, originCard, startingCards } from './cards';
+import { BOSSES, buildBoss, gateLevel, gatedBoss, type BossId } from './bosses';
 import { createCharacter } from './character';
 import { gearFor, loadoutFor, runFight, type BreakChoice, type CardPlay, type FightLog, type GearChoice } from './fight';
 import { generateOpponent } from './opponents';
-import { OFFER_SIZE, XP_LOSS, XP_WIN, addXp, applyUpgrade, chooseBranch, rollOffer } from './progression';
+import { OFFER_SIZE, XP_LOSS, XP_WIN, addXp, applyUpgrade, chooseBranch, rollBossOffer, rollOffer, xpToNext } from './progression';
 import { Rng, mixSeed } from './rng';
 import { DEFAULT_PLAN, STANCE_IDS, TARGET_IDS, WEAPON_STYLE_IDS, type Plan } from './tactics';
 import type { Appearance, BranchId, Character, ClassId, FighterStats, Legend } from './types';
 
 export const SAVE_VERSION = 8;
-
-// The levels with a boss. Task 2 replaces this with BOSS_LEVELS from bosses.ts.
-const MIGRATION_BOSS_LEVELS = [5, 10, 15, 20];
-const MIGRATION_BOSS_IDS: Record<number, string> = { 5: 'rusty', 10: 'alley_cat', 15: 'sewer_king', 20: 'champion' };
 
 /** What the player decides before a fight. Locked once the fight starts. */
 export interface Tactics extends Plan {
@@ -41,6 +38,8 @@ export interface PendingFight {
   /** Set when the fight starts; from then on the choices cannot change. */
   tactics: Tactics | null;
   inputs: FightInputs;
+  /** Set when the opponent is a boss. */
+  bossId?: BossId;
 }
 
 /** Everything the game persists. Plain JSON, designed to be synced to a server later. */
@@ -67,6 +66,10 @@ export interface FightResult {
   cardsPlayed: Record<string, number>;
   /** Cards that reached a new level from these plays. */
   cardLevelUps: { card: string; level: number }[];
+  /** Set when the opponent was a boss. */
+  bossId?: BossId;
+  /** True when the player won against a boss, for the first time. */
+  bossBeaten?: boolean;
 }
 
 /** Pass the old save's legends so they carry over to the new fighter. */
@@ -103,11 +106,13 @@ export function defaultTactics(c: Character): Tactics {
 /**
  * Offers are derived from the save seed and level, so reloading never rerolls them.
  * With several level-ups waiting, the first offer is for the lowest of the new levels.
+ * The level-up that follows a beaten boss gets the bigger offer with a rare option.
  */
 function offerFor(save: SaveData): string[] {
   const rng = new Rng(mixSeed(save.seed, 1_000_000 + save.character.level * 31 + save.pendingLevelUps));
   const forLevel = save.character.level - save.pendingLevelUps + 1;
-  return rollOffer(save.character, rng, OFFER_SIZE, forLevel);
+  const afterBoss = Object.values(BOSSES).some((b) => gateLevel(b) === forLevel - 1 && save.character.bosses?.[b.id] === 'beaten');
+  return afterBoss ? rollBossOffer(save.character, rng, forLevel) : rollOffer(save.character, rng, OFFER_SIZE, forLevel);
 }
 
 /**
@@ -155,6 +160,32 @@ export function prepareFight(save: SaveData): PendingFight | null {
   const opponent = generateOpponent(level, rng);
   const opponentPlan: Plan = { stance: rng.pick(STANCE_IDS), target: rng.pick(TARGET_IDS), weaponStyle: rng.pick(WEAPON_STYLE_IDS) };
   save.pendingFight = { opponent, opponentPlan, live: false, seed: rng.next(), tactics: null, inputs: { plays: [], breaks: [] } };
+  return save.pendingFight;
+}
+
+/**
+ * Starts the fight against the boss that gates the fighter, so the player can study it.
+ * Returns the boss fight already pending, or null if no boss gates the fighter, a
+ * normal fight is pending, or the player must choose a level-up first.
+ */
+export function prepareBossFight(save: SaveData): PendingFight | null {
+  if (save.pendingFight) return save.pendingFight.bossId ? save.pendingFight : null;
+  if (save.pendingLevelUps > 0) return null;
+  const boss = gatedBoss(save.character);
+  if (!boss) return null;
+
+  // Each try gets its own seed, like normal fights.
+  const rng = new Rng(mixSeed(save.seed, save.fightCount));
+  save.fightCount++;
+  save.pendingFight = {
+    opponent: buildBoss(boss.id),
+    opponentPlan: { ...boss.plan },
+    live: false,
+    seed: rng.next(),
+    tactics: null,
+    inputs: { plays: [], breaks: [] },
+    bossId: boss.id,
+  };
   return save.pendingFight;
 }
 
@@ -227,9 +258,16 @@ export function finishFight(save: SaveData): FightResult {
     stats.bestStreak = Math.max(stats.bestStreak, stats.streak);
   } else {
     stats.streak = 0;
+    if (fight.bossId) stats.bossLosses[fight.bossId] = (stats.bossLosses[fight.bossId] ?? 0) + 1;
   }
   const xpGained = won ? XP_WIN : XP_LOSS;
-  const levelsGained = addXp(save.character, xpGained);
+  // Beating the boss that gates the fighter lifts the gate: the held XP overflows at once.
+  const bossBeaten = won && !!fight.bossId && gatedBoss(save.character)?.id === fight.bossId;
+  if (bossBeaten) {
+    (save.character.bosses ??= {})[fight.bossId!] = 'beaten';
+    save.character.xp = xpToNext(save.character.level);
+  }
+  const levelsGained = addXp(save.character, bossBeaten ? 0 : xpGained);
   if (levelsGained > 0) {
     save.pendingLevelUps += levelsGained;
     save.offer = offerFor(save);
@@ -245,7 +283,12 @@ export function finishFight(save: SaveData): FightResult {
     if (after > before) cardLevelUps.push({ card, level: after });
   }
   save.pendingFight = null;
-  return { opponent: fight.opponent, log, won, xpGained, levelsGained, cardsPlayed, cardLevelUps };
+  const result: FightResult = { opponent: fight.opponent, log, won, xpGained, levelsGained, cardsPlayed, cardLevelUps };
+  if (fight.bossId) {
+    result.bossId = fight.bossId;
+    if (bossBeaten) result.bossBeaten = true;
+  }
+  return result;
 }
 
 /**
@@ -296,12 +339,11 @@ export function migrateSave(raw: unknown): SaveData | null {
   }
   if (save.version === 7) {
     // Graduation is new: no legends yet. Bosses the fighter is already past are skipped,
-    // so they never block. Boss level B gates level B, except the last boss, who gates 19.
+    // so they never block (see gateLevel).
     const c = save.character as Character;
     save.legends = [];
-    for (const level of MIGRATION_BOSS_LEVELS) {
-      const gate = level === 20 ? 19 : level;
-      if (c.level > gate) (c.bosses ??= {})[MIGRATION_BOSS_IDS[level]!] = 'skipped';
+    for (const boss of Object.values(BOSSES)) {
+      if (c.level > gateLevel(boss)) (c.bosses ??= {})[boss.id] = 'skipped';
     }
     save.version = 8;
   }

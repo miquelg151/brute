@@ -1,3 +1,4 @@
+import { gatedBoss } from './bosses';
 import { BRANCHES, UPGRADES, UPGRADES_BY_ID, type UpgradeDef, type UpgradePool } from './catalog';
 import type { Rng } from './rng';
 import { addStats, type BranchId, type Character } from './types';
@@ -18,11 +19,19 @@ export function xpToNext(level: number): number {
   return 2 + level * 2;
 }
 
-/** Adds XP and returns how many levels were gained. */
+/**
+ * Adds XP and returns how many levels were gained. While a boss gates the fighter's level,
+ * XP stops one short of levelling and the rest is lost.
+ */
 export function addXp(c: Character, amount: number): number {
   c.xp += amount;
   let gained = 0;
-  while (c.xp >= xpToNext(c.level)) {
+  for (;;) {
+    if (gatedBoss(c)) {
+      c.xp = Math.min(c.xp, xpToNext(c.level) - 1);
+      break;
+    }
+    if (c.xp < xpToNext(c.level)) break;
     c.xp -= xpToNext(c.level);
     c.level++;
     gained++;
@@ -122,6 +131,68 @@ export function rollOffer(c: Character, rng: Rng, size = OFFER_SIZE, forLevel = 
     const foreign = UPGRADES.filter((u) => u.kind !== 'stat' && isCrossClass(c, u.id) && !owns(c, u));
     if (foreign.length > 0) offer[rng.int(0, offer.length)] = rng.pick(foreign).id;
   }
+  return offer;
+}
+
+/**
+ * The rare options of the fighter's branch: its signature skill, card and item from the
+ * content expansion. Fighters without a branch have none.
+ */
+const SIGNATURE_IDS: Partial<Record<BranchId, string[]>> = {
+  boxer: ['skill:rhythm', 'card:jab_flurry', 'gear:boxing_wraps'],
+  brute: ['skill:bone_breaker', 'card:street_bite', 'weapon:knuckles'],
+  acrobat: ['skill:momentum', 'card:backflip', 'gear:spring_sneakers'],
+  thief: ['skill:quick_hands', 'card:heist', 'weapon:switchblade'],
+  wall: ['skill:thorns', 'card:taunt', 'gear:dumpster_lid'],
+  wrecker: ['skill:demolition', 'card:sledge_swing', 'weapon:sledgehammer'],
+  pack: ['skill:pack_call', 'card:gang_up', 'pet:pigeon'],
+  bond: ['skill:guardian', 'card:together', 'gear:key_collar'],
+  witch: ['skill:flame', 'card:fireball', 'gear:neon_spray'],
+  warden: ['skill:overflow', 'card:rune_circle', 'gear:rune_amulet'],
+};
+
+/** Signature items the fighter does not own yet. */
+function signatureLeft(c: Character): UpgradeDef[] {
+  const ids = (c.branch && SIGNATURE_IDS[c.branch]) || [];
+  return ids.map((id) => UPGRADES_BY_ID[id]!).filter((u) => !owns(c, u));
+}
+
+/** Weapons, pets and gear the fighter could get from its own pools and does not own (the fallback rare options). */
+function fallbackRare(c: Character): UpgradeDef[] {
+  return UPGRADES.filter(
+    (u) =>
+      (u.kind === 'weapon' || u.kind === 'pet' || u.kind === 'gear') &&
+      (u.pool === 'general' || u.pool === c.classId) &&
+      (u.branch === undefined || u.branch === c.branch) &&
+      !owns(c, u),
+  );
+}
+
+/** True if the upgrade is a rare option for this fighter (see rollBossOffer). */
+export function isRareUpgrade(c: Character, upgradeId: string): boolean {
+  const u = UPGRADES_BY_ID[upgradeId];
+  if (!u || owns(c, u)) return false;
+  const left = signatureLeft(c);
+  if (left.length > 0) return left.some((s) => s.id === upgradeId);
+  return fallbackRare(c).some((f) => f.id === upgradeId);
+}
+
+/** How many choices the level-up after a boss has. */
+export const BOSS_OFFER_SIZE = 4;
+
+/**
+ * The offer for the level-up after beating a boss: 4 choices, at least one of them rare
+ * (a signature item of the fighter's branch, or else any weapon, pet or gear it does not own).
+ * The rare one sits in a random slot.
+ */
+export function rollBossOffer(c: Character, rng: Rng, forLevel = c.level): string[] {
+  const left = signatureLeft(c);
+  const rarePool = left.length > 0 ? left : fallbackRare(c);
+  const rare = rarePool.length > 0 ? rng.pick(rarePool).id : null;
+  // Roll extra choices so there are still enough once the rare one is taken out.
+  const rest = rollOffer(c, rng, BOSS_OFFER_SIZE + 1, forLevel).filter((id) => id !== rare);
+  const offer = rest.slice(0, rare ? BOSS_OFFER_SIZE - 1 : BOSS_OFFER_SIZE);
+  if (rare) offer.splice(rng.int(0, offer.length + 1), 0, rare);
   return offer;
 }
 

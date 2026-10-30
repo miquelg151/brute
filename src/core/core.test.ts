@@ -76,6 +76,14 @@ import {
   chooseFighterBranch,
   isCrossClass,
   needsBranch,
+  BOSSES,
+  BOSS_LEVELS,
+  buildBoss,
+  gateLevel,
+  gatedBoss,
+  isRareUpgrade,
+  prepareBossFight,
+  rollBossOffer,
 } from './index';
 import { weaponDetail } from '../ui/describe';
 
@@ -2673,5 +2681,215 @@ describe('old content regression guard', () => {
     const actual: Record<string, string> = {};
     for (const [a, b, seed] of seeds) actual[`${a} vs ${b}, seed ${seed}`] = hash(runFight(fighters(a), fighters(b), seed));
     expect(actual).toEqual(expected);
+  });
+});
+
+describe('bosses and the boss gate', () => {
+  /** A fighter standing at a level, with a branch if the level needs one. */
+  const at = (level: number, seed = 5): SaveData => {
+    const save = newGame('Me', look, 'brawler', 'port', seed);
+    save.character.level = level;
+    if (level >= BRANCH_LEVEL) save.character.branch = 'boxer';
+    return save;
+  };
+  /** Makes the player overwhelmingly strong so the next fight is won. */
+  const mighty = (save: SaveData) => {
+    save.character.bonusStats = { ...save.character.bonusStats, health: 300, strength: 80 };
+  };
+  /** Plays the started fight to the end with no cards, keeping the plan at every break. */
+  const finishStarted = (save: SaveData) => {
+    startFight(save, DEFAULT_PLAN, save.character.weapons);
+    for (let log = simulateFight(save); log.winner === null; log = simulateFight(save)) recordBreak(save, keep(save.character.weapons));
+    return finishFight(save);
+  };
+
+  it('has four bosses at the gate levels, each with a trick skill', () => {
+    expect(BOSS_LEVELS).toEqual([5, 10, 15, 20]);
+    expect(Object.keys(BOSSES)).toEqual(['rusty', 'alley_cat', 'sewer_king', 'champion']);
+    const tricks = ['boss_spare_parts', 'boss_nine_lives', 'boss_rat_tide', 'boss_read_the_fight'];
+    Object.values(BOSSES).forEach((boss, i) => {
+      expect(boss.level).toBe(BOSS_LEVELS[i]);
+      expect(boss.trick).toBe(tricks[i]);
+      expect(boss.name.length).toBeGreaterThan(2);
+      expect(boss.intro.length).toBeGreaterThan(5);
+      expect(boss.trickText.length).toBeGreaterThan(10);
+      const built = buildBoss(boss.id);
+      expect(built.level).toBe(boss.level);
+      expect(built.skills).toContain(boss.trick);
+      expect(SKILLS[boss.trick]!.description.length).toBeGreaterThan(10);
+      expect(built.name).toBe(boss.name);
+      expect(built.branch).toBeDefined();
+    });
+  });
+
+  it('gate levels are 5, 10, 15 and 19 (for the Champion)', () => {
+    expect(Object.values(BOSSES).map(gateLevel)).toEqual([5, 10, 15, 19]);
+  });
+
+  it('boss builds are deterministic and never share state', () => {
+    expect(buildBoss('rusty')).toEqual(buildBoss('rusty'));
+    expect(buildBoss('rusty')).not.toBe(buildBoss('rusty'));
+  });
+
+  it('a boss fight runs without crashing for every boss', () => {
+    for (const id of Object.keys(BOSSES) as (keyof typeof BOSSES)[]) {
+      const log = playThrough(createCharacter('P', look, 'brawler', 'port'), buildBoss(id), 7).log;
+      expect(log.winner).not.toBeNull();
+    }
+  });
+
+  it('boss trick ids are in no upgrade pool', () => {
+    const ids = UPGRADES.map((u) => (u.kind === 'stat' ? '' : u.ref));
+    for (const boss of Object.values(BOSSES)) expect(ids).not.toContain(boss.trick);
+  });
+
+  it('gatedBoss finds the boss for the level, unless beaten or skipped', () => {
+    expect(gatedBoss(at(4).character)).toBeNull();
+    expect(gatedBoss(at(5).character)?.id).toBe('rusty');
+    expect(gatedBoss(at(10).character)?.id).toBe('alley_cat');
+    expect(gatedBoss(at(15).character)?.id).toBe('sewer_king');
+    expect(gatedBoss(at(19).character)?.id).toBe('champion');
+    expect(gatedBoss(at(20).character)).toBeNull();
+    const done = at(5).character;
+    done.bosses = { rusty: 'beaten' };
+    expect(gatedBoss(done)).toBeNull();
+    done.bosses = { rusty: 'skipped' };
+    expect(gatedBoss(done)).toBeNull();
+  });
+
+  it('XP stops one short of levelling at every gate level', () => {
+    for (const level of [5, 10, 15, 19]) {
+      const c = at(level).character;
+      expect(addXp(c, 1000)).toBe(0);
+      expect(c.level).toBe(level);
+      expect(c.xp).toBe(xpToNext(level) - 1);
+    }
+  });
+
+  it('XP flows normally between gates and stops when a level reaches a gate', () => {
+    const c = at(4).character;
+    expect(addXp(c, xpToNext(4) + 1)).toBe(1);
+    expect(c.level).toBe(5);
+    expect(c.xp).toBe(1);
+    addXp(c, 1000);
+    expect(c.level).toBe(5);
+  });
+
+  it('a normal fight at a gate level gives no level', () => {
+    const save = at(5);
+    save.character.xp = xpToNext(5) - 1;
+    mighty(save);
+    const result = playAuto(save)!;
+    expect(result.won).toBe(true);
+    expect(result.levelsGained).toBe(0);
+    expect(save.pendingLevelUps).toBe(0);
+    expect(save.character.xp).toBe(xpToNext(5) - 1);
+  });
+
+  it('prepareBossFight is null when no boss gates the fighter', () => {
+    expect(prepareBossFight(at(3))).toBeNull();
+    const beaten = at(5);
+    beaten.character.bosses = { rusty: 'beaten' };
+    expect(prepareBossFight(beaten)).toBeNull();
+  });
+
+  it('prepareBossFight makes a boss fight, and keeps it on reload', () => {
+    const save = at(5);
+    const fight = prepareBossFight(save)!;
+    expect(fight.bossId).toBe('rusty');
+    expect(fight.opponent).toEqual(buildBoss('rusty'));
+    expect(prepareBossFight(save)).toBe(fight);
+    expect(prepareFight(save)).toBe(fight);
+  });
+
+  it('prepareBossFight waits for a pending level-up, and does not replace a normal fight', () => {
+    const waiting = at(5);
+    waiting.pendingLevelUps = 1;
+    expect(prepareBossFight(waiting)).toBeNull();
+    const busy = at(5);
+    const normal = prepareFight(busy)!;
+    expect(prepareBossFight(busy)).toBeNull();
+    expect(busy.pendingFight).toBe(normal);
+  });
+
+  it('beating a boss levels up at once with an offer of 4 that holds a rare option', () => {
+    const save = at(5);
+    mighty(save);
+    prepareBossFight(save);
+    const result = finishStarted(save);
+    expect(result.won).toBe(true);
+    expect(result.bossId).toBe('rusty');
+    expect(result.bossBeaten).toBe(true);
+    expect(result.levelsGained).toBe(1);
+    expect(save.character.level).toBe(6);
+    expect(save.character.xp).toBe(0);
+    expect(save.character.bosses?.rusty).toBe('beaten');
+    expect(save.pendingLevelUps).toBe(1);
+    expect(save.offer).toHaveLength(4);
+    expect(new Set(save.offer).size).toBe(4);
+    expect(save.offer!.some((id) => isRareUpgrade(save.character, id))).toBe(true);
+    // The next gate works.
+    save.character.level = 10;
+    expect(gatedBoss(save.character)?.id).toBe('alley_cat');
+  });
+
+  it('the boss offer comes back the same when it is rolled again (a reload)', () => {
+    const save = at(5);
+    mighty(save);
+    prepareBossFight(save);
+    finishStarted(save);
+    const first = save.offer;
+    save.offer = null;
+    prepareLevelUp(save);
+    expect(save.offer).toEqual(first);
+  });
+
+  it('losing to a boss counts the loss and keeps the gate', () => {
+    const save = at(5);
+    save.character.bonusStats = { ...save.character.bonusStats, health: -4 };
+    prepareBossFight(save);
+    const result = finishStarted(save);
+    expect(result.won).toBe(false);
+    expect(result.bossId).toBe('rusty');
+    expect(result.bossBeaten).toBeFalsy();
+    expect(fighterStats(save.character).bossLosses.rusty).toBe(1);
+    expect(save.character.level).toBe(5);
+    expect(save.character.bosses?.rusty).toBeUndefined();
+    expect(prepareBossFight(save)).not.toBeNull();
+  });
+
+  it('a skipped boss never gates', () => {
+    const save = at(5);
+    save.character.bosses = { rusty: 'skipped' };
+    addXp(save.character, 100);
+    expect(save.character.level).toBeGreaterThan(5);
+  });
+
+  it('rollBossOffer gives 4 distinct ids with a rare one, for every class and branch', () => {
+    for (const classId of CLASS_IDS) {
+      for (const branch of BRANCHES[classId]) {
+        const c = createCharacter('R', look, classId, 'port');
+        c.level = 5;
+        c.branch = branch.id;
+        for (let seed = 1; seed <= 20; seed++) {
+          const offer = rollBossOffer(c, new Rng(seed));
+          expect(offer).toHaveLength(4);
+          expect(new Set(offer).size).toBe(4);
+          expect(offer.some((id) => isRareUpgrade(c, id))).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('rollBossOffer falls back to any unowned weapon, pet or gear when the signature items are owned', () => {
+    const c = createCharacter('R', look, 'brawler', 'port');
+    c.level = 5;
+    c.branch = 'boxer';
+    for (const u of UPGRADES) {
+      if (u.kind !== 'stat' && u.pool === 'brawler' && u.branch === 'boxer' && isRareUpgrade(c, u.id)) applyUpgrade(c, u.id);
+    }
+    const offer = rollBossOffer(c, new Rng(3));
+    expect(offer).toHaveLength(4);
+    expect(offer.some((id) => isRareUpgrade(c, id))).toBe(true);
   });
 });

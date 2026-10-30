@@ -6,6 +6,7 @@ export * from './character';
 export * from './tactics';
 export * from './fight';
 export * from './progression';
+export * from './bosses';
 export * from './opponents';
 export * from './ranks';
 export * from './game';
