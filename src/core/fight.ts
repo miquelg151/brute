@@ -81,6 +81,16 @@ export type FightEvent =
   | { t: 'steal'; actor: number; target: number; energy: number; stamina: number }
   /** Thorns: the actor's armor hurt `target`, who just hit them. */
   | { t: 'thorns'; actor: number; target: number; damage: number; hp: number }
+  /** Armor break (Demolition, Sledge Swing): the actor's hit removed `amount` armor from `target`, who has `armor` left. */
+  | { t: 'armor_break'; actor: number; target: number; amount: number; armor: number }
+  /** Guardian: the actor (a pet) took `damage` that was aimed at its owner `target`. */
+  | { t: 'guardian'; actor: number; target: number; damage: number; hp: number }
+  /** Burn (Flame, Fireball) hurt a fighter at the start of their turn. */
+  | { t: 'burn'; actor: number; damage: number; hp: number }
+  /** Overflow: healing above max health became a ward of `amount`; the ward is now `ward`. */
+  | { t: 'overheal'; actor: number; amount: number; ward: number }
+  /** A weapon that breaks (Bottle) was spent by its first landed hit. */
+  | { t: 'weapon_break'; actor: number; weapon: string }
   /** A fighter lost a turn to Power Surge or Headbutt. */
   | { t: 'stunned'; actor: number }
   | { t: 'death'; actor: number };
@@ -183,6 +193,15 @@ const QUICK_HANDS_CHANCE = 30;
 const QUICK_HANDS_STAMINA = 5;
 /** Thorns skill: share (%) of the damage dealt that goes back to the attacker. */
 const THORNS_PCT = 20;
+/** Pack Call: extra damage (%) for each pet beyond the first. */
+const PACK_PCT = 15;
+/** Guardian: share (%) of the damage aimed at the owner that the healthiest pet takes. */
+const GUARDIAN_PCT = 30;
+/** Burn lasts this many turns. Flame: damage per turn of the burn from a damaging spell. */
+const BURN_TURNS = 3;
+const FLAME_BURN = 3;
+/** Overflow: the most health (%) that overhealing can turn into a ward. */
+const OVERFLOW_CAP_PCT = 20;
 /** Wall Run: extra counter damage (%). */
 const WALL_RUN_PCT = 50;
 /** Bond: the owner heals this share (%) of the damage their pets deal. */
@@ -291,6 +310,12 @@ interface Unit {
   poisonTurns: number;
   poisonDamage: number;
   poisonBy: number;
+  /** Armor taken away by armor break; it stays gone when the stance is applied again each round. */
+  armorLost: number;
+  /** Burn on this unit: turns left, damage per turn, and who caused it. */
+  burnTurns: number;
+  burnDamage: number;
+  burnBy: number;
   /** Bleed on this unit: turns left, damage per turn, and who caused it. */
   bleedTurns: number;
   bleedDamage: number;
@@ -349,7 +374,7 @@ function applyPlan(u: Unit, plan: Plan): void {
   const stance = STANCES[plan.stance];
   const style = WEAPON_STYLES[plan.weaponStyle];
   u.plan = { ...plan };
-  u.armor = Math.max(0, u.base.armor + stance.armor);
+  u.armor = Math.max(0, u.base.armor + stance.armor - u.armorLost);
   u.dodgeBonus = u.base.dodge + stance.dodge;
   u.dodgeCap = DODGE_CAP + Math.max(0, stance.dodge);
   u.damagePct = u.base.damagePct + stance.damage;
@@ -452,6 +477,10 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     poisonTurns: 0,
     poisonDamage: 0,
     poisonBy: 0,
+    armorLost: 0,
+    burnTurns: 0,
+    burnDamage: 0,
+    burnBy: 0,
     bleedTurns: 0,
     bleedDamage: 0,
     bleedBy: 0,
@@ -623,12 +652,15 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     return magic && def.plan.stance !== 'agile' ? Math.floor((capped * 60) / 100) : capped;
   };
 
+  /** Damage (%) of a thrown weapon: x1.5, x2 with Thrower, plus the weapon's own bonus (Brick). */
+  const throwPct = (u: Unit): number => (u.skills.has('thrower') ? 200 : 150) + (u.weapon ? (WEAPONS[u.weapon]?.throwBonusPct ?? 0) : 0);
+
   const baseDamage = (att: Unit, kind: HitKind, quality: number, specialBonus = SPECIAL_MAX_BONUS, nextHitPct = 0): number => {
     if (!att.isMain) return Math.floor((att.power * (100 + nextHitPct)) / 100);
     const weapon = att.weapon ? WEAPONS[att.weapon] : undefined;
     let dmg = att.power + (weapon ? weapon.damage : FISTS_DAMAGE + (att.skills.has('iron_fists') ? 4 : 0));
     if (weapon?.heavy && att.skills.has('heavy_hands')) dmg = Math.floor((dmg * 125) / 100);
-    if (kind === 'throw') dmg = Math.floor((dmg * (att.skills.has('thrower') ? 200 : 150)) / 100);
+    if (kind === 'throw') dmg = Math.floor((dmg * throwPct(att)) / 100);
     if (kind === 'special') dmg = Math.floor((dmg * (100 + (quality * specialBonus) / 100)) / 100);
     if (att.skills.has('fury') && att.hp * 100 < att.maxHp * 30) dmg = Math.floor((dmg * 130) / 100);
     if (tired(att)) dmg = Math.floor((dmg * 75) / 100);
@@ -651,6 +683,49 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     events.push({ t: 'rhythm', actor: u.idx, stacks: next });
   };
 
+  /**
+   * Heals a fighter. A burning fighter heals half (at least 1). With Overflow, what does not fit
+   * becomes a ward, so a ward never goes above 20% of max health because of overhealing.
+   */
+  const heal = (u: Unit, raw: number) => {
+    const amount = u.burnTurns > 0 && raw > 0 ? Math.max(1, Math.floor(raw / 2)) : raw;
+    const before = u.hp;
+    u.hp = Math.min(u.maxHp, u.hp + amount);
+    events.push({ t: 'heal', actor: u.idx, amount: u.hp - before, hp: u.hp });
+    const extra = amount - (u.hp - before);
+    if (extra > 0 && u.skills.has('overflow')) {
+      const cap = Math.floor((u.maxHp * OVERFLOW_CAP_PCT) / 100);
+      const ward = Math.max(u.ward, Math.min(cap, u.ward + extra));
+      if (ward > u.ward) {
+        events.push({ t: 'overheal', actor: u.idx, amount: ward - u.ward, ward });
+        u.ward = ward;
+      }
+    }
+  };
+
+  /** Armor break: the target loses armor (never below 0) for the rest of the fight. */
+  const breakArmor = (att: Unit, def: Unit, amount: number) => {
+    const taken = Math.min(def.armor, amount);
+    if (taken <= 0) return;
+    def.armor -= taken;
+    def.armorLost += taken;
+    events.push({ t: 'armor_break', actor: att.idx, target: def.idx, amount: taken, armor: def.armor });
+  };
+
+  /** A new burn restarts the 3 turns; a stronger one replaces a weaker burn. */
+  const applyBurn = (def: Unit, damage: number, by: Unit) => {
+    def.burnDamage = def.burnTurns > 0 ? Math.max(def.burnDamage, damage) : damage;
+    def.burnTurns = BURN_TURNS;
+    def.burnBy = by.idx;
+  };
+
+  /** The pets of a team that are still fighting (spirits are summons, not pets). */
+  const livingPets = (team: Team): Unit[] => units.filter((p) => p.team === team && !p.isMain && alive(p) && roster[p.idx]!.defId !== 'spirit');
+
+  /** True if the last events (since `seen`) show a hit from `att` on `def` that landed, even blocked. */
+  const landedSince = (seen: number, att: Unit, def: Unit): boolean =>
+    events.slice(seen).some((e) => (e.t === 'hit' || e.t === 'block') && e.actor === att.idx && e.target === def.idx);
+
   /** A new bleed restarts the 3 turns; a stronger one replaces a weaker bleed. */
   const applyBleed = (def: Unit, damage: number, by: Unit) => {
     def.bleedDamage = def.bleedTurns > 0 ? Math.max(def.bleedDamage, damage) : damage;
@@ -668,6 +743,19 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     }
   };
 
+  /** Guardian: the pet with the most health takes 30% of `damage`. Returns how much it took. */
+  const guard = (att: Unit, owner: Unit, damage: number): number => {
+    const pets = livingPets(owner.team);
+    if (pets.length === 0) return 0;
+    const pet = pets.reduce((best, p) => (p.hp > best.hp ? p : best));
+    const share = Math.floor((damage * GUARDIAN_PCT) / 100);
+    if (share <= 0) return 0;
+    pet.hp = Math.max(0, pet.hp - share);
+    events.push({ t: 'guardian', actor: pet.idx, target: owner.idx, damage: share, hp: pet.hp });
+    if (pet.hp === 0) kill(pet, att);
+    return share;
+  };
+
   /** Health actually lost to the last hit that landed (after wards and Thick Skull). */
   let lastDealt = 0;
 
@@ -681,6 +769,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       def.waveHits--;
       damage = Math.floor((damage * (100 - def.wavePct)) / 100);
     }
+    // Guardian: the healthiest pet takes a share of what was aimed at its owner.
+    if (def.isMain && def.skills.has('guardian') && damage > 0) damage -= guard(att, def, damage);
     if (def.ward > 0) {
       const absorbed = Math.min(def.ward, damage);
       def.ward -= absorbed;
@@ -699,9 +789,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     }
     if (def.skills.has('second_wind') && !def.secondWindUsed && def.hp * 100 < def.maxHp * 25) {
       def.secondWindUsed = true;
-      const amount = Math.floor(def.maxHp / 4);
-      def.hp = Math.min(def.maxHp, def.hp + amount);
-      events.push({ t: 'heal', actor: def.idx, amount, hp: def.hp });
+      heal(def, Math.floor(def.maxHp / 4));
     }
     return true;
   };
@@ -716,6 +804,12 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
 
   /** The fighter who owns a pet (spirits are summons, not pets). Undefined for anyone else. */
   const petOwner = (u: Unit): Unit | undefined => (!u.isMain && roster[u.idx]!.defId !== 'spirit' ? units[u.owner] : undefined);
+
+  /** Pack Call: extra damage (%) for a pet whose owner has more than one pet. */
+  const packBonus = (att: Unit): number => {
+    const owner = petOwner(att);
+    return owner?.skills.has('pack_call') ? PACK_PCT * Math.max(0, livingPets(att.team).length - 1) : 0;
+  };
 
   /** Resolves one physical attack. Returns true if the target survived. Specials and throws cannot be dodged. */
   const attack = (att: Unit, def: Unit, kind: HitKind, quality = 0, specialBonus = SPECIAL_MAX_BONUS): boolean => {
@@ -760,7 +854,9 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const quickHit = kind === 'double' || kind === 'counter';
     const fullArmor = Math.max(0, def.armor - (att.weapon && kind !== 'throw' ? att.armorPierce : 0));
     const armor = att.isMain && !quickHit ? fullArmor : Math.floor(fullArmor / 2);
-    let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality, specialBonus, nextHitPct) * roll) / 100) - armor);
+    // Pack Call: a pet hits harder for each other pet its owner has (worked into the roll, so small hits keep their fractions).
+    const packPct = packBonus(att);
+    let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality, specialBonus, nextHitPct) * roll * (100 + packPct)) / 10000) - armor);
     if (!def.isMain) damage = Math.max(1, Math.floor((damage * TARGETS[att.plan.target].petDamagePct) / 100));
     // Feral: a pet's hit may do double damage.
     const owner = petOwner(att);
@@ -782,6 +878,15 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const survived = land(att, def, kind, damage, blocked);
     // Headbutt: a hit that lands (even blocked) on the enemy fighter makes them lose their next turn.
     if (nextHitStuns && survived && def.isMain) def.stunned = true;
+    // Demolition: every landed hit takes 1 armor off the target for the rest of the fight.
+    if (survived && att.skills.has('demolition')) breakArmor(att, def, 1);
+    // A weapon that breaks (Bottle) is spent by its first landed hit, and not drawn again.
+    const spent = att.weapon && kind !== 'throw' ? WEAPONS[att.weapon] : undefined;
+    if (spent?.breaks && winner === null && alive(att)) {
+      events.push({ t: 'weapon_break', actor: att.idx, weapon: spent.id });
+      att.thrown.add(spent.id);
+      att.weapon = null;
+    }
     // Rhythm: every landed hit adds a stack.
     if (att.rhythmWorks && winner === null && alive(att)) setRhythm(att, att.rhythm + 1);
     // Bone Breaker: a landed melee hit may make the target bleed.
@@ -807,9 +912,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     }
     // Bond: the owner heals part of what their pet dealt (never after a knockout).
     if (owner?.skills.has('bond') && lastDealt > 0 && winner === null && alive(owner) && owner.hp < owner.maxHp) {
-      const amount = Math.min(owner.maxHp - owner.hp, Math.max(1, Math.floor((lastDealt * BOND_PCT) / 100)));
-      owner.hp += amount;
-      events.push({ t: 'heal', actor: owner.idx, amount, hp: owner.hp });
+      heal(owner, Math.max(1, Math.floor((lastDealt * BOND_PCT) / 100)));
     }
     if (survived && alive(att) && att.skills.has('disarm') && def.weapon && rng.chance(15)) {
       events.push({ t: 'disarm', actor: att.idx, target: def.idx, weapon: def.weapon });
@@ -819,7 +922,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
   };
 
   /** Magic damage: dodgeable, ignores armor and shields, reduced by magic resistance. */
-  const magicAttack = (att: Unit, def: Unit, base: number, sure = false): { survived: boolean; dealt: number } => {
+  const magicAttack = (att: Unit, def: Unit, base: number, sure = false, burn = 0): { survived: boolean; dealt: number } => {
     // The Overcharge bonus is used up by the next spell, whether it hits, is dodged or misses.
     const bonusPct = att.spellBonusPct;
     att.spellBonusPct = 0;
@@ -833,6 +936,9 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const damage = Math.max(1, Math.floor((raw * (100 - def.magicResist)) / 100));
     const before = def.hp;
     const survived = land(att, def, 'spell', damage, false);
+    // Flame: any damaging spell that lands burns; Fireball burns more (the stronger burn counts).
+    const burnDamage = Math.max(burn, att.skills.has('flame') ? FLAME_BURN : 0);
+    if (survived && burnDamage > 0) applyBurn(def, burnDamage, att);
     return { survived, dealt: before - def.hp };
   };
 
@@ -868,9 +974,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       case 'drain': {
         const { dealt } = magicAttack(u, foe, 3 + u.magic);
         if (dealt > 0 && alive(u)) {
-          const amount = Math.max(1, Math.floor(dealt / 2));
-          u.hp = Math.min(u.maxHp, u.hp + amount);
-          events.push({ t: 'heal', actor: u.idx, amount, hp: u.hp });
+          heal(u, Math.max(1, Math.floor(dealt / 2)));
         }
         break;
       }
@@ -888,9 +992,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         foe.blinded = true;
         break;
       case 'mend': {
-        const amount = Math.floor((u.maxHp * 15) / 100) + u.magic;
-        u.hp = Math.min(u.maxHp, u.hp + amount);
-        events.push({ t: 'heal', actor: u.idx, amount, hp: u.hp });
+        heal(u, Math.floor((u.maxHp * 15) / 100) + u.magic);
         break;
       }
     }
@@ -994,18 +1096,15 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         u.spellBonusPct = scaled(30, level);
         break;
       case 'patch_up': {
-        const before = u.hp;
-        u.hp = Math.min(u.maxHp, u.hp + Math.floor((u.maxHp * scaled(10, level)) / 100));
-        events.push({ t: 'heal', actor: u.idx, amount: u.hp - before, hp: u.hp });
+        heal(u, Math.floor((u.maxHp * scaled(10, level)) / 100));
         break;
       }
       case 'hurl': {
         const target = enemyMainOf(u);
         if (u.weapon) {
-          // A throw already multiplies damage (x1.5, x2 with Thrower); the bonus tops it up to the card's total.
-          const throwPct = u.skills.has('thrower') ? 200 : 150;
+          // A throw already multiplies damage (x1.5, x2 with Thrower, more with a Brick); the bonus tops it up to the card's total.
           // Added to any pending bonus (Feint, Rush, Haymaker), which the throw uses up.
-          u.nextHitPct += Math.round((scaled(200, level) * 100) / throwPct) - 100;
+          u.nextHitPct += Math.round((scaled(200, level) * 100) / throwPct(u)) - 100;
           // A throw can't be dodged anyway: a pending "can't be dodged" (Haymaker) is kept for the next hit.
           const keepSure = u.nextHitSure;
           u.thrown.add(u.weapon);
@@ -1134,6 +1233,38 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         if (landed && alive(foe)) applyBleed(foe, scaled(5, level), u);
         break;
       }
+      case 'sledge_swing': {
+        const foe = enemyMainOf(u);
+        u.nextHitPct += scaled(20, level);
+        const seen = events.length;
+        attack(u, foe, 'melee');
+        // Only a hit that landed (even blocked) breaks armor.
+        if (landedSince(seen, u, foe) && alive(foe)) breakArmor(u, foe, 4);
+        break;
+      }
+      case 'gang_up':
+        for (const pet of livingPets(u.team)) {
+          attack(pet, pickTarget(pet), 'melee');
+          if (winner !== null) break;
+        }
+        if (winner === null) attack(u, enemyMainOf(u), 'melee');
+        break;
+      case 'together': {
+        const pct = scaled(15, level);
+        heal(u, Math.floor((u.maxHp * pct) / 100));
+        for (const pet of livingPets(u.team)) heal(pet, Math.floor((pet.maxHp * pct) / 100));
+        break;
+      }
+      case 'fireball':
+        events.push({ t: 'cast', actor: u.idx, spell: 'fireball', target: enemyMainOf(u).idx });
+        magicAttack(u, enemyMainOf(u), 5 + u.magic, true, scaled(5, level));
+        break;
+      case 'rune_circle':
+        heal(u, Math.floor((u.maxHp * scaled(10, level)) / 100));
+        // A bigger ward is kept, not replaced.
+        u.ward = Math.max(u.ward, 8 + u.magic);
+        events.push({ t: 'ward', actor: u.idx, absorbed: 0, left: u.ward });
+        break;
       case 'backflip':
         u.sureDodges += scaledCount(2, level);
         u.energy = Math.min(MAX_ENERGY, u.energy + 2);
@@ -1210,9 +1341,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       u.stamina = Math.min(u.maxStamina, u.stamina + u.staminaRegen);
       if (u.maxMana > 0) u.mana = Math.min(u.maxMana, u.mana + MANA_REGEN);
       if (u.hpRegen > 0 && u.hp < u.maxHp) {
-        const before = u.hp;
-        u.hp = Math.min(u.maxHp, u.hp + u.hpRegen);
-        events.push({ t: 'heal', actor: u.idx, amount: u.hp - before, hp: u.hp });
+        heal(u, u.hpRegen);
       }
     }
     if (trySpecial(u)) return;
@@ -1289,6 +1418,17 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       events.push({ t: 'bleed', actor: u.idx, damage: u.bleedDamage, hp: u.hp });
       if (u.hp === 0) {
         kill(u, units[u.bleedBy]!);
+        return;
+      }
+    }
+    // Burn hurts right after bleed, the same way.
+    if (u.burnTurns > 0) {
+      u.burnTurns--;
+      u.hp = Math.max(0, u.hp - u.burnDamage);
+      setRhythm(u, 0);
+      events.push({ t: 'burn', actor: u.idx, damage: u.burnDamage, hp: u.hp });
+      if (u.hp === 0) {
+        kill(u, units[u.burnBy]!);
         return;
       }
     }

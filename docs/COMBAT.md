@@ -55,6 +55,11 @@ the choices made at each break.
 | Backflip | 4 | Parkour (Acrobat) | Dodge the next 2 attacks for sure (3 at level 4) and gain +2 energy. |
 | Heist | 4 | Parkour (Thief) | Steal 2 energy (3 at level 4) and 15 stamina (only what they have). |
 | Taunt | 3 | Bouncer (Wall) | For your next 2 turns enemy pets must attack you, and your thorns against them are doubled. |
+| Sledge Swing | 5 | Bouncer (Wrecker) | A hit (+20%): if it lands (even blocked), they lose 4 armor (only what they have). |
+| Gang Up | 5 | Tamer (Pack) | Every living pet attacks at once, then you attack too. |
+| Together | 4 | Tamer (Bond) | You and your living pets heal 15% of their own max health each. |
+| Fireball | 5 | Mystic (Witch) | A spell (5 + magic) that can't be dodged and burns 5 on each of their next 3 turns. |
+| Rune Circle | 4 | Mystic (Warden) | Heal 10% and raise a ward of 8 + magic (a bigger ward you already have is kept). |
 
 - The Special Strike shows a timing bar: the better the timing, the bigger the bonus.
   Below 25% timing it fails and the turn plays normally. It costs 20 stamina.
@@ -120,6 +125,26 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
 - **Thorns** (Thorns skill 20%, Dumpster Lid 10%, they add up): an attacker that lands a melee
   hit (not a throw) takes that share of the health lost by the target, at least 1. It ignores
   armor and wards. Taunt doubles the share against enemy pets and makes them pick the taunter.
+
+## Signature mechanics, part 2 (Wrecker, Pack, Bond, Witch, Warden)
+
+- **Armor break** (Demolition: each landed hit takes 1 armor; Sledge Swing: 4): the armor stays
+  gone for the rest of the fight, even when a new stance is applied at the start of a round, and
+  never goes below 0. A new stance can still add armor on top.
+- **Pack bonus** (Pack Call): each living pet beyond the first gives all your pets +15% damage
+  (spirits do not count). Pets with tiny damage (1-2) gain little because of rounding.
+- **Guardian**: while you have a living pet, the one with the most current health takes 30% of the
+  damage aimed at you (hits and spells, after blocks and Thick Skull, before wards). It can die
+  from this. Spirits do not guard.
+- **Burn** (Flame: damaging spells burn 3; Fireball: burn 5): like bleed, the target loses N at the
+  start of each of its next 3 turns, after bleed, ignoring armor and wards. A new burn restarts
+  the turns and keeps the higher N. While burning, every heal they get is halved (rounded down,
+  at least 1).
+- **Overheal** (Overflow): the part of a heal that does not fit becomes a ward, and overhealing
+  never makes the ward bigger than 20% of max health.
+- **Bottle** breaks after its first landed hit (melee, not a throw) and is not drawn again that
+  fight. **Brick**: +50 added to the throw multiplier (x2 instead of x1.5; x2.5 with Thrower),
+  so Hurl, which already totals x2, gains nothing extra from it.
 
 ## Branches
 

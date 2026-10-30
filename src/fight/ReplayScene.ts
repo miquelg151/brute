@@ -390,6 +390,16 @@ export class ReplayScene extends Phaser.Scene {
         return this.onSteal(e.actor, e.energy, e.stamina);
       case 'thorns':
         return this.onThorns(e.target, e.damage, e.hp);
+      case 'armor_break':
+        return this.onShortText(e.target, `ARMOR -${e.amount}`, PAL.sand);
+      case 'guardian':
+        return this.onGuardian(e.actor, e.damage, e.hp);
+      case 'burn':
+        return this.onBurn(e.actor, e.damage, e.hp);
+      case 'overheal':
+        return this.onOverheal(e.actor, e.ward);
+      case 'weapon_break':
+        return this.onWeaponBreak(e.actor);
       case 'death':
         this.hooks.onUnitAlive(e.actor, false);
         return this.onDeath(e.actor);
@@ -574,6 +584,45 @@ export class ReplayScene extends Phaser.Scene {
     this.drawBars(v);
     await this.wait(350);
     v.sprite.clearTint();
+  }
+
+  /** Burn hurts at the start of the burning fighter's turn. */
+  private async onBurn(actor: number, damage: number, hp: number): Promise<void> {
+    const v = this.view(actor);
+    v.sprite.setTint(num(PAL.orange));
+    this.floatText(v.sprite.x, this.headY(v), `BURN -${damage}`, PAL.orange);
+    v.hp = hp;
+    this.drawBars(v);
+    await this.wait(350);
+    v.sprite.clearTint();
+  }
+
+  /** Guardian: a pet takes part of a hit aimed at its owner. */
+  private async onGuardian(actor: number, damage: number, hp: number): Promise<void> {
+    const v = this.view(actor);
+    this.floatText(v.sprite.x, this.headY(v), `GUARD -${damage}`, PAL.cyan);
+    v.hp = hp;
+    this.drawBars(v);
+    await this.wait(200);
+  }
+
+  /** Overflow: healing that did not fit became a ward. */
+  private async onOverheal(actor: number, ward: number): Promise<void> {
+    const v = this.view(actor);
+    this.drawWard(v, ward);
+    this.floatText(v.sprite.x, this.headY(v) - 8, 'OVERHEAL', PAL.cyan);
+    await this.wait(200);
+  }
+
+  /** A Bottle breaks: the weapon in hand is gone. */
+  private async onWeaponBreak(actor: number): Promise<void> {
+    const v = this.view(actor);
+    const weapon = v.weapon;
+    v.weapon = null;
+    this.floatText(v.sprite.x, this.headY(v) - 8, 'BROKEN', PAL.orange);
+    if (!weapon) return;
+    await this.tween({ targets: weapon, y: GROUND_Y + 8, angle: 90, alpha: 0, duration: 250 });
+    weapon.destroy();
   }
 
   /** Rhythm stacks went up (a short text) or were lost (nothing to show). */

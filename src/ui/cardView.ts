@@ -36,6 +36,11 @@ export const CARD_ICONS: Record<string, IconName> = {
   backflip: 'dodge',
   heist: 'accessory',
   taunt: 'armor',
+  sledge_swing: 'heavy',
+  gang_up: 'manyHits',
+  together: 'pet',
+  fireball: 'magic',
+  rune_circle: 'armor',
 };
 
 /**

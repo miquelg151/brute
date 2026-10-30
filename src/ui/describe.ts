@@ -64,7 +64,8 @@ export function weaponDetail(weaponId: string): string {
   const w = WEAPONS[weaponId];
   if (!w) return '';
   const acc = w.accuracy === 0 ? '' : `, accuracy ${w.accuracy > 0 ? '+' : ''}${w.accuracy}%`;
-  return `Damage ${w.damage}${acc}${w.heavy ? ', heavy' : ''}. Drawn at random during fights.`;
+  const extra = `${w.breaks ? ' Breaks after its first landed hit.' : ''}${w.throwBonusPct ? ` Thrown for +${w.throwBonusPct}% damage.` : ''}`;
+  return `Damage ${w.damage}${acc}${w.heavy ? ', heavy' : ''}. Drawn at random during fights.${extra}`;
 }
 
 /** What a pet brings, e.g. "Fights by your side. Health 13, damage 3, speed 5." */
