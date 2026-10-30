@@ -54,7 +54,9 @@
     "dog": "pets/dog.png",
     "crow": "pets/crow.png",
     "raccoon": "pets/raccoon.png",
-    "spirit": "pets/spirit.png"
+    "spirit": "pets/spirit.png",
+    "rat": "pets/rat.png",
+    "pigeon": "pets/pigeon.png"
   },
   "weapons": {
     "bat": "weapons/bat.png",
@@ -62,7 +64,14 @@
     "skateboard": "weapons/skateboard.png",
     "umbrella": "weapons/umbrella.png",
     "traffic_sign": "weapons/traffic_sign.png",
-    "extinguisher": "weapons/extinguisher.png"
+    "extinguisher": "weapons/extinguisher.png",
+    "brick": "weapons/brick.png",
+    "bottle": "weapons/bottle.png",
+    "pool_cue": "weapons/pool_cue.png",
+    "crowbar": "weapons/crowbar.png",
+    "knuckles": "weapons/knuckles.png",
+    "switchblade": "weapons/switchblade.png",
+    "sledgehammer": "weapons/sledgehammer.png"
   },
   "background": "backgrounds/street.png"
 }

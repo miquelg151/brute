@@ -207,6 +207,26 @@
     ]
   },
   {
+    "name": "tab-fighter-new-items",
+    "steps": [
+      { "include": "rich" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.weapons = ['brick', 'bottle', 'pool_cue', 'crowbar', 'knuckles', 'switchblade', 'sledgehammer']; c.pets = ['rat', 'pigeon']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "click": ".tab-fighter" },
+      { "shot": "tab-fighter-new-items" }
+    ]
+  },
+  {
+    "name": "gallery",
+    "steps": [
+      { "eval": "setTimeout(() => { location.search = '?gallery'; }, 0);" },
+      { "wait": 2500 },
+      { "eval": "const missing = []; for (const head of document.querySelectorAll('h2')) { if (head.textContent !== 'Pets' && head.textContent !== 'Weapons') continue; for (const fig of head.nextElementSibling.querySelectorAll('.gallery-tile')) { if (!fig.querySelector('.tag')) missing.push(fig.querySelector('figcaption').textContent); } } if (missing.length) throw new Error(`pets or weapons still drawn as placeholders: ${missing.join(', ')}`);" },
+      { "eval": "[...document.querySelectorAll('h2')].find((el) => el.textContent === 'Pets').scrollIntoView();" },
+      { "shot": "gallery-pets-weapons" }
+    ]
+  },
+  {
     "name": "tab-cards",
     "steps": [
       { "include": "rich" },

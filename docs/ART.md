@@ -124,6 +124,13 @@ changes the Sic 'em and Stray Dog cards.
 You only need the entries you have art for. Ids (like `traffic_sign`) are the ones
 in `src/core/catalog.ts`.
 
+These already have a PNG (file name = id + `.png`):
+
+| Folder | Ids |
+|---|---|
+| `pets/` | `dog`, `crow`, `raccoon`, `spirit`, `rat`, `pigeon` |
+| `weapons/` | `bat`, `chain`, `skateboard`, `umbrella`, `traffic_sign`, `extinguisher`, `brick`, `bottle`, `pool_cue`, `crowbar`, `knuckles`, `switchblade`, `sledgehammer` |
+
 ## Logo and app icon
 
 The fist next to the word BRUTE (and the app icon on the phone's home screen) is drawn
