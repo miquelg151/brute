@@ -879,6 +879,7 @@ button.stat {
   min-height: 160px;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   gap: var(--step);
 }
 
@@ -2262,6 +2263,11 @@ button.game-card {
   color: var(--sticker-fill);
   -webkit-text-stroke: var(--sticker-outline-sm) var(--sticker-ink);
   paint-order: stroke fill;
+}
+
+/* The hand of cards fills the width; at the bottom of the screen, in reach of the thumb. */
+.card-row .game-card {
+  width: min(84px, calc((100vw - 64px) / 4));
 }
 
 .card-row {

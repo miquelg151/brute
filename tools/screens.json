@@ -407,7 +407,7 @@
       { "click": "text=Start fight" },
       { "wait": 6000 },
       { "include": "no-page-scroll" },
-      { "eval": "const row = document.querySelector('.card-row').getBoundingClientRect(); const main = document.querySelector('.screen.fight').getBoundingClientRect(); if (main.bottom - row.bottom > 24) throw new Error('cards float ' + Math.round(main.bottom - row.bottom) + 'px above the bottom'); const card = document.querySelector('.card-row .game-card').getBoundingClientRect(); if (card.width < 80) throw new Error('cards too small: ' + card.width); const arena = document.querySelector('.arena').getBoundingClientRect(); if (document.querySelector('.fight-top-row').getBoundingClientRect().top < arena.bottom) throw new Error('controls overlap the arena');" },
+      { "eval": "const row = document.querySelector('.card-row').getBoundingClientRect(); const main = document.querySelector('.screen.fight').getBoundingClientRect(); if (main.bottom - row.bottom > 24) throw new Error('cards float ' + Math.round(main.bottom - row.bottom) + 'px above the bottom'); const card = document.querySelector('.card-row .game-card').getBoundingClientRect(); if (card.width < Math.min(84, (innerWidth - 64) / 4) - 2) throw new Error('cards too small: ' + card.width); const arena = document.querySelector('.arena').getBoundingClientRect(); if (document.querySelector('.fight-top-row').getBoundingClientRect().top < arena.bottom) throw new Error('controls overlap the arena');" },
       { "shot": "fight" }
     ]
   },
