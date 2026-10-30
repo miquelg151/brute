@@ -1,10 +1,36 @@
 // The Fight tab: your fighter on the street, the cards you will bring, and the big button.
-import { CARDS, DECK_SIZE, preferredDeck, rankOf, type SaveData } from '../../core';
+import { CARDS, DECK_SIZE, buildBoss, gatedBoss, preferredDeck, rankOf, xpToNext, type BossDef, type SaveData } from '../../core';
 import { cardSticker, levelOf } from '../cardView';
 import { h, pixelArt } from '../dom';
+import { icon } from '../icons';
 import { drawFighter } from '../sprites';
 import { HOME_STREET_SEED, streetCanvas } from '../street';
 import type { TabActions } from '../shell';
+
+/** The card for the boss that gates the fighter: who it is, its trick, and the Challenge button. */
+function bossCard(boss: BossDef, save: SaveData, actions: TabActions): HTMLElement {
+  const c = save.character;
+  const full = c.xp >= xpToNext(c.level) - 1;
+  const trick = icon('skill', 'Trick', 'small');
+  trick.setAttribute('aria-hidden', 'true');
+  return h(
+    'section',
+    { class: 'boss-card', 'aria-label': `Boss: ${boss.name}` },
+    h(
+      'div',
+      { class: 'boss-card-top' },
+      h('div', { class: 'spot boss-spot' }, pixelArt(drawFighter(buildBoss(boss.id)), 'small', true)),
+      h(
+        'div',
+        { class: 'boss-card-text' },
+        h('div', { class: 'boss-card-name' }, h('strong', { class: 'boss-card-title' }, boss.name), h('span', { class: 'dim' }, `Lv ${boss.level}`)),
+        h('p', { class: 'boss-card-trick' }, trick, boss.trickText),
+        h('p', { class: 'boss-card-hint' }, full ? 'XP full. Beat the boss to level up.' : 'Beat the boss to level up.'),
+      ),
+    ),
+    h('button', { class: 'btn btn-primary boss-go', type: 'button', onclick: actions.onBoss }, 'Challenge'),
+  );
+}
 
 export function renderFightTab(body: HTMLElement, save: SaveData, actions: TabActions): void {
   const c = save.character;
@@ -37,5 +63,7 @@ export function renderFightTab(body: HTMLElement, save: SaveData, actions: TabAc
     ? h('button', { class: 'btn btn-primary fight-go level-up', type: 'button', onclick: actions.onLevelUp }, 'Level up!')
     : h('button', { class: 'btn btn-primary fight-go', type: 'button', onclick: actions.onFight }, 'Fight');
 
-  body.append(h('div', { class: 'fight-tab' }, arena, deckRow, button));
+  // A boss gates the level: its card sits above the cards. Normal fights stay available.
+  const boss = levelUpWaiting ? null : gatedBoss(c);
+  body.append(h('div', { class: boss ? 'fight-tab has-boss' : 'fight-tab' }, arena, boss ? bossCard(boss, save, actions) : '', deckRow, button));
 }

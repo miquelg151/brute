@@ -17,6 +17,8 @@ export type TabId = 'fighter' | 'fight' | 'cards' | 'legends';
 /** What the shell asks main.ts to do. */
 export interface ShellActions {
   onFight(): void;
+  /** Challenge the boss that gates the fighter. */
+  onBoss(): void;
   onLevelUp(): void;
   onReset(): void;
   /** The fighter graduated: main.ts keeps the legends and goes to creation. */
@@ -158,6 +160,8 @@ function topBar(save: SaveData): HTMLElement {
       'div',
       { class: 'top-info' },
       h('div', { class: 'top-line' }, h('span', { class: 'top-name sticker-sm' }, c.name), rankBadge(c.level)),
+      // The title the fighter wears (picked on the Fighter tab) sits under the name.
+      c.title ? h('div', { class: 'top-title' }, c.title) : '',
       h('div', { class: 'top-line' }, h('span', { class: 'top-level' }, `Level ${c.level}`), bar, h('span', { class: 'top-xp-text' }, `${c.xp}/${need}`)),
     ),
   );

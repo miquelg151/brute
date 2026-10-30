@@ -584,5 +584,298 @@
         "shot": "graduated-creation"
       }
     ]
+  },
+  {
+    "name": "boss-gated",
+    "helper": true,
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 5; c.xp = 11; c.branch = 'brute';  localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();"
+      },
+      {
+        "wait": 1500
+      }
+    ]
+  },
+  {
+    "name": "boss-card",
+    "steps": [
+      {
+        "include": "boss-gated"
+      },
+      {
+        "include": "no-page-scroll"
+      },
+      {
+        "eval": "if (!document.querySelector('.boss-card .boss-go')) throw new Error('no boss card'); const b = document.querySelector('.boss-card').getBoundingClientRect(); const g = document.querySelector('.fight-go').getBoundingClientRect(); if (b.bottom > g.top) throw new Error('boss card overlaps the Fight button'); const a = document.querySelector('.fight-arena').getBoundingClientRect(); if (a.height < 140) throw new Error('the street is squeezed: ' + a.height);"
+      },
+      {
+        "shot": "boss-card"
+      }
+    ]
+  },
+  {
+    "name": "boss-intro",
+    "steps": [
+      {
+        "include": "boss-gated"
+      },
+      {
+        "click": ".boss-go"
+      },
+      {
+        "include": "no-page-scroll"
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "shot": "boss-intro"
+      },
+      {
+        "click": ".boss-intro .branch-confirm"
+      },
+      {
+        "wait": 600
+      },
+      {
+        "include": "no-page-scroll"
+      },
+      {
+        "eval": "if (!document.querySelector('.prefight')) throw new Error('the pre-fight did not open'); if (!document.querySelector('.poster-name').nextElementSibling) {} const names = [...document.querySelectorAll('.poster-name')].map((n) => n.textContent); if (!names.includes('Rusty')) throw new Error('foe is not Rusty: ' + names);"
+      },
+      {
+        "shot": "boss-prefight"
+      }
+    ]
+  },
+  {
+    "name": "boss-sewer-king",
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 15; c.xp = 31; c.branch = 'brute'; c.branch = 'brute'; c.bonusStats.health += 3000; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "shot": "boss-card-sewer-king"
+      },
+      {
+        "click": ".boss-go"
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "shot": "boss-intro-sewer-king"
+      },
+      {
+        "click": ".boss-intro .branch-confirm"
+      },
+      {
+        "wait": 600
+      },
+      {
+        "click": "text=Start fight"
+      },
+      {
+        "wait": 9000
+      },
+      {
+        "eval": "const next = document.querySelector('.sheet-actions .btn'); if (next) next.click();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "shot": "boss-fight-sewer-king-a"
+      },
+      {
+        "wait": 9000
+      },
+      {
+        "eval": "const next = document.querySelector('.sheet-actions .btn'); if (next) next.click();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "shot": "boss-fight-sewer-king-b"
+      },
+      {
+        "wait": 9000
+      },
+      {
+        "eval": "const next = document.querySelector('.sheet-actions .btn'); if (next) next.click();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "shot": "boss-fight-sewer-king-c"
+      }
+    ]
+  },
+  {
+    "name": "fighter-feats",
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 12; c.branch = 'brute'; c.bosses = { rusty: 'beaten', alley_cat: 'skipped' }; c.medals = ['first_blood', 'hot_streak', 'unstoppable', 'boss_rusty']; c.featProgress = { first_blood: 1, hot_streak: 5, unstoppable: 15, full_hand: 3, veteran: 41, knockout_artist: 12 }; c.title = 'The Unstoppable'; c.stats = { fights: 41, wins: 33, kos: 12, streak: 4, bestStreak: 15, bossLosses: {} }; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "click": ".tab-fighter"
+      },
+      {
+        "wait": 400
+      },
+      {
+        "eval": "if (!document.querySelector('.top-title')) throw new Error('no title in the top bar'); if (![...document.querySelectorAll('.feat-name')].some((n) => n.textContent === '???')) throw new Error('no secret feat shown'); document.querySelector('.feats').scrollIntoView({ block: 'start' });"
+      },
+      {
+        "wait": 400
+      },
+      {
+        "shot": "fighter-feats-top"
+      },
+      {
+        "eval": "const list = document.querySelector('.feat-list'); document.querySelector('.shell-body').scrollTop = 99999;"
+      },
+      {
+        "wait": 400
+      },
+      {
+        "shot": "fighter-feats-bottom"
+      },
+      {
+        "eval": "const d = document.documentElement; if (d.scrollWidth > innerWidth) throw new Error('page is wider than the screen'); document.querySelectorAll('.title-segments .segment')[0].click();"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "eval": "if (document.querySelector('.top-title')) throw new Error('title was not removed'); document.querySelector('.shell-body').scrollTop = 0;"
+      },
+      {
+        "shot": "fighter-feats-notitle"
+      }
+    ]
+  },
+  {
+    "name": "result-medal",
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 5; c.xp = 11; c.branch = 'brute'; c.bonusStats.health += 300; c.bonusStats.strength += 80; c.bonusStats.speed += 20; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "click": ".fight-go"
+      },
+      {
+        "include": "fight-to-end"
+      },
+      {
+        "wait": 2500
+      },
+      {
+        "include": "no-page-scroll"
+      },
+      {
+        "eval": "const txt = document.querySelector('.rewards').textContent; if (!txt.includes('New medal')) throw new Error('no medal chip: ' + txt); if (txt.includes('+3 XP')) throw new Error('fake XP shown: ' + txt);"
+      },
+      {
+        "shot": "result-medal"
+      }
+    ]
+  },
+  {
+    "name": "result-boss-win",
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 5; c.xp = 3; c.branch = 'brute'; c.bonusStats.health += 300; c.bonusStats.strength += 80; c.bonusStats.speed += 20; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "click": ".boss-go"
+      },
+      {
+        "click": ".boss-intro .branch-confirm"
+      },
+      {
+        "wait": 600
+      },
+      {
+        "include": "fight-to-end"
+      },
+      {
+        "wait": 2500
+      },
+      {
+        "include": "no-page-scroll"
+      },
+      {
+        "eval": "const txt = document.querySelector('.rewards').textContent; if (!document.querySelector('.result-banner').textContent.includes('Rusty is beaten')) throw new Error('no boss line'); if (!txt.includes('Beat Rusty')) throw new Error('no boss medal: ' + txt); if (!txt.includes('Level up')) throw new Error('no level up: ' + txt); if (txt.includes('XP')) throw new Error('fake XP shown: ' + txt);"
+      },
+      {
+        "shot": "result-boss-win"
+      },
+      {
+        "click": "text=Continue"
+      },
+      {
+        "wait": 800
+      },
+      {
+        "include": "no-page-scroll"
+      },
+      {
+        "shot": "after-boss-win"
+      }
+    ]
+  },
+  {
+    "name": "levelup-boss",
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 6; c.xp = 0; c.branch = 'brute'; c.bosses = { rusty: 'beaten' }; s.pendingLevelUps = 1; s.offer = ['gen_strength', 'weapon:knuckles', 'card:patch_up', 'card:hurl']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "include": "no-page-scroll"
+      },
+      {
+        "eval": "if (document.querySelectorAll('.upgrade').length !== 4) throw new Error('expected 4 options'); if (document.querySelectorAll('.rare-star').length !== 1) throw new Error('expected one rare star');"
+      },
+      {
+        "shot": "levelup-boss"
+      }
+    ]
   }
 ]

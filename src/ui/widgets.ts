@@ -57,3 +57,9 @@ export function openSheet(label: string, ...content: (Node | string)[]): () => v
   document.body.append(backdrop);
   return close;
 }
+
+/** Shows (or removes) the fighter's title under their name in the top bar, without redrawing the bar. */
+export function showTopTitle(title: string | undefined): void {
+  document.querySelector('.top-title')?.remove();
+  if (title) document.querySelector('.top-info .top-line')?.after(h('div', { class: 'top-title' }, title));
+}

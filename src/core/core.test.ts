@@ -60,6 +60,7 @@ import {
   startFight,
   runFight,
   xpToNext,
+  XP_WIN,
   type Appearance,
   type FightEvent,
   type FightLog,
@@ -2860,6 +2861,34 @@ describe('bosses and the boss gate', () => {
     expect(save.character.level).toBe(5);
     expect(save.character.bosses?.rusty).toBeUndefined();
     expect(prepareBossFight(save)).not.toBeNull();
+  });
+
+  it('xpGained reports the XP that really counted', () => {
+    // Normal win and loss.
+    const free = at(3);
+    mighty(free);
+    prepareFight(free);
+    expect(finishStarted(free).xpGained).toBe(XP_WIN);
+    // Held back by the gate: only the room left up to one short of a level counts.
+    const full = at(5);
+    full.character.xp = xpToNext(5) - 2;
+    mighty(full);
+    prepareFight(full);
+    const held = finishStarted(full);
+    expect(held.won).toBe(true);
+    expect(held.xpGained).toBe(1);
+    expect(full.character.xp).toBe(xpToNext(5) - 1);
+    // Already full: nothing counts.
+    const stuck = at(5);
+    stuck.character.xp = xpToNext(5) - 1;
+    mighty(stuck);
+    prepareFight(stuck);
+    expect(finishStarted(stuck).xpGained).toBe(0);
+    // A boss win sets the XP by itself: nothing is "earned".
+    const boss = at(5);
+    mighty(boss);
+    prepareBossFight(boss);
+    expect(finishStarted(boss).xpGained).toBe(0);
   });
 
   it('a skipped boss never gates', () => {

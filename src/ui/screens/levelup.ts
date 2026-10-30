@@ -1,4 +1,4 @@
-import { CLASSES, GEAR, SPELLS, UPGRADES_BY_ID, isCrossClass, rankOf, type SaveData } from '../../core';
+import { BOSS_OFFER_SIZE, CLASSES, GEAR, SPELLS, UPGRADES_BY_ID, isCrossClass, isRareUpgrade, rankOf, type SaveData } from '../../core';
 import { cardSticker } from '../cardView';
 import { upgradeDetail, upgradeKindLabel } from '../describe';
 import { h, pixelArt } from '../dom';
@@ -19,6 +19,8 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
     await pause(450);
     onPick(id);
   };
+  // After a boss the offer has 4 choices; the rare one gets a small star.
+  const bossReward = (save.offer ?? []).length === BOSS_OFFER_SIZE;
   const cards = (save.offer ?? []).map((id) => {
     const u = UPGRADES_BY_ID[id]!;
     const classPool = u.pool === 'general' ? null : u.pool;
@@ -35,14 +37,15 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
     ) as IconName;
     const picture =
       u.kind === 'card' ? cardSticker(u.ref, 1, { size: 'small' }) : art ? slot(art, '') : h('div', { class: 'slot' }, h('div', { class: 'slot-art' }, icon(mainStat, u.name, 'normal')));
+    const rare = bossReward && isRareUpgrade(c, id);
     return h(
       'button',
-      { class: 'choice upgrade', onclick: (e: Event) => void pick(id, e.currentTarget as HTMLElement) },
+      { class: rare ? 'choice upgrade rare' : 'choice upgrade', onclick: (e: Event) => void pick(id, e.currentTarget as HTMLElement) },
       picture,
       h(
         'div',
         { class: 'upgrade-text' },
-        h('div', { class: 'choice-title' }, u.name),
+        h('div', { class: 'choice-title' }, u.name, rare ? h('span', { class: 'rare-star', role: 'img', 'aria-label': 'Rare' }, '★') : ''),
         h('div', { class: 'choice-desc' }, upgradeDetail(id)),
         h(
           'div',
@@ -79,7 +82,7 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
       { class: 'screen levelup' },
       h('h1', {}, `Level ${reached}`),
       rankUp,
-      h('p', { class: 'lede' }, 'Pick one upgrade. It is permanent.'),
+      h('p', { class: 'lede' }, bossReward ? 'Boss reward: pick one upgrade. The star is rare.' : 'Pick one upgrade. It is permanent.'),
       h('div', { class: 'choice-list' }, ...cards),
     ),
   );

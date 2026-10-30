@@ -1,9 +1,10 @@
 import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
-import { chooseFighterBranch, chooseUpgrade, graduate, needsBranch, prepareFight, prepareLevelUp, startFight, type Legend, type SaveData } from './core';
+import { chooseFighterBranch, chooseUpgrade, graduate, needsBranch, prepareBossFight, prepareFight, prepareLevelUp, startFight, type Legend, type SaveData } from './core';
 import { loadArt } from './ui/art';
 import { animateIn } from './ui/motion';
 import { applyTheme } from './ui/theme';
+import { renderBossIntro } from './ui/screens/bossIntro';
 import { renderBranch } from './ui/screens/branch';
 import { renderCreate } from './ui/screens/create';
 import { renderFight } from './ui/screens/fight';
@@ -22,6 +23,8 @@ let save: SaveData | null = loadSave();
 let keptLegends: Legend[] = save ? [] : loadLegends();
 /** The title screen is shown once, before creating the first fighter. */
 let titleShown = false;
+/** True once the player has seen the boss intro for the boss fight that is pending. */
+let bossIntroSeen = false;
 
 /** Draws the screen that fits the current save, with its entrance animation. */
 function show(): void {
@@ -80,6 +83,15 @@ function render(): void {
     return;
   }
 
+  // A boss fight starts with the boss stepping out; then the normal pre-fight follows.
+  if (fight?.bossId && !bossIntroSeen) {
+    renderBossIntro(root, current, () => {
+      bossIntroSeen = true;
+      show();
+    });
+    return;
+  }
+
   if (fight) {
     renderPrefight(root, current, {
       onStart: (plan, weapons, gear, deck) => {
@@ -95,6 +107,12 @@ function render(): void {
   renderShell(root, current, {
     onFight: () => {
       prepareFight(current);
+      storeSave(current);
+      show();
+    },
+    onBoss: () => {
+      if (!prepareBossFight(current)) return;
+      bossIntroSeen = false;
       storeSave(current);
       show();
     },

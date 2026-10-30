@@ -61,6 +61,7 @@ export interface FightResult {
   opponent: Character;
   log: FightLog;
   won: boolean;
+  /** The XP that really counted (0 while a boss gate holds the XP back, and for a boss win). */
   xpGained: number;
   levelsGained: number;
   /** How many times each card was played by the player. */
@@ -94,6 +95,13 @@ export function newGame(
     pendingFight: null,
     legends,
   };
+}
+
+/** All the XP a fighter has ever put in: the XP of the levels behind them plus the current bar. */
+function totalXp(c: Character): number {
+  let total = c.xp;
+  for (let level = 1; level < c.level; level++) total += xpToNext(level);
+  return total;
 }
 
 /** The fighter's running record. Makes an empty one if the fighter has none yet. */
@@ -263,14 +271,18 @@ export function finishFight(save: SaveData): FightResult {
     stats.streak = 0;
     if (fight.bossId) stats.bossLosses[fight.bossId] = (stats.bossLosses[fight.bossId] ?? 0) + 1;
   }
-  const xpGained = won ? XP_WIN : XP_LOSS;
+  const xpOffered = won ? XP_WIN : XP_LOSS;
+  const xpBefore = totalXp(save.character);
   // Beating the boss that gates the fighter lifts the gate: the held XP overflows at once.
   const bossBeaten = won && !!fight.bossId && gatedBoss(save.character)?.id === fight.bossId;
   if (bossBeaten) {
     (save.character.bosses ??= {})[fight.bossId!] = 'beaten';
     save.character.xp = xpToNext(save.character.level);
   }
-  const levelsGained = addXp(save.character, bossBeaten ? 0 : xpGained);
+  const levelsGained = addXp(save.character, bossBeaten ? 0 : xpOffered);
+  // What really counted: nothing when the boss gate held the XP back, nothing extra for a boss win
+  // (it lifts the gate on its own, the XP is not "earned").
+  const xpGained = bossBeaten ? 0 : Math.max(0, Math.min(xpOffered, totalXp(save.character) - xpBefore));
   if (levelsGained > 0) {
     save.pendingLevelUps += levelsGained;
     save.offer = offerFor(save);

@@ -3618,3 +3618,240 @@ button.game-card {
 .legend-boss-state {
   font-weight: var(--heavy);
 }
+
+/* --- Bosses and feats ------------------------------------------------------------ */
+
+/* The title under the name in the top bar. */
+.top-title {
+  font-size: var(--t-xs);
+  font-weight: var(--heavy);
+  line-height: 1.1;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The boss card on the Fight tab: a paper slip between the street and the cards. */
+.boss-card {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+  padding: 8px 10px 10px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough);
+  text-shadow: none;
+  transform: rotate(-0.5deg);
+}
+
+.boss-card-top {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.boss-spot {
+  flex: none;
+}
+
+.boss-card-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.boss-card-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.boss-card-name .dim {
+  color: var(--ink-soft);
+  font-size: var(--t-xs);
+  font-weight: var(--heavy);
+}
+
+.boss-card-trick,
+.boss-card-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0;
+  font-size: var(--t-xs);
+  line-height: 1.25;
+}
+
+.boss-card-trick {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.boss-card-title {
+  font-size: var(--t-m);
+}
+
+/* On short phones the street needs the room: the cards wait on the Cards tab while a boss card is up. */
+@media (max-height: 700px) {
+  .has-boss .fight-deck,
+  .has-boss .boss-card-trick {
+    display: none;
+  }
+
+  /* The fighter is drawn a little smaller so the head stays on the street. */
+  .has-boss .fight-arena .spot canvas {
+    width: auto !important;
+    height: 120px !important;
+  }
+}
+
+.boss-card-trick .icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.boss-card-hint {
+  font-weight: var(--heavy);
+  color: var(--ink);
+}
+
+.boss-go {
+  align-self: stretch;
+  min-height: 40px;
+  --btn-face: var(--coral-lit);
+}
+
+/* The boss intro reuses the branch screen; the boss faces the player. */
+.boss-intro .boss-level {
+  align-self: center;
+  margin: 0;
+}
+
+.boss-intro .boss-line {
+  margin: 0;
+  text-align: center;
+}
+
+.boss-trick .note-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* New medals in the result panel and the rare level-up choice. */
+.reward-medal {
+  background: var(--yellow);
+  white-space: normal;
+  text-align: left;
+}
+
+.rare .choice-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rare-star {
+  color: var(--yellow);
+  -webkit-text-stroke: 2px var(--ink);
+  paint-order: stroke fill;
+  font-size: 1.2em;
+  line-height: 1;
+}
+
+.choice.rare {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 55%, transparent);
+}
+
+/* Feats on the Fighter tab. */
+.feats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step);
+}
+
+.title-label {
+  margin: 0 0 4px;
+  font-size: var(--t-xs);
+  font-weight: var(--heavy);
+}
+
+.title-segments {
+  --count: 2;
+}
+
+.feat-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.feat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough-2);
+  text-shadow: none;
+}
+
+.feat .feat-medal {
+  flex: none;
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.feat.done {
+  background: color-mix(in srgb, var(--yellow) 35%, var(--paper));
+}
+
+.feat.done .feat-medal {
+  filter: none;
+  opacity: 1;
+}
+
+.feat-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.feat-name {
+  font-size: var(--t-s);
+}
+
+.feat-desc,
+.feat-title {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+  line-height: 1.25;
+}
+
+.feat-title {
+  font-weight: var(--heavy);
+  color: var(--ink);
+}
+
+.feat-progress {
+  flex: none;
+  font-size: var(--t-s);
+  font-weight: var(--heavy);
+}

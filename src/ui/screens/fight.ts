@@ -25,6 +25,7 @@ import { icon, iconValue } from '../icons';
 import { playSpecialStrike } from '../minigames';
 import { confetti } from '../motion';
 import { planEditor, weaponPicker } from '../plan';
+import { medalName } from '../tabs/legendsTab';
 import { PAL } from '../theme';
 
 const SPEEDS = [1, 2, 4];
@@ -167,9 +168,13 @@ const REWARD_STAGGER_MS = 150;
  * level-ups, level-up) slapped on one by one.
  */
 function resultPanel(result: FightResult, foeName: string): HTMLElement[] {
-  const banner = h('div', { class: `result-banner ${result.won ? 'win' : 'loss'}` }, result.won ? `You beat ${foeName}!` : `${foeName} won`);
+  // A boss beaten for the first time gets its own headline.
+  const headline = result.bossBeaten ? `${foeName} is beaten!` : result.won ? `You beat ${foeName}!` : `${foeName} won`;
+  const banner = h('div', { class: `result-banner ${result.won ? 'win' : 'loss'}` }, headline);
 
-  const rewards: HTMLElement[] = [h('span', { class: 'reward' }, icon('xp', 'Experience'), `+${result.xpGained} XP`)];
+  // Only XP that really counted is shown (a boss gate can hold it back, and a boss win skips it).
+  const rewards: HTMLElement[] = [];
+  if (result.xpGained > 0) rewards.push(h('span', { class: 'reward' }, icon('xp', 'Experience'), `+${result.xpGained} XP`));
   // One sticker per card played; it turns yellow when the card reached a new level.
   for (const [card, count] of Object.entries(result.cardsPlayed)) {
     const name = CARDS[card]?.name ?? card;
@@ -181,6 +186,10 @@ function resultPanel(result: FightResult, foeName: string): HTMLElement[] {
     );
   }
   if (result.levelsGained > 0) rewards.push(h('span', { class: 'reward reward-big' }, 'Level up!'));
+  // Medals slap on in gold. One medal says "New medal: name"; several share a "New medals" sticker so they fit in fewer rows.
+  const medal = (text: string) => h('span', { class: 'reward reward-medal' }, icon('medal', 'New medal', 'small'), text);
+  if (result.newMedals.length === 1) rewards.push(medal(`New medal: ${medalName(result.newMedals[0]!)}`));
+  else if (result.newMedals.length > 1) rewards.push(h('span', { class: 'reward reward-medal' }, 'New medals:'), ...result.newMedals.map((id) => medal(medalName(id))));
   // Each sticker waits a little longer than the one before (CSS: .reward).
   rewards.forEach((el, i) => el.style.setProperty('--delay', `${300 + i * REWARD_STAGGER_MS}ms`));
 

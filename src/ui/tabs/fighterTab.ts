@@ -1,6 +1,6 @@
 // The Fighter tab: who your fighter is, their stats, and everything they own laid out like
 // an inventory. Tap any square to read what it does.
-import { BRANCHES_BY_ID, CLASSES, GEAR, ORIGINS, PETS, SKILLS, SPELLS, WEAPONS, canGraduate, type SaveData } from '../../core';
+import { BOSSES, BRANCHES_BY_ID, CLASSES, GEAR, ORIGINS, PETS, SKILLS, SPELLS, WEAPONS, availableTitles, canGraduate, featsFor, setTitle, type SaveData } from '../../core';
 import { gearEffects, maxHpOf, maxManaOf, petDetail, totalStats, weaponDetail } from '../describe';
 import { h, pixelArt } from '../dom';
 import { icon, type IconName } from '../icons';
@@ -9,7 +9,7 @@ import { CLASS_COLORS } from '../palette';
 import type { TabActions } from '../shell';
 import { drawPet, drawWeapon } from '../sprites';
 import { PIXEL } from '../theme';
-import { lockedSlot, openSheet } from '../widgets';
+import { lockedSlot, openSheet, showTopTitle } from '../widgets';
 
 /** Size of an inventory square in screen pixels (style.css reads it as --inv-square). */
 const SQUARE = 64;
@@ -36,6 +36,74 @@ interface Group {
   icon: IconName;
   label: string;
   items: Item[];
+}
+
+/** One row of the feats list: a medal (grey until earned), the goal, and the progress. */
+function featRow(name: string, description: string, done: boolean, progress: string, title?: string): HTMLElement {
+  const medal = icon('medal', done ? 'Medal earned' : 'Not earned yet', 'normal');
+  return h(
+    'li',
+    { class: done ? 'feat done' : 'feat' },
+    h('span', { class: 'feat-medal' }, medal),
+    h(
+      'span',
+      { class: 'feat-text' },
+      h('strong', { class: 'feat-name' }, name),
+      h('span', { class: 'feat-desc' }, description),
+      title ? h('span', { class: 'feat-title' }, `Title: ${title}`) : '',
+    ),
+    h('span', { class: 'feat-progress' }, progress),
+  );
+}
+
+/** The title picker (only once a title is earned) and the list of feats with their progress. */
+function featsSection(save: SaveData, actions: TabActions): HTMLElement {
+  const c = save.character;
+  const medals = c.medals ?? [];
+  const feats = featsFor(c);
+
+  const rows = feats.map((feat) => {
+    const done = medals.includes(feat.id);
+    // A secret stays hidden until it is earned.
+    if (feat.secret && !done) return featRow('???', 'A secret feat. Keep fighting to find it.', false, '?');
+    const target = feat.target ?? 1;
+    const progress = done ? 'Done' : target > 1 ? `${c.featProgress?.[feat.id] ?? 0}/${target}` : '';
+    return featRow(feat.name, feat.description, done, progress, feat.title);
+  });
+  // Bosses beaten earn a medal too; they are not feats, so they get their own rows.
+  for (const boss of Object.values(BOSSES)) {
+    if (medals.includes(`boss_${boss.id}`)) rows.push(featRow(`Beat ${boss.name}`, `Win against ${boss.name} at level ${boss.level}.`, true, 'Done'));
+  }
+
+  const titles = availableTitles(c);
+  const picker = titles.length
+    ? h('div', { class: 'title-picker' }, h('p', { class: 'title-label' }, 'Your title'), titleButtons(c, titles, actions))
+    : '';
+
+  const medalIcon = icon('medal', 'Medals', 'normal');
+  return h(
+    'section',
+    { class: 'feats', 'aria-label': 'Feats' },
+    h('h2', { class: 'section-icon' }, medalIcon, `Feats (${medals.length})`),
+    picker,
+    h('ul', { class: 'feat-list' }, ...rows),
+  );
+}
+
+/** "None" plus one button per earned title. The chosen one is pressed; it shows in the top bar at once. */
+function titleButtons(c: SaveData['character'], titles: string[], actions: TabActions): HTMLElement {
+  const options: (string | undefined)[] = [undefined, ...titles];
+  const buttons = options.map((title) => {
+    const button = h('button', { class: 'segment', type: 'button', 'aria-pressed': String(c.title === title) }, title ?? 'No title');
+    button.addEventListener('click', () => {
+      setTitle(c, title);
+      for (const other of buttons) other.setAttribute('aria-pressed', String(other === button));
+      showTopTitle(title);
+      actions.onSave();
+    });
+    return button;
+  });
+  return h('div', { class: 'segments title-segments', role: 'group', 'data-count': options.length, style: `--count:${Math.min(options.length, 2)}` }, ...buttons);
 }
 
 export function renderFighterTab(body: HTMLElement, save: SaveData, actions: TabActions): void {
@@ -173,6 +241,7 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
       ),
       h('div', { class: 'inventory', style: `--inv-square:${SQUARE}px` }, ...rows),
       note,
+      featsSection(save, actions),
       resetBtn,
     ),
   );

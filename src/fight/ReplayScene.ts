@@ -164,10 +164,12 @@ export class ReplayScene extends Phaser.Scene {
         y = GROUND_Y + 2;
       } else {
         const k = sideCount[info.team]++;
-        // Three pets fit in a row; more (Rat Tide) stand in a second row behind, a bit closer.
+        // Three pets fit in a row; more (Rat Tide) stand in a second row behind, shifted half a step
+        // so they show between the first ones. Pets overlap a little, but none leaves the arena.
         const col = k % 3;
         const row = Math.floor(k / 3);
-        const out = 34 + col * 22 - row * 11;
+        const room = ARENA_W - MAIN_X - 2 - (canvases[0]!.width * SCALE) / 2;
+        const out = Math.min(28 + col * 17 + row * 8.5, room);
         x = info.team === 0 ? MAIN_X - out : ARENA_W - MAIN_X + out;
         y = GROUND_Y + 12 + (col % 2) * 6 - row * 9;
       }
