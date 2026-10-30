@@ -1104,7 +1104,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         if (u.weapon) {
           // A throw already multiplies damage (x1.5, x2 with Thrower, more with a Brick); the bonus tops it up to the card's total.
           // Added to any pending bonus (Feint, Rush, Haymaker), which the throw uses up.
-          u.nextHitPct += Math.round((scaled(200, level) * 100) / throwPct(u)) - 100;
+          // Never below 0: a throw already stronger than the card (Brick + Thrower) is not weakened.
+          u.nextHitPct += Math.max(0, Math.round((scaled(200, level) * 100) / throwPct(u)) - 100);
           // A throw can't be dodged anyway: a pending "can't be dodged" (Haymaker) is kept for the next hit.
           const keepSure = u.nextHitSure;
           u.thrown.add(u.weapon);

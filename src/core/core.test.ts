@@ -2435,6 +2435,23 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
     }
   });
 
+  it('Hurl never weakens a throw that is already stronger than the card (Brick + Thrower)', () => {
+    // Brick + Thrower throws at x2.5 on their own; Hurl (x2 total) must not pull that down.
+    const target: Character = { ...foe, gear: [], skills: [], pets: [] };
+    const thrower: Character = { ...fresh('brawler'), weapons: ['brick'], skills: ['thrower'], pets: [] };
+    const base = addStats(CLASSES.brawler.baseStats, thrower.bonusStats).strength + WEAPONS.brick!.damage;
+    let seen = 0;
+    for (const seed of seeds) {
+      const log = runFight(thrower, target, seed, { a: { interactive: true, deck: { hurl: 1 }, plays: [{ tick: 30, card: 'hurl' }], breaks: [], weaponStyle: 'keep' }, b: { deck: {} } });
+      const i = cardIndex(log, 'hurl');
+      const hit = log.events[i + 1];
+      if (!log.events.slice(0, i).some((e) => e.t === 'draw' && e.actor === 0) || hit?.t !== 'hit' || hit.kind !== 'throw') continue;
+      seen++;
+      expect(hit.damage).toBeGreaterThanOrEqual(Math.floor((Math.floor(base * 2.5) * 80) / 100));
+    }
+    expect(seen).toBeGreaterThan(5);
+  });
+
   it('Pool Cue and Crowbar have their numbers and the Crowbar hits harder', () => {
     expect(WEAPONS.pool_cue).toMatchObject({ damage: 4, accuracy: 20, heavy: false });
     expect(WEAPONS.crowbar).toMatchObject({ damage: 8, accuracy: -5, heavy: true });
