@@ -30,6 +30,16 @@ export function maxManaOf(c: Character): number {
   return maxManaFor(c, worn);
 }
 
+/** What each stat means, shown when the player taps it on the Fighter tab. */
+export const STAT_NOTES = {
+  health: 'Health: how much damage you take before you drop.',
+  strength: 'Strength: more damage per hit.',
+  agility: 'Agility: dodge more often.',
+  speed: 'Speed: act more often.',
+  magic: 'Magic: stronger spells.',
+  mana: 'Mana: what your spells spend.',
+} as const;
+
 export function upgradeKindLabel(upgradeId: string): string {
   const u = UPGRADES_BY_ID[upgradeId];
   if (!u) return '';

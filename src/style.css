@@ -508,6 +508,37 @@ a {
   border-left: none;
 }
 
+/* Each stat is a button: tap it to read what it does. */
+button.stat {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  cursor: pointer;
+}
+
+.stat .icon {
+  transition: transform var(--fast) var(--ease-out);
+}
+
+.stat[aria-pressed='true'] .icon {
+  transform: translateY(-2px) scale(1.12);
+}
+
+.stat-note {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  font-size: var(--t-s);
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough);
+  text-shadow: none;
+  transform: rotate(-0.4deg);
+}
+
 .stat-value {
   font-family: var(--font);
   font-weight: var(--heavy);
@@ -2653,12 +2684,12 @@ button.game-card {
   margin-top: var(--step);
 }
 
-/* One row per kind of thing: its icon on the left, the squares on the right. */
+/* One group per kind of thing: a small heading, then its squares four across. */
 .inv-row {
-  display: grid;
-  grid-template-columns: 30px 1fr;
-  gap: 10px;
-  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
   border-top: 2px dashed color-mix(in srgb, var(--wall-text) 16%, transparent);
 }
 
@@ -2666,16 +2697,12 @@ button.game-card {
   border-top: none;
 }
 
-/* The icon sits level with the middle of the first square. */
 .inv-heading {
-  height: var(--inv-square);
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-
-.inv-row:has(.locked-slot) .inv-heading {
-  height: var(--inv-locked);
+  gap: 6px;
+  margin: 0;
+  font-size: var(--t-s);
 }
 
 .inventory .paper-note {
@@ -2688,14 +2715,20 @@ button.game-card {
 }
 
 .inv-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 6px;
   min-width: 0;
 }
 
+/* "Level up to get one" takes the whole row. */
+.inv-items > .locked-slot {
+  grid-column: 1 / -1;
+}
+
 .inv-item {
-  width: calc(var(--inv-square) + 6px);
+  width: auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2749,7 +2782,7 @@ button.game-card {
 }
 
 .inv-name {
-  font-size: var(--t-xs);
+  font-size: calc(var(--t-xs) * var(--name-fit, 1));
   font-weight: 700;
   line-height: 1.15;
   text-align: center;

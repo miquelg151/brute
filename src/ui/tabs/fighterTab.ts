@@ -1,7 +1,7 @@
 // The Fighter tab: who your fighter is, their stats, and everything they own laid out like
 // an inventory. Tap any square to read what it does.
 import { BOSSES, BRANCHES_BY_ID, CLASSES, GEAR, ORIGINS, PETS, SKILLS, SPELLS, WEAPONS, availableTitles, canGraduate, featsFor, setTitle, type SaveData } from '../../core';
-import { gearEffects, maxHpOf, maxManaOf, petDetail, totalStats, weaponDetail } from '../describe';
+import { STAT_NOTES, gearEffects, maxHpOf, maxManaOf, petDetail, totalStats, weaponDetail } from '../describe';
 import { h, pixelArt } from '../dom';
 import { icon, type IconName } from '../icons';
 import { reducedMotion } from '../motion';
@@ -12,7 +12,7 @@ import { PIXEL } from '../theme';
 import { lockedSlot, openSheet, showTopTitle } from '../widgets';
 
 /** Size of an inventory square in screen pixels (style.css reads it as --inv-square). */
-const SQUARE = 64;
+const SQUARE = 52;
 /** Room for a picture inside a square: the square minus its border and a little air. */
 const SQUARE_ART = SQUARE - 8;
 
@@ -31,7 +31,7 @@ interface Item {
   art: () => HTMLElement;
 }
 
-/** A row of the inventory: an icon on the left, the squares on the right. */
+/** A group of the inventory: a small heading, then its squares in the grid. */
 interface Group {
   icon: IconName;
   label: string;
@@ -111,8 +111,20 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
   const stats = totalStats(c);
   const mana = maxManaOf(c);
 
-  const stat = (name: IconName, value: number, label: string) =>
-    h('div', { class: 'stat', title: label }, icon(name, label, 'normal'), h('span', { class: 'stat-value' }, String(value)));
+  // Tap a stat to read what it does; tap it again to hide the note.
+  const statNote = h('p', { class: 'stat-note hidden', 'aria-live': 'polite' });
+  const statButtons: HTMLElement[] = [];
+  const stat = (name: keyof typeof STAT_NOTES, value: number, label: string) => {
+    const btn = h('button', { class: 'stat', type: 'button', 'aria-pressed': 'false', 'aria-label': `${label} ${value}` }, icon(name, label, 'normal'), h('span', { class: 'stat-value' }, String(value)));
+    btn.addEventListener('click', () => {
+      const open = btn.getAttribute('aria-pressed') !== 'true';
+      for (const b of statButtons) b.setAttribute('aria-pressed', String(open && b === btn));
+      statNote.textContent = STAT_NOTES[name];
+      statNote.classList.toggle('hidden', !open);
+    });
+    statButtons.push(btn);
+    return btn;
+  };
 
   const gearItems = (slot: 'armor' | 'accessory'): Item[] =>
     c.gear
@@ -130,8 +142,8 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
       label: 'Pets',
       items: c.pets.map((id) => ({ name: PETS[id]?.name ?? id, detail: petDetail(id), art: () => fitted(drawPet(id)) })),
     },
-    { icon: 'armor', label: 'Armor', items: gearItems('armor') },
-    { icon: 'accessory', label: 'Accessory', items: gearItems('accessory') },
+    // Armor and accessories share one group; each piece keeps its slot's icon.
+    { icon: 'armor', label: 'Gear', items: [...gearItems('armor'), ...gearItems('accessory')] },
     {
       icon: 'skill',
       label: 'Skills',
@@ -161,7 +173,8 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
   }
 
   const rows = groups.map((group) => {
-    const heading = icon(group.icon, group.label, 'normal');
+    const headingIcon = icon(group.icon, '', 'small');
+    headingIcon.setAttribute('aria-hidden', 'true');
     const content = group.items.length
       ? group.items.map((item) => {
           // The name under the square already labels the button, so the picture stays silent.
@@ -171,14 +184,15 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
             'button',
             { class: 'inv-item', type: 'button', 'aria-pressed': 'false' },
             h('span', { class: 'inv-square' }, art),
-            h('span', { class: 'inv-name' }, item.name),
+            // A long single word (Switchblade) shrinks a little instead of breaking in two.
+            h('span', { class: 'inv-name', style: `--name-fit:${Math.min(1, 9 / Math.max(9, ...item.name.split(' ').map((w) => w.length))).toFixed(2)}` }, item.name),
           );
           square.addEventListener('click', () => pick(square, item));
           squares.push(square);
           return square;
         })
       : [lockedSlot('Level up to get one')];
-    return h('section', { class: 'inv-row', 'aria-label': group.label }, h('div', { class: 'inv-heading' }, heading), h('div', { class: 'inv-items' }, ...content));
+    return h('section', { class: 'inv-row', 'aria-label': group.label }, h('h3', { class: 'inv-heading' }, headingIcon, group.label), h('div', { class: 'inv-items' }, ...content));
   });
 
   // Two taps to delete, so a stray tap never wipes the save.
@@ -239,6 +253,7 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
         stats.magic > 0 ? stat('magic', stats.magic, 'Magic') : '',
         mana > 0 ? stat('mana', mana, 'Mana') : '',
       ),
+      statNote,
       h('div', { class: 'inventory', style: `--inv-square:${SQUARE}px` }, ...rows),
       note,
       featsSection(save, actions),
