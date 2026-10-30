@@ -412,6 +412,22 @@
     ]
   },
   {
+    "name": "fight-break",
+    "steps": [
+      { "include": "level-10" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.bonusStats.health = 400; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "click": ".fight-go" },
+      { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.pendingFight.opponent.bonusStats.health = 400; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
+      { "wait": 1500 },
+      { "click": "text=Start fight" },
+      { "eval": "new Promise((resolve, reject) => { const start = Date.now(); const check = () => { if (document.querySelector('.sheet')) return resolve(); if (document.querySelector('.fight-summary:not(.hidden)')) return reject(new Error('the fight ended before a break')); if (Date.now() - start > 90000) return reject(new Error('no break')); setTimeout(check, 200); }; check(); })" },
+      { "wait": 800 },
+      { "eval": "const s = document.querySelector('.sheet'); const btns = [...s.querySelectorAll('.option-segment')]; if (btns.length < 10) throw new Error('break sheet has ' + btns.length + ' plan buttons'); for (const b of btns) { const w = b.querySelector('.segment-word'); if (w.scrollWidth > w.clientWidth + 1) throw new Error('word overflows: ' + w.textContent); }" },
+      { "shot": "fight-break" }
+    ]
+  },
+  {
     "name": "fight-to-end",
     "helper": true,
     "steps": [

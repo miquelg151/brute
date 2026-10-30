@@ -42,6 +42,11 @@ Les instruccions detallades (mides de cada capa, ordre, frames d'animació) són
   `src/ui/icons.ts`, com una graella de lletres de **7 × 7 píxels**.
 - Cada carta fa servir una d'aquestes icones. La llista "carta → icona" és `CARD_ICONS` a
   `src/ui/cardView.ts`.
+- Els botons del pla (Stance, Target, Weapon use) també: la llista "opció → icona" és
+  `OPTION_ICONS` a `src/ui/icons.ts`.
+- El text que surt quan toques una estadística al Fighter tab és a `STAT_NOTES`
+  (`src/ui/describe.ts`). El color fosc del nom de classe sobre paper (Bouncer) és a
+  `classTextColor` (`src/ui/palette.ts`).
 - El joc les mostra ampliades: cada píxel es veu de **3, 4 o 6 píxels** de pantalla segons
   el lloc (petit, normal, gran). Per això una icona de 7 × 7 es veu d'entre 21 i 42 píxels.
 

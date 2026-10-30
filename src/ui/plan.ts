@@ -70,7 +70,7 @@ export function optionGroup<Id extends string>(
   };
 
   // How many letters fit a button at full size: four buttons in a row are narrower than three.
-  const fitLetters = ids.length >= 4 ? 9 : 11;
+  const fitLetters = ids.length >= 4 ? 8 : 11;
   const buttons = ids.map((id) => {
     // The option's icon on top, its word under it; a long word shrinks to stay on one line.
     const word = defs[id].name;
