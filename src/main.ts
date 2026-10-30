@@ -1,6 +1,6 @@
 import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
-import { chooseFighterBranch, chooseUpgrade, needsBranch, prepareFight, prepareLevelUp, startFight, type SaveData } from './core';
+import { chooseFighterBranch, chooseUpgrade, needsBranch, prepareFight, prepareLevelUp, startFight, type Legend, type SaveData } from './core';
 import { loadArt } from './ui/art';
 import { animateIn } from './ui/motion';
 import { applyTheme } from './ui/theme';
@@ -12,12 +12,14 @@ import { renderLevelUp } from './ui/screens/levelup';
 import { renderPrefight } from './ui/screens/prefight';
 import { renderTitle } from './ui/screens/title';
 import { renderShell } from './ui/shell';
-import { clearSave, loadSave, storeSave } from './ui/storage';
+import { clearSave, loadLegends, loadSave, storeSave } from './ui/storage';
 
 applyTheme();
 
 const root = document.getElementById('app')!;
 let save: SaveData | null = loadSave();
+/** Legends waiting for the next fighter (while there is no save, e.g. after deleting the fighter). */
+let keptLegends: Legend[] = save ? [] : loadLegends();
 /** The title screen is shown once, before creating the first fighter. */
 let titleShown = false;
 
@@ -43,8 +45,9 @@ function render(): void {
   }
 
   if (!current) {
-    renderCreate(root, (created) => {
+    renderCreate(root, keptLegends, (created) => {
       save = created;
+      keptLegends = [];
       storeSave(created);
       show();
     });
@@ -102,7 +105,9 @@ function render(): void {
       show();
     },
     onReset: () => {
-      clearSave();
+      // Legends survive the fighter being deleted.
+      keptLegends = current.legends;
+      clearSave(keptLegends);
       save = null;
       show();
     },

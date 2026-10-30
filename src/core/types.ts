@@ -62,4 +62,34 @@ export interface Character {
   cardUses: Record<string, number>;
   /** The cards the player likes to bring (optional; see preferredDeck). */
   deck?: string[];
+  /** Boss id -> 'beaten' or 'skipped' (a boss below the level the fighter had when bosses came in). */
+  bosses?: Record<string, 'beaten' | 'skipped'>;
+  /** Feat id -> progress so far (a number, for feats that count things). */
+  featProgress?: Record<string, number>;
+  /** Ids of the feats this fighter has completed. */
+  medals?: string[];
+  /** The title this fighter wears (from a feat), if any. */
+  title?: string;
+  /** Running fight record. Use fighterStats() to read it. */
+  stats?: FighterStats;
+}
+
+/** A fighter's running record, kept for feats. */
+export interface FighterStats {
+  fights: number;
+  wins: number;
+  /** Wins by knockout (not on points after round 3). */
+  kos: number;
+  /** Wins in a row right now. */
+  streak: number;
+  bestStreak: number;
+  /** Losses against each boss, by boss id. */
+  bossLosses: Record<string, number>;
+}
+
+/** A fighter who graduated at level 20. The character is frozen as it was (medals, title and stats included). */
+export interface Legend {
+  character: Character;
+  /** When the fighter graduated (an ISO date string). */
+  graduatedAt: string;
 }

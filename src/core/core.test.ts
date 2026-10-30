@@ -34,6 +34,7 @@ import {
   generateOpponent,
   mixSeed,
   finishFight,
+  fighterStats,
   loadoutFor,
   newGame,
   prepareFight,
@@ -340,7 +341,7 @@ describe('game', () => {
     delete (v4.character as Partial<Character>).cards;
     delete (v4.character as Partial<Character>).cardUses;
     const save = migrateSave(JSON.parse(JSON.stringify(v4)))!;
-    expect(save.version).toBe(7);
+    expect(save.version).toBe(8);
     expect(save.character.name).toBe('Old');
     expect(save.character.cards).toEqual(['special', 'roll', 'weather_wave']);
     expect(save.character.cardUses).toEqual({});
@@ -355,7 +356,7 @@ describe('game', () => {
     save.version = 5;
     save.pendingFight = { anything: true };
     const migrated = migrateSave(save)!;
-    expect(migrated.version).toBe(7);
+    expect(migrated.version).toBe(8);
     expect(migrated.character.cards).toEqual(['special', 'wall', 'scrap_shield', 'patch_up', 'hurl', 'rush']);
     expect(migrated.pendingFight).toBeNull();
   });
@@ -1391,11 +1392,107 @@ describe('class branches', () => {
     save.version = 6;
     save.pendingFight = { anything: true };
     const migrated = migrateSave(JSON.parse(JSON.stringify(save)))!;
-    expect(migrated.version).toBe(7);
-    expect(SAVE_VERSION).toBe(7);
+    expect(migrated.version).toBe(SAVE_VERSION);
+    expect(SAVE_VERSION).toBe(8);
     expect(migrated.pendingFight).toEqual({ anything: true });
     expect(migrated.character.branch).toBeUndefined();
     expect(needsBranch(migrated.character)).toBe(true);
+  });
+
+  /** A save as version 7 stored it: no legends, no bosses, no stats. */
+  function v7Save(level: number): Record<string, unknown> {
+    const save = newGame('M', look, 'brawler', 'port', 4) as unknown as Record<string, unknown>;
+    (save.character as Character).level = level;
+    delete save.legends;
+    save.version = 7;
+    return JSON.parse(JSON.stringify(save));
+  }
+
+  it('a version 7 save becomes version 8: fighter kept, no legends, older bosses skipped', () => {
+    const migrated = migrateSave(v7Save(12))!;
+    expect(migrated.version).toBe(8);
+    expect(migrated.legends).toEqual([]);
+    expect(migrated.character.name).toBe('M');
+    expect(migrated.character.level).toBe(12);
+    expect(migrated.character.bosses).toEqual({ rusty: 'skipped', alley_cat: 'skipped' });
+  });
+
+  it('migration skips only bosses whose gate is below the level', () => {
+    expect(migrateSave(v7Save(10))!.character.bosses).toEqual({ rusty: 'skipped' });
+    expect(migrateSave(v7Save(5))!.character.bosses ?? {}).toEqual({});
+    // The Champion gates level 19, so a level 20 fighter skips it too.
+    expect(migrateSave(v7Save(20))!.character.bosses).toEqual({
+      rusty: 'skipped',
+      alley_cat: 'skipped',
+      sewer_king: 'skipped',
+      champion: 'skipped',
+    });
+    expect(migrateSave(v7Save(19))!.character.bosses).toEqual({ rusty: 'skipped', alley_cat: 'skipped', sewer_king: 'skipped' });
+  });
+
+  it('newGame keeps the legends it is given, and starts with none otherwise', () => {
+    expect(newGame('A', look, 'brawler', 'port', 1).legends).toEqual([]);
+    const old = newGame('Old', look, 'brawler', 'port', 2);
+    const legend = { character: old.character, graduatedAt: '2026-10-30' };
+    const next = newGame('New', look, 'tamer', 'metro', 3, [legend]);
+    expect(next.legends).toEqual([legend]);
+    expect(next.character.name).toBe('New');
+  });
+
+  it('fighter stats count fights, wins, knockouts and streaks', () => {
+    let sawKo = false;
+    let sawLoss = false;
+    let sawStreakBreak = false;
+    for (let seed = 1; seed < 60; seed++) {
+      const save = newGame('S', look, 'brawler', 'port', seed);
+      let fights = 0;
+      let wins = 0;
+      let kos = 0;
+      let streak = 0;
+      let best = 0;
+      for (let i = 0; i < 12; i++) {
+        if (save.pendingLevelUps > 0) chooseUpgrade(save, save.offer![0]!);
+        const result = playAuto(save)!;
+        // A knockout is a main fighter going down before the end of round 3.
+        const ko = result.log.events.some((e) => e.t === 'death' && result.log.roster[e.actor]?.isMain);
+        fights++;
+        if (result.won) {
+          wins++;
+          if (ko) kos++;
+          streak++;
+          best = Math.max(best, streak);
+          if (ko) sawKo = true;
+        } else {
+          if (streak > 0) sawStreakBreak = true;
+          streak = 0;
+          sawLoss = true;
+        }
+        expect(fighterStats(save.character)).toMatchObject({ fights, wins, kos, streak, bestStreak: best });
+      }
+    }
+    expect(sawKo && sawLoss && sawStreakBreak).toBe(true);
+  });
+
+  it('a win on points is a win but not a knockout', () => {
+    let found = false;
+    for (let seed = 1; seed < 200 && !found; seed++) {
+      // A very sturdy fighter that hits softly: fights tend to go the distance.
+      const save = newGame('P', look, 'brawler', 'port', seed);
+      save.character.bonusStats.health += 3000;
+      save.character.bonusStats.strength -= 5;
+      const result = playAuto(save)!;
+      if (!result.won || result.log.events.some((e) => e.t === 'death' && result.log.roster[e.actor]?.isMain)) continue;
+      found = true;
+      expect(fighterStats(save.character)).toMatchObject({ fights: 1, wins: 1, kos: 0, streak: 1, bestStreak: 1 });
+    }
+    expect(found).toBe(true);
+  });
+
+  it('fighterStats gives zeros to a fighter without stats', () => {
+    const c = newGame('Z', look, 'brawler', 'port', 1).character;
+    expect(c.stats).toBeUndefined();
+    expect(fighterStats(c)).toEqual({ fights: 0, wins: 0, kos: 0, streak: 0, bestStreak: 0, bossLosses: {} });
+    expect(c.stats).toBeDefined();
   });
 
   it('new skills and cards are defined with descriptions', () => {

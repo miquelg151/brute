@@ -5,9 +5,13 @@ import { generateOpponent } from './opponents';
 import { OFFER_SIZE, XP_LOSS, XP_WIN, addXp, applyUpgrade, chooseBranch, rollOffer } from './progression';
 import { Rng, mixSeed } from './rng';
 import { DEFAULT_PLAN, STANCE_IDS, TARGET_IDS, WEAPON_STYLE_IDS, type Plan } from './tactics';
-import type { Appearance, BranchId, Character, ClassId } from './types';
+import type { Appearance, BranchId, Character, ClassId, FighterStats, Legend } from './types';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
+
+// The levels with a boss. Task 2 replaces this with BOSS_LEVELS from bosses.ts.
+const MIGRATION_BOSS_LEVELS = [5, 10, 15, 20];
+const MIGRATION_BOSS_IDS: Record<number, string> = { 5: 'rusty', 10: 'alley_cat', 15: 'sewer_king', 20: 'champion' };
 
 /** What the player decides before a fight. Locked once the fight starts. */
 export interface Tactics extends Plan {
@@ -49,6 +53,8 @@ export interface SaveData {
   pendingLevelUps: number;
   offer: string[] | null;
   pendingFight: PendingFight | null;
+  /** Fighters that graduated. They stay when a new fighter is made or the current one is deleted. */
+  legends: Legend[];
 }
 
 export interface FightResult {
@@ -63,7 +69,15 @@ export interface FightResult {
   cardLevelUps: { card: string; level: number }[];
 }
 
-export function newGame(name: string, appearance: Appearance, classId: ClassId, originId: string, seed: number): SaveData {
+/** Pass the old save's legends so they carry over to the new fighter. */
+export function newGame(
+  name: string,
+  appearance: Appearance,
+  classId: ClassId,
+  originId: string,
+  seed: number,
+  legends: Legend[] = [],
+): SaveData {
   return {
     version: SAVE_VERSION,
     seed: seed >>> 0,
@@ -72,7 +86,14 @@ export function newGame(name: string, appearance: Appearance, classId: ClassId, 
     pendingLevelUps: 0,
     offer: null,
     pendingFight: null,
+    legends,
   };
+}
+
+/** The fighter's running record. Makes an empty one if the fighter has none yet. */
+export function fighterStats(c: Character): FighterStats {
+  c.stats ??= { fights: 0, wins: 0, kos: 0, streak: 0, bestStreak: 0, bossLosses: {} };
+  return c.stats;
 }
 
 export function defaultTactics(c: Character): Tactics {
@@ -196,6 +217,17 @@ export function finishFight(save: SaveData): FightResult {
   if (log.winner === null) throw new Error('Fight still waiting for input');
 
   const won = log.winner === 0;
+  // Update the fighter's record. A knockout is a main fighter going down before the end of round 3.
+  const stats = fighterStats(save.character);
+  stats.fights++;
+  if (won) {
+    stats.wins++;
+    if (log.events.some((e) => e.t === 'death' && log.roster[e.actor]?.isMain)) stats.kos++;
+    stats.streak++;
+    stats.bestStreak = Math.max(stats.bestStreak, stats.streak);
+  } else {
+    stats.streak = 0;
+  }
   const xpGained = won ? XP_WIN : XP_LOSS;
   const levelsGained = addXp(save.character, xpGained);
   if (levelsGained > 0) {
@@ -261,6 +293,17 @@ export function migrateSave(raw: unknown): SaveData | null {
     // exist, like the dog), so drop it: prepareLevelUp rolls it again from the same seed.
     save.offer = null;
     save.version = 7;
+  }
+  if (save.version === 7) {
+    // Graduation is new: no legends yet. Bosses the fighter is already past are skipped,
+    // so they never block. Boss level B gates level B, except the last boss, who gates 19.
+    const c = save.character as Character;
+    save.legends = [];
+    for (const level of MIGRATION_BOSS_LEVELS) {
+      const gate = level === 20 ? 19 : level;
+      if (c.level > gate) (c.bosses ??= {})[MIGRATION_BOSS_IDS[level]!] = 'skipped';
+    }
+    save.version = 8;
   }
   return save.version === SAVE_VERSION ? (save as unknown as SaveData) : null;
 }

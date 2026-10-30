@@ -1,7 +1,7 @@
 // Creating a fighter, in four steps: Class, Origin, Look, Name.
 // The look comes after class and origin, so the player styles the fighter they will really get.
 // Your fighter stands on the street at the top the whole time and changes as you pick.
-import { CARDS, CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, originCard as originCardId, type Appearance, type ClassId, type SaveData } from '../../core';
+import { CARDS, CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, originCard as originCardId, type Appearance, type ClassId, type Legend, type SaveData } from '../../core';
 import { CARD_ICONS, cardSticker } from '../cardView';
 import { h, pixelArt } from '../dom';
 import { icon, statRow } from '../icons';
@@ -43,7 +43,8 @@ function randomSeed(): number {
   return buf[0]!;
 }
 
-export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => void): void {
+/** `legends` are passed on to the new save, so graduated fighters are never lost. */
+export function renderCreate(root: HTMLElement, legends: Legend[], onCreated: (save: SaveData) => void): void {
   const look = randomLook();
   let classId: ClassId = 'brawler';
   let originId = ORIGIN_IDS[0]!;
@@ -268,7 +269,7 @@ export function renderCreate(root: HTMLElement, onCreated: (save: SaveData) => v
 
   const create = () => {
     const name = nameInput.value.trim();
-    if (name) onCreated(newGame(name, look, classId, originId, randomSeed()));
+    if (name) onCreated(newGame(name, look, classId, originId, randomSeed(), legends));
   };
 
   backBtn.addEventListener('click', () => {
