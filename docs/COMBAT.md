@@ -146,6 +146,40 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
   fight. **Brick**: +50 added to the throw multiplier (x2 instead of x1.5; x2.5 with Thrower),
   so Hurl, which already totals x2, gains nothing extra from it.
 
+## Rule interpretations worth knowing
+
+- **Rhythm** resets to the Boxing Wraps value (2, or 0 without them) at the start of every round.
+- **Taunt** also pulls enemy spirits, not only pets. Taunt and Rage do not tick down on a turn
+  the fighter spends stunned, and they carry across rounds until used up.
+- **Thorns** use the health actually lost (at least 1, even when a ward absorbed the hit) and
+  ignore the attacker's Second Wind and Thick Skull.
+- **Brick**'s +50% is +50 points on the throw multiplier, not 50% of the damage.
+- **Hurl** never lowers a stronger throw: if the weapon would throw for more, it keeps that.
+
+## New weapons, gear and pets
+
+| Item | Kind | Numbers | Where |
+|---|---|---|---|
+| Brass Knuckles | weapon | damage 5, accuracy +10 | Brute |
+| Switchblade | weapon | damage 4, accuracy +15 | Thief |
+| Sledgehammer | weapon | damage 12, accuracy -15, heavy | Wrecker |
+| Brick | weapon | damage 5, throws for +50 points | general |
+| Bottle | weapon | damage 8, breaks on its first landed hit | general |
+| Pool Cue | weapon | damage 4, accuracy +20 | general |
+| Crowbar | weapon | damage 8, accuracy -5, heavy | general |
+| Boxing Wraps | accessory | start every round with 2 rhythm stacks | Boxer |
+| Spring Sneakers | accessory | +6 dodge | Acrobat |
+| Dumpster Lid | armor | armor 2, thorns 10% | Wall |
+| Key Collar | accessory | pets get +40 health | Bond |
+| Neon Spray | accessory | +2 magic | Witch |
+| Rune Amulet | accessory | +30 magic resistance | Warden |
+| Cap | accessory | +4 dodge | general |
+| Patched Coat | armor | armor 2, speed -1 | general |
+| Backpack | accessory | +1 stamina regeneration | general |
+| Headphones | accessory | +1 speed, +2 dodge | general |
+| Rat | pet | 7 health, damage 2, agility 8, speed 8 | Pack |
+| Pigeon | pet | 6 health, damage 1, agility 12, speed 9 | Pack |
+
 ## Branches
 
 At level 5 every fighter picks one of its class's two branches, for good (`BRANCHES` and
