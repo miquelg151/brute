@@ -9,4 +9,5 @@ export * from './progression';
 export * from './bosses';
 export * from './opponents';
 export * from './ranks';
+export * from './feats';
 export * from './game';

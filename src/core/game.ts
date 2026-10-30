@@ -1,6 +1,7 @@
 import { DECK_SIZE, cardLevel, originCard, startingCards } from './cards';
 import { BOSSES, buildBoss, gateLevel, gatedBoss, type BossId } from './bosses';
 import { createCharacter } from './character';
+import { evaluateFeats } from './feats';
 import { gearFor, loadoutFor, runFight, type BreakChoice, type CardPlay, type FightLog, type GearChoice } from './fight';
 import { generateOpponent } from './opponents';
 import { OFFER_SIZE, XP_LOSS, XP_WIN, addXp, applyUpgrade, chooseBranch, rollBossOffer, rollOffer, xpToNext } from './progression';
@@ -70,6 +71,8 @@ export interface FightResult {
   bossId?: BossId;
   /** True when the player won against a boss, for the first time. */
   bossBeaten?: boolean;
+  /** Ids of the medals earned in this fight (feats, and `boss_<id>` for a boss beaten). */
+  newMedals: string[];
 }
 
 /** Pass the old save's legends so they carry over to the new fighter. */
@@ -283,11 +286,18 @@ export function finishFight(save: SaveData): FightResult {
     if (after > before) cardLevelUps.push({ card, level: after });
   }
   save.pendingFight = null;
-  const result: FightResult = { opponent: fight.opponent, log, won, xpGained, levelsGained, cardsPlayed, cardLevelUps };
+  const result: FightResult = { opponent: fight.opponent, log, won, xpGained, levelsGained, cardsPlayed, cardLevelUps, newMedals: [] };
   if (fight.bossId) {
     result.bossId = fight.bossId;
     if (bossBeaten) result.bossBeaten = true;
   }
+  // Medals last: feats read the record and the beaten bosses, which are up to date by now.
+  const medals = (save.character.medals ??= []);
+  if (bossBeaten && !medals.includes(`boss_${fight.bossId}`)) {
+    medals.push(`boss_${fight.bossId}`);
+    result.newMedals.push(`boss_${fight.bossId}`);
+  }
+  result.newMedals.push(...evaluateFeats(save.character, result));
   return result;
 }
 
