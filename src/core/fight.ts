@@ -194,9 +194,9 @@ const QUICK_HANDS_STAMINA = 5;
 /** Thorns skill: share (%) of the damage dealt that goes back to the attacker. */
 const THORNS_PCT = 20;
 /** Pack Call: extra damage (%) for each pet beyond the first. */
-const PACK_PCT = 15;
+const PACK_PCT = 10;
 /** Guardian: share (%) of the damage aimed at the owner that the healthiest pet takes. */
-const GUARDIAN_PCT = 30;
+const GUARDIAN_PCT = 15;
 /** Burn lasts this many turns. Flame: damage per turn of the burn from a damaging spell. */
 const BURN_TURNS = 3;
 const FLAME_BURN = 3;
@@ -747,7 +747,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     }
   };
 
-  /** Guardian: the pet with the most health takes 30% of `damage`. Returns how much it took. */
+  /** Guardian: the pet with the most health takes GUARDIAN_PCT% of `damage`. Returns how much it took. */
   const guard = (att: Unit, owner: Unit, damage: number): number => {
     const pets = livingPets(owner.team);
     if (pets.length === 0) return 0;
@@ -1257,14 +1257,14 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         if (winner === null) attack(u, enemyMainOf(u), 'melee');
         break;
       case 'together': {
-        const pct = scaled(15, level);
+        const pct = scaled(30, level);
         heal(u, Math.floor((u.maxHp * pct) / 100));
         for (const pet of livingPets(u.team)) heal(pet, Math.floor((pet.maxHp * pct) / 100));
         break;
       }
       case 'fireball':
         events.push({ t: 'cast', actor: u.idx, spell: 'fireball', target: enemyMainOf(u).idx });
-        magicAttack(u, enemyMainOf(u), 5 + u.magic, true, scaled(5, level));
+        magicAttack(u, enemyMainOf(u), 5 + u.magic, true, scaled(3, level));
         break;
       case 'rune_circle':
         heal(u, Math.floor((u.maxHp * scaled(10, level)) / 100));

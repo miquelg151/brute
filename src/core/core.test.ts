@@ -877,7 +877,7 @@ describe('level-up cards', () => {
   });
 
   it('Stray Dog cannot be played while its dog is fighting', () => {
-    const t = generateOpponent(12, new Rng(784), 'tamer');
+    const t = generateOpponent(12, new Rng(788), 'tamer');
     const weak = { ...generateOpponent(3, new Rng(272), 'mystic'), pets: [] };
     let checked = 0;
     for (let seed = 0; seed < 20; seed++) {
@@ -1689,7 +1689,7 @@ describe('content expansion data', () => {
     expect(GEAR.boxing_wraps).toMatchObject({ slot: 'accessory', startRhythm: 2 });
     expect(GEAR.spring_sneakers).toMatchObject({ slot: 'accessory', dodge: 6 });
     expect(GEAR.dumpster_lid).toMatchObject({ slot: 'armor', armor: 2, thorns: 10 });
-    expect(GEAR.key_collar).toMatchObject({ slot: 'accessory', petHealth: 40 });
+    expect(GEAR.key_collar).toMatchObject({ slot: 'accessory', petHealth: 80 });
     expect(GEAR.neon_spray).toMatchObject({ slot: 'accessory', magic: 2 });
     expect(GEAR.rune_amulet).toMatchObject({ slot: 'accessory', magicResist: 30 });
     expect(GEAR.cap).toMatchObject({ slot: 'accessory', dodge: 4 });
@@ -1699,8 +1699,8 @@ describe('content expansion data', () => {
   });
 
   it('new pets have the spec numbers', () => {
-    expect(PETS.rat).toMatchObject({ maxHp: 7, damage: 2, agility: 8, speed: 8 });
-    expect(PETS.pigeon).toMatchObject({ maxHp: 6, damage: 1, agility: 12, speed: 9 });
+    expect(PETS.rat).toMatchObject({ maxHp: 5, damage: 1, agility: 8, speed: 8 });
+    expect(PETS.pigeon).toMatchObject({ maxHp: 4, damage: 1, agility: 12, speed: 9 });
   });
 
   it('gear magic adds to the fighter magic in fights', () => {
@@ -2204,7 +2204,7 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
     return log.events.filter((e): e is Extract<FightEvent, { t: 'hit' | 'block' }> => (e.t === 'hit' || e.t === 'block') && pets.includes(e.actor));
   };
 
-  it('Pack Call gives +15% pet damage per pet beyond the first', () => {
+  it('Pack Call gives +10% pet damage per pet beyond the first', () => {
     let stronger = 0;
     for (const seed of seeds) {
       // No randomness is used, so the first pet hits are the same rolls, only bigger or equal.
@@ -2231,15 +2231,18 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
       sameBefore(log, noPlay(me, 'gang_up', seed, foe), 'gang_up');
       const pets = petIdx(log, 0);
       expect(pets).toHaveLength(3);
-      const strikes = log.events.slice(cardIndex(log, 'gang_up')).filter((e): e is Strike => isStrike(e) && e.kind !== 'counter');
-      expect(strikes.slice(0, 4).map((e) => e.actor)).toEqual([...pets, 0]);
+      const at = cardIndex(log, 'gang_up');
+      // Small pets may already be dead when the card is played; only the living ones attack.
+      const living = pets.filter((i) => !log.events.slice(0, at).some((e) => e.t === 'death' && e.actor === i));
+      const strikes = log.events.slice(at).filter((e): e is Strike => isStrike(e) && e.kind !== 'counter');
+      expect(strikes.slice(0, living.length + 1).map((e) => e.actor)).toEqual([...living, 0]);
     }
   });
 
   // --- Guardian (Bond) ---
   const guardian = (...skills: string[]): Character => ({ ...learn(fresh('tamer'), ...skills), pets: ['rat', 'dog'] });
 
-  it('Guardian sends 30% of the damage aimed at you to your healthiest pet', () => {
+  it('Guardian sends 15% of the damage aimed at you to your healthiest pet', () => {
     let seen = 0;
     for (const seed of seeds) {
       const log = plain(guardian('guardian'), foe, seed);
@@ -2252,7 +2255,7 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
         // The hit on the fighter comes next (a pet's death may come between), already without the redirected part.
         const hit = log.events.slice(i + 1).find((x) => x.t === 'hit' || x.t === 'block');
         expect(hit).toMatchObject({ target: 0 });
-        if (hit?.t === 'hit' || hit?.t === 'block') expect(e.damage).toBe(Math.floor(((hit.damage + e.damage) * 30) / 100));
+        if (hit?.t === 'hit' || hit?.t === 'block') expect(e.damage).toBe(Math.floor(((hit.damage + e.damage) * 15) / 100));
       });
       expect(plain(guardian(), foe, seed).events.some((e) => e.t === 'guardian')).toBe(false);
     }
@@ -2273,7 +2276,7 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
     }
   });
 
-  it('Together heals you and your pets 15% of their health (more at card level 4)', () => {
+  it('Together heals you and your pets 30% of their health (more at card level 4)', () => {
     const me = guardian();
     // Late enough to be hurt: tick 40.
     let healed = 0;
@@ -2288,7 +2291,7 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
         expect(heals.map((e) => (e.t === 'heal' ? e.actor : -1))).toEqual(alive);
         for (const h of heals) {
           if (h.t !== 'heal') continue;
-          const raw = Math.floor((log.roster[h.actor]!.maxHp * scaled(15, level)) / 100);
+          const raw = Math.floor((log.roster[h.actor]!.maxHp * scaled(30, level)) / 100);
           // Either the full heal, or it filled the bar.
           expect(h.amount === raw || h.hp === log.roster[h.actor]!.maxHp).toBe(true);
           if (h.amount === raw) healed++;
@@ -2298,16 +2301,16 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
     expect(healed).toBeGreaterThan(0);
   });
 
-  it('Key Collar makes pets 40% healthier', () => {
+  it('Key Collar makes pets 80% healthier', () => {
     const me = guardian();
     const base = plain(me, foe, 1);
     const collared = plain({ ...me, gear: ['key_collar'] }, foe, 1, { a: { gear: { armor: null, accessory: 'key_collar' } } });
     expect(petIdx(base, 0)).toHaveLength(2);
-    // Tamers start with Pack Leader (+25%): the collar adds its 40 on top of that.
+    // Tamers start with Pack Leader (+25%): the collar adds its 80 on top of that.
     for (const i of petIdx(base, 0)) {
       const pet = PETS[base.roster[i]!.defId]!;
       expect(base.roster[i]!.maxHp).toBe(Math.floor((pet.maxHp * 125) / 100));
-      expect(collared.roster[i]!.maxHp).toBe(Math.floor((pet.maxHp * 165) / 100));
+      expect(collared.roster[i]!.maxHp).toBe(Math.floor((pet.maxHp * 205) / 100));
     }
   });
 
@@ -2325,7 +2328,7 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
     expect(burns).toBeGreaterThan(5);
   });
 
-  it('Fireball burns 5 for sure, 3 turns long, and cannot be dodged', () => {
+  it('Fireball burns 3 for sure, 3 turns long, and cannot be dodged', () => {
     // Costs 5: playable at tick 10.
     const me = witch();
     const dodgy = { ...foe, bonusStats: { health: 0, strength: 0, agility: 30, speed: 0, magic: 0 } };
@@ -2337,18 +2340,18 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
       expect(after[2]).toMatchObject({ t: 'hit', actor: 0, target: 1, kind: 'spell' });
       const burns = after.filter((e) => e.t === 'burn');
       if (!after.some((e) => e.t === 'death')) expect(burns).toHaveLength(3);
-      for (const b of burns) expect(b).toMatchObject({ actor: 1, damage: 5 });
+      for (const b of burns) expect(b).toMatchObject({ actor: 1, damage: 3 });
     }
     // A higher card level burns more.
     const log4 = play(me, 'fireball', 10, 2, foe, 4);
-    expect(log4.events.find((e) => e.t === 'burn')).toMatchObject({ damage: scaled(5, 4) });
+    expect(log4.events.find((e) => e.t === 'burn')).toMatchObject({ damage: scaled(3, 4) });
   });
 
-  it('a stronger burn replaces a weaker one (Flame 3, then Fireball 5)', () => {
-    const log = play(witch('flame'), 'fireball', 10, 2, foe);
+  it('a stronger burn replaces a weaker one (Flame 3, then a level 5 Fireball 4)', () => {
+    const log = play(witch('flame'), 'fireball', 10, 2, foe, 5);
     const burns = log.events.slice(cardIndex(log, 'fireball')).filter((e) => e.t === 'burn');
     expect(burns.length).toBeGreaterThan(0);
-    for (const b of burns.slice(0, 3)) expect(b).toMatchObject({ damage: 5 });
+    for (const b of burns.slice(0, 3)) expect(b).toMatchObject({ damage: scaled(3, 5) });
   });
 
   it('burning halves heals (at least 1)', () => {

@@ -57,8 +57,8 @@ the choices made at each break.
 | Taunt | 3 | Bouncer (Wall) | For your next 2 turns enemy pets must attack you, and your thorns against them are doubled. |
 | Sledge Swing | 5 | Bouncer (Wrecker) | A hit (+20%): if it lands (even blocked), they lose 4 armor (only what they have). |
 | Gang Up | 5 | Tamer (Pack) | Every living pet attacks at once, then you attack too. |
-| Together | 4 | Tamer (Bond) | You and your living pets heal 15% of their own max health each. |
-| Fireball | 5 | Mystic (Witch) | A spell (5 + magic) that can't be dodged and burns 5 on each of their next 3 turns. |
+| Together | 4 | Tamer (Bond) | You and your living pets heal 30% of their own max health each. |
+| Fireball | 5 | Mystic (Witch) | A spell (5 + magic) that can't be dodged and burns 3 on each of their next 3 turns. |
 | Rune Circle | 4 | Mystic (Warden) | Heal 10% and raise a ward of 8 + magic (a bigger ward you already have is kept). |
 
 - The Special Strike shows a timing bar: the better the timing, the bigger the bonus.
@@ -133,12 +133,12 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
 - **Armor break** (Demolition: each landed hit takes 1 armor; Sledge Swing: 4): the armor stays
   gone for the rest of the fight, even when a new stance is applied at the start of a round, and
   never goes below 0. A new stance can still add armor on top.
-- **Pack bonus** (Pack Call): each living pet beyond the first gives all your pets +15% damage
+- **Pack bonus** (Pack Call): each living pet beyond the first gives all your pets +10% damage
   (spirits do not count). Pets with tiny damage (1-2) gain little because of rounding.
-- **Guardian**: while you have a living pet, the one with the most current health takes 30% of the
+- **Guardian**: while you have a living pet, the one with the most current health takes 15% of the
   damage aimed at you (hits and spells, after blocks and Thick Skull, before wards). It can die
   from this. Spirits do not guard.
-- **Burn** (Flame: damaging spells burn 3; Fireball: burn 5): like bleed, the target loses N at the
+- **Burn** (Flame: damaging spells burn 3; Fireball: burn 3, more at higher card levels): like bleed, the target loses N at the
   start of each of its next 3 turns, after bleed, ignoring armor and wards. A new burn restarts
   the turns and keeps the higher N. While burning, every heal they get is halved (rounded down,
   at least 1).
@@ -172,15 +172,15 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
 | Boxing Wraps | accessory | start every round with 2 rhythm stacks | Boxer |
 | Spring Sneakers | accessory | +6 dodge | Acrobat |
 | Dumpster Lid | armor | armor 2, thorns 10% | Wall |
-| Key Collar | accessory | +40% pet health | Bond |
+| Key Collar | accessory | +80% pet health | Bond |
 | Neon Spray | accessory | +2 magic | Witch |
 | Rune Amulet | accessory | +30 magic resistance | Warden |
 | Cap | accessory | +4 dodge | general |
 | Patched Coat | armor | armor 2, speed -1 | general |
 | Backpack | accessory | +1 stamina regeneration | general |
 | Headphones | accessory | +1 speed, +2 dodge | general |
-| Rat | pet | 7 health, damage 2, agility 8, speed 8 | Pack |
-| Pigeon | pet | 6 health, damage 1, agility 12, speed 9 | Pack |
+| Rat | pet | 5 health, damage 1, agility 8, speed 8 | Pack |
+| Pigeon | pet | 4 health, damage 1, agility 12, speed 9 | Pack |
 
 ## Branches
 

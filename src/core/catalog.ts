@@ -159,8 +159,8 @@ export const SKILLS: Record<string, SkillDef> = {
   quick_hands: { id: 'quick_hands', name: 'Quick Hands', description: 'Landed hits have a 30% chance to steal 5 stamina.' },
   thorns: { id: 'thorns', name: 'Thorns', description: 'An attacker that lands a melee hit on you takes 20% of the damage dealt.' },
   demolition: { id: 'demolition', name: 'Demolition', description: 'Each landed hit removes 1 armor from the target for the rest of the fight.' },
-  pack_call: { id: 'pack_call', name: 'Pack Call', description: 'Each pet beyond the first gives all your pets +15% damage.' },
-  guardian: { id: 'guardian', name: 'Guardian', description: 'While your healthiest pet is alive, it takes 30% of the damage aimed at you.' },
+  pack_call: { id: 'pack_call', name: 'Pack Call', description: 'Each pet beyond the first gives all your pets +10% damage.' },
+  guardian: { id: 'guardian', name: 'Guardian', description: 'While your healthiest pet is alive, it takes 15% of the damage aimed at you.' },
   flame: { id: 'flame', name: 'Flame', description: 'Your damaging spells burn the target for 3 on each of its next 3 turns. Burning halves their heals.' },
   overflow: { id: 'overflow', name: 'Overflow', description: 'Healing above your max health becomes a ward, up to 20% of max health.' },
   // Spells
@@ -196,7 +196,7 @@ export const GEAR: Record<string, GearDef> = {
   boxing_wraps: { id: 'boxing_wraps', name: 'Boxing Wraps', slot: 'accessory', startRhythm: 2 },
   spring_sneakers: { id: 'spring_sneakers', name: 'Spring Sneakers', slot: 'accessory', dodge: 6 },
   dumpster_lid: { id: 'dumpster_lid', name: 'Dumpster Lid', slot: 'armor', armor: 2, thorns: 10 },
-  key_collar: { id: 'key_collar', name: 'Key Collar', slot: 'accessory', petHealth: 40 },
+  key_collar: { id: 'key_collar', name: 'Key Collar', slot: 'accessory', petHealth: 80 },
   neon_spray: { id: 'neon_spray', name: 'Neon Spray', slot: 'accessory', magic: 2 },
   rune_amulet: { id: 'rune_amulet', name: 'Rune Amulet', slot: 'accessory', magicResist: 30 },
   cap: { id: 'cap', name: 'Cap', slot: 'accessory', dodge: 4 },
@@ -209,8 +209,8 @@ export const PETS: Record<string, PetDef> = {
   dog: { id: 'dog', name: 'Dog', maxHp: 13, damage: 3, agility: 4, speed: 5 },
   crow: { id: 'crow', name: 'Crow', maxHp: 9, damage: 2, agility: 10, speed: 7 },
   raccoon: { id: 'raccoon', name: 'Raccoon', maxHp: 12, damage: 2, agility: 7, speed: 5 },
-  rat: { id: 'rat', name: 'Rat', maxHp: 7, damage: 2, agility: 8, speed: 8 },
-  pigeon: { id: 'pigeon', name: 'Pigeon', maxHp: 6, damage: 1, agility: 12, speed: 9 },
+  rat: { id: 'rat', name: 'Rat', maxHp: 5, damage: 1, agility: 8, speed: 8 },
+  pigeon: { id: 'pigeon', name: 'Pigeon', maxHp: 4, damage: 1, agility: 12, speed: 9 },
 };
 
 // Where a fighter grew up: a passive bonus in every fight, a look (art layer `fighter.origin`)
