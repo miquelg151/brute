@@ -164,8 +164,12 @@ export class ReplayScene extends Phaser.Scene {
         y = GROUND_Y + 2;
       } else {
         const k = sideCount[info.team]++;
-        x = info.team === 0 ? MAIN_X - 34 - k * 22 : ARENA_W - MAIN_X + 34 + k * 22;
-        y = GROUND_Y + 12 + (k % 2) * 6;
+        // Three pets fit in a row; more (Rat Tide) stand in a second row behind, a bit closer.
+        const col = k % 3;
+        const row = Math.floor(k / 3);
+        const out = 34 + col * 22 - row * 11;
+        x = info.team === 0 ? MAIN_X - out : ARENA_W - MAIN_X + out;
+        y = GROUND_Y + 12 + (col % 2) * 6 - row * 9;
       }
       const sprite = this.add.image(x, y, key).setOrigin(0.5, 1).setScale(SCALE).setFlipX(dir === -1).setDepth(y);
       if (info.summoned) sprite.setAlpha(0);
@@ -400,6 +404,12 @@ export class ReplayScene extends Phaser.Scene {
         return this.onOverheal(e.actor, e.ward);
       case 'weapon_break':
         return this.onWeaponBreak(e.actor);
+      case 'repair':
+        return this.onTrick(e.actor, 'REPAIR', PAL.sand);
+      case 'ninelives':
+        return this.onTrick(e.actor, 'NINE LIVES', PAL.yellow);
+      case 'read':
+        return this.onTrick(e.actor, 'READ', PAL.lilac);
       case 'death':
         this.hooks.onUnitAlive(e.actor, false);
         return this.onDeath(e.actor);
@@ -638,6 +648,13 @@ export class ReplayScene extends Phaser.Scene {
     this.floatText(v.sprite.x, this.headY(v) - 8, text, color);
   }
 
+  /** A boss trick fired: a short word over the boss, with a little pause so it is seen. */
+  private async onTrick(actor: number, text: string, color: string): Promise<void> {
+    const v = this.view(actor);
+    this.floatText(v.sprite.x, this.headY(v) - 8, text, color, 12);
+    await this.wait(300);
+  }
+
   /** Quick Hands and Heist: STOLEN over the thief, with what was taken. */
   private async onSteal(actor: number, energy: number, stamina: number): Promise<void> {
     const thief = this.view(actor);
@@ -666,10 +683,11 @@ export class ReplayScene extends Phaser.Scene {
     const v = this.view(actor);
     v.hp = hp;
     v.sprite.setPosition(v.homeX, v.homeY).setAngle(0).clearTint();
-    // A spirit is see-through; the Stray Dog is a real dog.
-    const dog = this.log.roster[actor]!.defId === 'dog';
-    this.floatText(v.homeX, this.headY(v), dog ? 'STRAY DOG!' : 'SPIRIT!', PAL.ice);
-    await this.tween({ targets: v.sprite, alpha: dog ? 1 : 0.85, duration: 300 });
+    // A spirit is see-through; the Stray Dog and Rat Tide rats are real animals.
+    const defId = this.log.roster[actor]!.defId;
+    const text = defId === 'dog' ? 'STRAY DOG!' : defId === 'rat' ? '+RAT' : 'SPIRIT!';
+    this.floatText(v.homeX, this.headY(v), text, PAL.ice);
+    await this.tween({ targets: v.sprite, alpha: defId === 'spirit' ? 0.85 : 1, duration: 300 });
     this.drawBars(v);
   }
 

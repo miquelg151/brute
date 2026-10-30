@@ -6,8 +6,10 @@
 //   npm run balance -- 2000 cards     how much each card helps the fighter who brings it
 //                                     (origin cards are measured with fighters of their own origin)
 //   npm run balance -- 2000 branches  each class branch vs random fighters, and each class's two branches head to head
+//   npm run balance -- 600 bosses     generated fighters of each boss's gate level vs that boss
 // The number is fights per measurement. Exits with code 1 if anything is out of range.
 import {
+  BOSSES,
   BRANCHES,
   CARDS,
   CLASS_IDS,
@@ -21,7 +23,9 @@ import {
   WEAPON_STYLES,
   WEAPON_STYLE_IDS,
   botCardLevel,
+  buildBoss,
   cardOrigin,
+  gateLevel,
   generateOpponent,
   mixSeed,
   runFight,
@@ -175,6 +179,44 @@ Branch mirrors: first branch vs second branch of the same class`);
     console.log(`${`${first.id} v ${second.id}`.padEnd(20)}${cells.join('')}`);
   }
   console.log(`Targets: branches ${Math.round(BRANCH_MIN * 100)}-${Math.round(BRANCH_MAX * 100)}%, mirrors ${Math.round(BRANCH_MIRROR_MIN * 100)}-${Math.round(BRANCH_MIRROR_MAX * 100)}%`);
+}
+
+// --- Bosses -----------------------------------------------------------------
+// Generated fighters of each boss's gate level (every class, random origins and branches,
+// played by the normal bot) against the boss, who is side B with its own plan, as in the game.
+// The numbers are the fighters' win rates: about half should beat each boss, and no class
+// should be hopeless against any of them.
+const BOSS_MIN = 0.45;
+const BOSS_MAX = 0.55;
+const BOSS_CLASS_MIN = 0.3;
+
+if (section('bosses')) {
+  console.log(`
+Bosses: fighter win rate vs each boss, per class (${FIGHTS} fights each)`);
+  console.log(''.padEnd(20) + CLASS_IDS.map((c) => c.padStart(9)).join('') + '      avg');
+  for (const boss of Object.values(BOSSES)) {
+    const level = gateLevel(boss);
+    const bossFighter = buildBoss(boss.id);
+    let total = 0;
+    const cells = CLASS_IDS.map((classId) => {
+      let wins = 0;
+      for (let i = 0; i < FIGHTS; i++) {
+        const rng = new Rng(mixSeed(boss.level * 7121 + CLASS_IDS.indexOf(classId) * 13, i));
+        const fighter = generateOpponent(level, rng, classId);
+        if (runFight(fighter, bossFighter, rng.next(), { b: { ...boss.plan } }).winner === 0) wins++;
+      }
+      const rate = wins / FIGHTS;
+      total += rate;
+      const flag = rate < BOSS_CLASS_MIN ? '!' : ' ';
+      if (flag === '!') problems++;
+      return `${pct(rate)}${flag}`.padStart(9);
+    });
+    const avg = total / CLASS_IDS.length;
+    const flag = avg < BOSS_MIN || avg > BOSS_MAX ? '!' : '';
+    if (flag) problems++;
+    console.log(`${boss.name} (${level})`.padEnd(20) + cells.join('') + `   ${pct(avg)}${flag}`);
+  }
+  console.log(`Targets: average ${Math.round(BOSS_MIN * 100)}-${Math.round(BOSS_MAX * 100)}%, every class at least ${Math.round(BOSS_CLASS_MIN * 100)}%`);
 }
 
 // --- Player skill -----------------------------------------------------------

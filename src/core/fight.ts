@@ -3,7 +3,7 @@ import { CLASSES, FISTS_DAMAGE, GEAR, LEARNED_MANA, LOADOUT_SIZE, ORIGINS, PETS,
 import { CARDS, DECK_SIZE, botCardLevel, scaled, scaledCount, weatherWavePct } from './cards';
 import { maxHpFor } from './character';
 import { Rng } from './rng';
-import { DEFAULT_PLAN, STANCES, TARGETS, WEAPON_STYLES, type Plan } from './tactics';
+import { DEFAULT_PLAN, STANCES, TARGETS, WEAPON_STYLES, counterPlan, type Plan } from './tactics';
 import { addStats, type Appearance, type Character } from './types';
 
 export type Team = 0 | 1;
@@ -21,6 +21,8 @@ export interface UnitInfo {
   appearance?: Appearance;
   /** Summoned units start hidden and appear with a 'summon' event. */
   summoned?: boolean;
+  /** A summoned pet that stays when the round ends (Rat Tide rats), unlike spirits. */
+  stays?: boolean;
   /** Main fighters: where they grew up and their level (for their look). */
   originId?: string;
   level?: number;
@@ -93,6 +95,12 @@ export type FightEvent =
   | { t: 'weapon_break'; actor: number; weapon: string }
   /** A fighter lost a turn to Power Surge or Headbutt. */
   | { t: 'stunned'; actor: number }
+  /** Spare Parts (boss trick): the fighter patched up once; `armor` is their armor now. A 'heal' follows. */
+  | { t: 'repair'; actor: number; armor: number }
+  /** Nine Lives (boss trick): the hit just before would have knocked the fighter out; they stay on 1 health. */
+  | { t: 'ninelives'; actor: number }
+  /** Read the Fight (boss trick): at a break, the fighter switched plan to counter the foe's. */
+  | { t: 'read'; actor: number }
   | { t: 'death'; actor: number };
 
 export interface FightLog {
@@ -214,6 +222,11 @@ const ARCANE_FLOW_COST = 75;
 const MANA_PER_LEVEL = 1;
 /** A fighter's speed above this counts half, so very fast fighters don't get endless turns. Pets are not capped. */
 const SPEED_SOFT_CAP = 8;
+/** Spare Parts (boss trick): health healed (% of max) and armor gained, once, at half health. */
+const SPARE_PARTS_HEAL_PCT = 25;
+const SPARE_PARTS_ARMOR = 1;
+/** Rat Tide (boss trick): the most extra rats that join, one at the start of each round. */
+const RAT_TIDE_MAX = 3;
 
 /** How much a unit's turn gauge fills each tick. */
 function gaugeGain(speed: number, isMain: boolean): number {
@@ -263,6 +276,10 @@ interface Unit {
   ward: number;
   blinded: boolean;
   secondWindUsed: boolean;
+  /** A once-per-fight boss trick (Spare Parts, Nine Lives) was used. */
+  trickUsed: boolean;
+  /** Nine Lives: the next attack aimed at this unit is dodged, whatever it is. */
+  dodgeNext: boolean;
   roundTurns: number;
   summonedThisRound: boolean;
   /** For spirits: their owner, and whether they are currently on the field. */
@@ -446,6 +463,8 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     ward: 0,
     blinded: false,
     secondWindUsed: false,
+    trickUsed: false,
+    dodgeNext: false,
     roundTurns: 0,
     summonedThisRound: false,
     owner: -1,
@@ -559,6 +578,15 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
       8,
       6,
     );
+  }
+  // Rat Tide (boss trick): rats that wait hidden and join one per round (see runFight).
+  if (skills.has('boss_rat_tide')) {
+    const rat = PETS.rat!;
+    for (let i = 0; i < RAT_TIDE_MAX; i++) {
+      const hp = Math.floor((rat.maxHp * petBoost) / 100);
+      const power = Math.floor((rat.damage * (skills.has('pack_leader') ? 135 : 100)) / 100);
+      companion({ team, isMain: false, name: rat.name, defId: rat.id, maxHp: hp, maxStamina: 0, maxMana: 0, summoned: true, stays: true }, hp, power, rat.agility, rat.speed + (skills.has('whistle') ? 4 : 0));
+    }
   }
   if (deckHas(opts, c, 'stray_dog')) {
     const dog = PETS.dog!;
@@ -738,6 +766,14 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
   };
 
+  /** Nine Lives: uses up a waiting sure dodge. Returns true if this attack was dodged by it. */
+  const ninthLifeDodge = (att: Unit, def: Unit, kind: HitKind): boolean => {
+    if (!def.dodgeNext) return false;
+    def.dodgeNext = false;
+    dodged(att, def, kind);
+    return true;
+  };
+
   /** Momentum: a fighter with the skill gains 1 energy for a dodge that was rolled. Sure dodges (Backflip, Roll, Leap) never give it. */
   const momentum = (def: Unit) => {
     if (def.isMain && def.skills.has('momentum') && def.energy < MAX_ENERGY) {
@@ -758,6 +794,20 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     events.push({ t: 'guardian', actor: pet.idx, target: owner.idx, damage: share, hp: pet.hp });
     if (pet.hp === 0) kill(pet, att);
     return share;
+  };
+
+  /**
+   * Spare Parts (boss trick): the first time the fighter is at or below half health after taking
+   * damage, they heal 25% of max health and gain 1 armor for the rest of the fight. Once per fight.
+   */
+  const spareParts = (u: Unit) => {
+    if (!u.skills.has('boss_spare_parts') || u.trickUsed || !alive(u) || winner !== null || u.hp * 2 > u.maxHp) return;
+    u.trickUsed = true;
+    // Added to the base armor, so a new stance at a break keeps it.
+    u.base.armor += SPARE_PARTS_ARMOR;
+    u.armor += SPARE_PARTS_ARMOR;
+    events.push({ t: 'repair', actor: u.idx, armor: u.armor });
+    heal(u, Math.floor((u.maxHp * SPARE_PARTS_HEAL_PCT) / 100));
   };
 
   /** Health actually lost to the last hit that landed (after wards and Thick Skull). */
@@ -781,12 +831,22 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       damage -= absorbed;
       events.push({ t: 'ward', actor: def.idx, absorbed, left: def.ward });
     }
+    // Nine Lives (boss trick): the first hit that would knock the fighter out leaves them on 1 health.
+    const ninthLife = def.skills.has('boss_nine_lives') && !def.trickUsed && damage >= def.hp;
+    if (ninthLife) {
+      def.trickUsed = true;
+      damage = def.hp - 1;
+    }
     // Taking damage breaks the rhythm.
     if (damage > 0) setRhythm(def, 0);
     const before = def.hp;
     def.hp = Math.max(0, def.hp - damage);
     lastDealt = before - def.hp;
     events.push({ t: blocked ? 'block' : 'hit', actor: att.idx, target: def.idx, kind, weapon: kind === 'spell' ? null : att.weapon, damage, hp: def.hp });
+    if (ninthLife) {
+      events.push({ t: 'ninelives', actor: def.idx });
+      def.dodgeNext = true;
+    }
     if (def.hp === 0) {
       kill(def, att);
       return false;
@@ -795,6 +855,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       def.secondWindUsed = true;
       heal(def, Math.floor(def.maxHp / 4));
     }
+    spareParts(def);
     return true;
   };
 
@@ -829,6 +890,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     att.nextHitSure = false;
     att.nextHitStuns = false;
     if (missesBlind(att, def)) return true;
+    if (ninthLifeDodge(att, def, kind)) return true;
     const sure = kind === 'special' || kind === 'throw' || nextHitSure;
     // Leap: this attack is dodged for sure, then the defender strikes back at once.
     if (!sure && def.leapPct > 0) {
@@ -914,6 +976,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       setRhythm(att, 0);
       events.push({ t: 'thorns', actor: def.idx, target: att.idx, damage: back, hp: att.hp });
       if (att.hp === 0) kill(att, def);
+      else spareParts(att);
     }
     // Bond: the owner heals part of what their pet dealt (never after a knockout).
     if (owner?.skills.has('bond') && lastDealt > 0 && winner === null && alive(owner) && owner.hp < owner.maxHp) {
@@ -932,6 +995,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const bonusPct = att.spellBonusPct;
     att.spellBonusPct = 0;
     if (missesBlind(att, def)) return { survived: true, dealt: 0 };
+    if (ninthLifeDodge(att, def, 'spell')) return { survived: true, dealt: 0 };
     if (!sure && rng.chance(dodgeChance(att, def, true))) {
       dodged(att, def, 'spell');
       momentum(def);
@@ -1419,6 +1483,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         kill(u, units[u.poisonBy]!);
         return;
       }
+      spareParts(u);
     }
     // Bleed hurts right after poison, the same way.
     if (u.bleedTurns > 0) {
@@ -1430,6 +1495,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         kill(u, units[u.bleedBy]!);
         return;
       }
+      spareParts(u);
     }
     // Burn hurts right after bleed, the same way.
     if (u.burnTurns > 0) {
@@ -1441,6 +1507,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         kill(u, units[u.burnBy]!);
         return;
       }
+      spareParts(u);
     }
     // Power Surge or Headbutt: this turn is lost.
     if (u.stunned) {
@@ -1469,11 +1536,27 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (u.maxMana > 0) u.mana = Math.min(u.maxMana, u.mana + (choice.recover ? RECOVER_MANA : BREAK_MANA));
   };
 
+  /** Rat Tide rats that already joined (a knocked out rat stays out). */
+  const tideJoined = new Set<number>();
+  /** The plans the fighters started with: Read the Fight falls back to them. */
+  const startPlans = mains.map((m) => ({ ...m.plan }));
+
   emitEnergy();
   let globalTick = 0;
   rounds: for (let round = 1; round <= ROUNDS; round++) {
     events.push({ t: 'round', round });
     for (const u of units) u.roundTurns = 0;
+    // Rat Tide (boss trick): one more hidden rat joins its owner at the start of each round.
+    for (const m of mains) {
+      if (!m.skills.has('boss_rat_tide')) continue;
+      const rat = units.find((r) => r.owner === m.idx && roster[r.idx]!.stays && !tideJoined.has(r.idx));
+      if (!rat) continue;
+      tideJoined.add(rat.idx);
+      rat.hp = rat.maxHp;
+      rat.gauge = 0;
+      applyPlan(rat, m.plan);
+      events.push({ t: 'summon', actor: rat.idx, owner: m.idx, hp: rat.hp });
+    }
     // Every round starts with the rhythm stacks of the gear (Boxing Wraps), or none.
     for (const m of mains) setRhythm(m, m.startRhythm);
     for (let tick = 0; tick < ROUND_TICKS; tick++) {
@@ -1494,7 +1577,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
 
     // End of round: spirits vanish.
     for (const s of units) {
-      if (roster[s.idx]!.summoned && alive(s)) {
+      if (roster[s.idx]!.summoned && !roster[s.idx]!.stays && alive(s)) {
         s.hp = 0;
         events.push({ t: 'unsummon', actor: s.idx });
       }
@@ -1512,7 +1595,13 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const choices: [BreakChoice | null, BreakChoice | null] = [null, null];
     for (const team of [0, 1] as const) {
       const m = mains[team];
-      choices[team] = m.interactive ? (m.breaks?.[index] ?? null) : autoBreak(m, mains[team === 0 ? 1 : 0]);
+      const foe = mains[team === 0 ? 1 : 0];
+      choices[team] = m.interactive ? (m.breaks?.[index] ?? null) : autoBreak(m, foe);
+      // Read the Fight (boss trick): counter the plan the foe fought this round with.
+      // It is decided before the player's choice is known, like every automatic choice.
+      if (!m.interactive && m.skills.has('boss_read_the_fight')) {
+        choices[team] = { ...choices[team]!, ...counterPlan(characters[foe.team], foe.plan, startPlans[team]!) };
+      }
     }
     events.push({ t: 'break', round, choices });
     if (choices[0] === null || choices[1] === null) {
@@ -1525,6 +1614,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       for (const u of units) if (u.team === team) u.gauge = u.isMain ? m.startGauge + (choices[team]!.recover ? RECOVER_GAUGE : 0) : 0;
       for (const u of units) if (u.team === team && !u.isMain) applyPlan(u, m.plan);
     }
+    for (const m of mains) if (!m.interactive && m.skills.has('boss_read_the_fight')) events.push({ t: 'read', actor: m.idx });
     emitRes();
   }
 

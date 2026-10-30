@@ -60,7 +60,7 @@ export const BOSSES: Record<BossId, BossDef> = {
     intro: 'The scrapyard bouncer. Nobody gets past the gate without a dent.',
     trick: 'boss_spare_parts',
     trickText: 'Once, when badly hurt, he patches himself up and gets tougher armor.',
-    plan: { stance: 'defensive', target: 'mixed', weaponStyle: 'normal' },
+    plan: { stance: 'balanced', target: 'mixed', weaponStyle: 'normal' },
     build: () =>
       buildFrom(5, {
         name: 'Rusty',
@@ -68,7 +68,8 @@ export const BOSSES: Record<BossId, BossDef> = {
         classId: 'bouncer',
         originId: 'scrapyard',
         branch: 'wall',
-        upgrades: ['bouncer_health', 'bouncer_strength', 'gear:riot_vest', 'skill:iron_skin'],
+        // Tuned with `npm run balance -- 600 bosses`: the Riot Vest makes him slow, and Spare Parts is strong.
+        upgrades: ['gen_agility', 'gen_agility', 'gear:riot_vest', 'card:body_slam'],
         trick: 'boss_spare_parts',
       }),
   },
@@ -88,8 +89,8 @@ export const BOSSES: Record<BossId, BossDef> = {
         originId: 'rooftops',
         branch: 'acrobat',
         upgrades: [
-          'parkour_agility', 'parkour_agility', 'parkour_speed', 'gear:tracksuit', 'skill:sixth_sense',
-          'skill:wall_run', 'card:flurry', 'skill:momentum', 'gear:spring_sneakers',
+          'parkour_agility', 'gen_speed', 'gear:tracksuit', 'skill:sixth_sense', 'card:flurry',
+          'skill:momentum', 'gen_health', 'gen_agility', 'gen_health',
         ],
         trick: 'boss_nine_lives',
       }),
@@ -109,10 +110,10 @@ export const BOSSES: Record<BossId, BossDef> = {
         classId: 'tamer',
         originId: 'sewers',
         branch: 'pack',
+        // Only a dog and a rat to start with: Rat Tide brings the rest of the pack.
         upgrades: [
-          'tamer_health', 'tamer_health', 'tamer_agility', 'tamer_agility', 'gen_health', 'gen_health',
-          'gear:treat_bag', 'skill:whistle', 'pet:rat', 'pet:pigeon', 'pet:raccoon', 'skill:pack_call',
-          'card:gang_up', 'gen_agility',
+          'tamer_health', 'gen_health', 'gen_speed', 'pet:rat', 'card:gang_up', 'gen_speed', 'gen_speed',
+          'gen_speed', 'gen_agility', 'gen_agility', 'gen_agility', 'gen_agility', 'tamer_agility', 'skill:pack_call',
         ],
         trick: 'boss_rat_tide',
       }),
@@ -133,10 +134,9 @@ export const BOSSES: Record<BossId, BossDef> = {
         originId: 'port',
         branch: 'boxer',
         upgrades: [
-          'brawler_strength', 'brawler_strength', 'brawler_strength', 'brawler_health', 'brawler_health',
-          'gen_health', 'gen_health', 'gen_agility', 'gen_speed', 'gen_strength', 'gen_strength',
-          'gear:leather_jacket', 'gear:boxing_wraps', 'skill:iron_fists', 'skill:jab', 'skill:double_strike',
-          'skill:rhythm', 'card:haymaker', 'card:jab_flurry',
+          'brawler_strength', 'brawler_health', 'gen_health', 'gen_agility', 'gen_speed', 'gen_strength',
+          'gear:leather_jacket', 'skill:jab', 'skill:rhythm', 'card:haymaker', 'card:jab_flurry', 'gen_speed',
+          'gen_speed', 'gen_agility', 'gen_agility', 'gen_speed', 'gen_agility', 'gen_speed', 'gen_agility',
         ],
         trick: 'boss_read_the_fight',
       }),

@@ -187,3 +187,24 @@ export interface Plan {
 }
 
 export const DEFAULT_PLAN: Plan = { stance: 'balanced', target: 'mixed', weaponStyle: 'normal' };
+
+/**
+ * The plan that counters a foe, using the same advice the player sees: for each of the three
+ * choices, the first option that is strong against a trait the foe shows. The foe's plan counts
+ * too: a foe in the Defensive stance is read as tough. Where no option matches, `fallback` is kept.
+ * Used by The Champion's Read the Fight trick.
+ */
+export function counterPlan(foe: Character, foePlan: Plan, fallback: Plan): Plan {
+  const traits = new Set(traitsOf(foe));
+  if (foePlan.stance === 'defensive') traits.add('tough');
+  const pick = <Id extends string>(ids: readonly Id[], defs: Record<Id, TacticOption<Id>>, keep: Id): Id =>
+    ids.find((id) => {
+      const strong = defs[id].strongVs;
+      return strong !== null && traits.has(strong);
+    }) ?? keep;
+  return {
+    stance: pick(STANCE_IDS, STANCES, fallback.stance),
+    target: pick(TARGET_IDS, TARGETS, fallback.target),
+    weaponStyle: pick(WEAPON_STYLE_IDS, WEAPON_STYLES, fallback.weaponStyle),
+  };
+}

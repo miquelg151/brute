@@ -228,6 +228,48 @@ New skills and cards of the branches (cards at card level 1):
 | Feral | Bond | Your pets' hits have a 20% chance to do double damage. |
 | Arcane Flow | Witch | Your spells cost 25% less mana (rounded down). |
 
+## Bosses
+
+Four bosses block the way at levels 5, 10, 15 and 20. The **gate rule**: at the gate level
+(5, 10, 15, and 19 for The Champion, who is fought to reach 20) a fighter's XP stops one short of
+the next level until they beat that boss. Beating it gives the level at once, with an offer of 4
+that holds a rare option. Losing keeps the gate and counts the loss. Old saves skip the bosses the
+fighter is already past.
+
+Each boss is a fixed fighter of its level (same build, look and plan every time) with one
+**trick**: a skill only bosses carry, never offered as an upgrade. Bosses play cards with the
+normal bot rules. Builds live in `src/core/bosses.ts`, tricks in `src/core/fight.ts`.
+
+| Boss | Gate | Build | Plan | Trick |
+|---|---|---|---|---|
+| Rusty | 5 | Scrapyard Bouncer (Wall): bat, Shield, Riot Vest, Body Slam, +2 Agility | Balanced | **Spare Parts** |
+| Alley Cat | 10 | Rooftops Parkour (Acrobat): Tracksuit, Sixth Sense, Momentum, Flurry, +3 Agility, +1 Speed, +4 Health | Agile, fighter first | **Nine Lives** |
+| Sewer King | 15 | Sewers Tamer (Pack): dog and rat, Pack Call, Gang Up, Toxic Spit (Sewers card), +5 Speed, +6 Agility, +6 Health | Balanced | **Rat Tide** |
+| The Champion | 19 | Port Brawler (Boxer): Combo, Jab, Rhythm, Haymaker, Leather Jacket, +2 Strength, +5 Speed, +5 Agility, +6 Health | Balanced | **Read the Fight** |
+
+- **Spare Parts**: once per fight, the first time the fighter is at or below 50% health after
+  taking damage (a hit, poison, bleed, burn or thorns), they heal 25% of max health (halved
+  while burning, like any heal) and gain +1 armor for the rest of the fight (it stays when the
+  stance changes). Replay: `REPAIR`.
+- **Nine Lives**: the first hit (melee, throw, special or spell) that would knock her out leaves
+  her on 1 health instead, and the next attack aimed at her is dodged for sure, even one that
+  normally can't be dodged (a special, a throw, Haymaker). Poison, bleed, burn and thorns are
+  not hits: they can still knock her out. Once per fight. Replay: `NINE LIVES`.
+- **Rat Tide**: at the start of each round (before anyone acts) one more rat joins him, at most
+  3 extra rats. They are normal rats (5 health, 1 damage, boosted by Pack Leader like his other
+  pets), count for Pack Call and Gang Up, and stay until knocked out (they do not vanish at the
+  end of a round like spirits). Replay: `+RAT`.
+- **Read the Fight**: at each break he changes his stance, target and weapon use to counter the
+  plan the player fought the round with, using the same advice the player sees: for each choice,
+  the first option whose "strong against" trait the player shows (Aggressive vs tough, Defensive
+  vs many small hits, Agile vs magic; Fighter first vs fragile, Pets first vs pets; Throw vs
+  counters, Keep vs tough). A player in the Defensive stance counts as tough. Where nothing
+  matches he keeps his starting choice. He decides before the player (like every automatic side),
+  so he reads the round that just ended, not the player's new choice. Replay: `READ`.
+
+Balance target (`npm run balance -- 600 bosses`): generated bot fighters of the gate level win
+45-55% on average against each boss, and no class wins less than 30%.
+
 ## Breaks
 
 Between rounds each side can:

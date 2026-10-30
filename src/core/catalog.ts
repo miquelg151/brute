@@ -164,7 +164,7 @@ export const SKILLS: Record<string, SkillDef> = {
   flame: { id: 'flame', name: 'Flame', description: 'Your damaging spells burn the target for 3 on each of its next 3 turns. Burning halves their heals.' },
   overflow: { id: 'overflow', name: 'Overflow', description: 'Healing above your max health becomes a ward, up to 20% of max health.' },
   // Boss tricks. Only bosses carry these; they are in no upgrade pool.
-  boss_spare_parts: { id: 'boss_spare_parts', name: 'Spare Parts', description: 'Boss trick: once per fight, when first at or below half health, heals 25% and gains +2 armor.' },
+  boss_spare_parts: { id: 'boss_spare_parts', name: 'Spare Parts', description: 'Boss trick: once per fight, when first at or below half health, heals 25% and gains +1 armor.' },
   boss_nine_lives: { id: 'boss_nine_lives', name: 'Nine Lives', description: 'Boss trick: the first hit that would knock her out leaves her on 1 health, and she dodges the next attack.' },
   boss_rat_tide: { id: 'boss_rat_tide', name: 'Rat Tide', description: 'Boss trick: a new rat joins the fight at the start of each round, up to 3 extra rats.' },
   boss_read_the_fight: { id: 'boss_read_the_fight', name: 'Read the Fight', description: 'Boss trick: at each break, switches his plan to counter yours.' },

@@ -84,6 +84,8 @@ import {
   isRareUpgrade,
   prepareBossFight,
   rollBossOffer,
+  counterPlan,
+  type Plan,
 } from './index';
 import { weaponDetail } from '../ui/describe';
 
@@ -2891,5 +2893,125 @@ describe('bosses and the boss gate', () => {
     const offer = rollBossOffer(c, new Rng(3));
     expect(offer).toHaveLength(4);
     expect(offer.some((id) => isRareUpgrade(c, id))).toBe(true);
+  });
+});
+
+describe('boss tricks', () => {
+  /** A copy of a character with one more skill (a boss trick on a plain fighter). */
+  const withSkill = (c: Character, skill: string): Character => ({ ...c, skills: [...c.skills, skill] });
+  /** A plain fighter with extra stats. */
+  const buffed = (classId: Character['classId'], stats: Partial<Character['bonusStats']>): Character => {
+    const c = createCharacter('X', look, classId, 'port');
+    c.bonusStats = { ...c.bonusStats, ...stats };
+    return c;
+  };
+  const firstIndex = (log: FightLog, test: (e: FightEvent) => boolean) => log.events.findIndex(test);
+
+  it('Spare Parts: once, the first time at or below half health after damage, heals 25% and gains 1 armor', () => {
+    const attacker = buffed('brawler', { strength: 6, health: 40 });
+    const plain = buffed('bouncer', { health: 10 });
+    const boss = withSkill(plain, 'boss_spare_parts');
+    let checked = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const log = runFight(attacker, boss, seed);
+      const at = firstIndex(log, (e) => e.t === 'repair');
+      if (at < 0) continue;
+      const before = log.events.slice(0, at);
+      // Only in round 1, so the stance is still the starting one.
+      if (before.some((e) => e.t === 'break')) continue;
+      const max = log.roster[1]!.maxHp;
+      // Same seed without the trick: identical until the repair.
+      expect(runFight(attacker, plain, seed).events.slice(0, at)).toEqual(before);
+      // The damage just before took the boss to half health or less, never before.
+      const damaged = before.filter((e): e is Extract<FightEvent, { t: 'hit' | 'block' }> => (e.t === 'hit' || e.t === 'block') && e.target === 1);
+      expect(damaged.at(-1)!.hp * 2).toBeLessThanOrEqual(max);
+      expect(damaged.slice(0, -1).every((e) => e.hp * 2 > max)).toBe(true);
+      const repair = log.events[at] as Extract<FightEvent, { t: 'repair' }>;
+      expect(repair.actor).toBe(1);
+      expect(repair.armor).toBe(ORIGINS.port!.armor + 1);
+      expect(log.events[at + 1]).toMatchObject({ t: 'heal', actor: 1, amount: Math.floor((max * 25) / 100) });
+      expect(log.events.filter((e) => e.t === 'repair')).toHaveLength(1);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(3);
+  });
+
+  it('Nine Lives: the first knockout hit leaves her on 1 health, and the next attack on her is dodged, once', () => {
+    const attacker = buffed('brawler', { strength: 12, health: 60 });
+    const plain = buffed('parkour', {});
+    const cat = withSkill(plain, 'boss_nine_lives');
+    let checked = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const log = runFight(attacker, cat, seed);
+      const at = firstIndex(log, (e) => e.t === 'ninelives');
+      if (at < 0) continue;
+      expect(log.events.filter((e) => e.t === 'ninelives')).toHaveLength(1);
+      const saving = log.events[at - 1]!;
+      expect(saving).toMatchObject({ target: 1, hp: 1 });
+      // Same seed without the trick: identical until that hit, which knocks her out.
+      const without = runFight(attacker, plain, seed);
+      expect(without.events.slice(0, at - 1)).toEqual(log.events.slice(0, at - 1));
+      expect(without.events[at - 1]).toMatchObject({ t: saving.t, target: 1, hp: 0 });
+      // The next attack aimed at her is dodged, even one that could not be dodged.
+      const next = log.events.slice(at + 1).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.target === 1);
+      if (next) expect(next.t).toBe('dodge');
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(3);
+  });
+
+  it('Rat Tide: one new rat at the start of each round, 3 at most, and they stay', () => {
+    const player = buffed('bouncer', { health: 200 });
+    const king = withSkill(buffed('tamer', { health: 200 }), 'boss_rat_tide');
+    expect(runFight(player, buffed('tamer', { health: 200 }), 3).roster.filter((u) => u.defId === 'rat')).toHaveLength(0);
+    for (let seed = 1; seed <= 10; seed++) {
+      const log = runFight(player, king, seed);
+      const tide = log.roster.map((u, i) => (u.team === 1 && u.defId === 'rat' && u.summoned ? i : -1)).filter((i) => i >= 0);
+      expect(tide).toHaveLength(3);
+      const joins = log.events.filter((e) => e.t === 'summon' && tide.includes(e.actor));
+      const rounds = log.events.filter((e) => e.t === 'round').length;
+      expect(joins).toHaveLength(Math.min(3, rounds));
+      // Each one right after its round starts, before any turn.
+      log.events.forEach((e, i) => {
+        if (e.t === 'round') expect(log.events[i + 1]).toMatchObject({ t: 'summon', owner: 1 });
+      });
+      expect(log.events.some((e) => e.t === 'unsummon' && tide.includes(e.actor))).toBe(false);
+    }
+  });
+
+  it('counterPlan picks the options strong against what the foe shows, and reads a Defensive foe as tough', () => {
+    const mystic = createCharacter('M', look, 'mystic', 'port');
+    const fallback = { stance: 'balanced', target: 'mixed', weaponStyle: 'normal' } as const;
+    expect(traitsOf(mystic)).toEqual(['magic_user']);
+    expect(counterPlan(mystic, DEFAULT_PLAN, fallback)).toEqual({ stance: 'agile', target: 'mixed', weaponStyle: 'normal' });
+    expect(counterPlan(mystic, { ...DEFAULT_PLAN, stance: 'defensive' }, fallback)).toEqual({ stance: 'aggressive', target: 'mixed', weaponStyle: 'keep' });
+    const tamer = createCharacter('T', look, 'tamer', 'port');
+    expect(counterPlan(tamer, DEFAULT_PLAN, fallback).target).toBe('pets');
+  });
+
+  it('Read the Fight: at each break the Champion counters the plan the player just fought with', () => {
+    const champion = buildBoss('champion');
+    for (let seed = 1; seed <= 8; seed++) {
+      const player = generateOpponent(19, new Rng(seed));
+      const log = runFight(player, champion, seed, { b: { ...BOSSES.champion.plan } });
+      const champ = log.roster.findIndex((u) => u.isMain && u.team === 1);
+      expect(runFight(player, champion, seed, { b: { ...BOSSES.champion.plan } })).toEqual(log);
+      let playerPlan: Plan = { ...DEFAULT_PLAN };
+      log.events.forEach((e, i) => {
+        if (e.t !== 'break') return;
+        const [mine, his] = e.choices;
+        const { stance, target, weaponStyle } = his!;
+        expect({ stance, target, weaponStyle }).toEqual(counterPlan(player, playerPlan, BOSSES.champion.plan));
+        expect(log.events.slice(i + 1).find((x) => x.t === 'read' || x.t === 'tick')).toMatchObject({ t: 'read', actor: champ });
+        playerPlan = { stance: mine!.stance, target: mine!.target, weaponStyle: mine!.weaponStyle };
+      });
+    }
+  });
+
+  it('a fighter without trick skills is not touched by the trick code', () => {
+    const a = generateOpponent(15, new Rng(4));
+    const b = generateOpponent(15, new Rng(5));
+    const log = runFight(a, b, 9);
+    expect(log.events.some((e) => e.t === 'repair' || e.t === 'ninelives' || e.t === 'read')).toBe(false);
   });
 });
