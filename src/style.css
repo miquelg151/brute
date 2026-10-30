@@ -2384,7 +2384,7 @@ button.game-card {
 .tab-bar {
   flex: none;
   display: grid;
-  grid-template-columns: 1fr 1.3fr 1fr;
+  grid-template-columns: 1fr 1.3fr 1fr 1fr;
   align-items: end;
   gap: 10px;
   padding: 6px max(14px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
@@ -3429,3 +3429,192 @@ button.game-card {
   max-width: 320px;
 }
 
+
+/* --- Legends tab and graduation ------------------------------------------------ */
+.graduate {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.sheet-actions .btn-ghost {
+  width: 100%;
+  margin-top: var(--step);
+}
+
+.legends-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--step) * 2);
+  padding: calc(var(--step) * 6) var(--step);
+  text-align: center;
+}
+
+.legends-empty-text {
+  max-width: 24ch;
+  margin: 0;
+  font-size: var(--t-m);
+  color: var(--wall-dim);
+}
+
+.legend-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--step) * 1.5);
+}
+
+.legend-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: calc(var(--step) * 1.5) var(--step);
+  font: inherit;
+  font-size: var(--t-s);
+  text-align: center;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--paper) 55%, var(--outline));
+  cursor: pointer;
+  transition: transform 150ms var(--ease-bounce);
+}
+
+.legend-card:nth-child(odd) {
+  transform: rotate(-0.8deg);
+}
+
+.legend-card:nth-child(even) {
+  transform: rotate(0.8deg);
+}
+
+.legend-card:active {
+  transform: translateY(2px);
+}
+
+.legend-card .dim,
+.legend-stat .dim {
+  color: var(--ink-soft);
+}
+
+.legend-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: var(--t-m);
+  color: var(--sticker-fill);
+}
+
+.legend-title {
+  margin: 0;
+  font-weight: var(--heavy);
+  color: var(--ink);
+}
+
+.legend-class {
+  font-weight: var(--heavy);
+}
+
+.legend-medals {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: var(--heavy);
+}
+
+.legend-head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 2);
+}
+
+.legend-head-text {
+  min-width: 0;
+}
+
+.legend-head-text p {
+  margin: 0;
+}
+
+/* In the dark sheet the title is gold, like the sticker on the card. */
+.legend-head .legend-title {
+  color: var(--yellow);
+}
+
+.legend-detail-name {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.legend-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--step);
+  padding: var(--step);
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough);
+}
+
+.legend-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: var(--t-xs);
+  text-align: center;
+}
+
+.legend-stat-value {
+  font-size: var(--t-l);
+  font-weight: var(--heavy);
+}
+
+.legend-medal-list,
+.legend-boss-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.legend-medal-list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.legend-medal-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough-2);
+}
+
+.legend-boss {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--step);
+  padding: 6px 10px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--rough-2);
+}
+
+.legend-boss.skipped {
+  color: var(--ink-soft);
+}
+
+.legend-boss-state {
+  font-weight: var(--heavy);
+}

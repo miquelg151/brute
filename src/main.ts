@@ -1,6 +1,6 @@
 import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
-import { chooseFighterBranch, chooseUpgrade, needsBranch, prepareFight, prepareLevelUp, startFight, type Legend, type SaveData } from './core';
+import { chooseFighterBranch, chooseUpgrade, graduate, needsBranch, prepareFight, prepareLevelUp, startFight, type Legend, type SaveData } from './core';
 import { loadArt } from './ui/art';
 import { animateIn } from './ui/motion';
 import { applyTheme } from './ui/theme';
@@ -106,6 +106,16 @@ function render(): void {
     },
     onReset: () => {
       // Legends survive the fighter being deleted.
+      keptLegends = current.legends;
+      clearSave(keptLegends);
+      save = null;
+      show();
+    },
+    onGraduate: () => {
+      // The fighter becomes a legend; the legends are stored first, then creation starts.
+      graduate(current, new Date());
+      // Straight to creation: the title screen is only for the very first start.
+      titleShown = true;
       keptLegends = current.legends;
       clearSave(keptLegends);
       save = null;

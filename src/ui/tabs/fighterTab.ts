@@ -1,6 +1,6 @@
 // The Fighter tab: who your fighter is, their stats, and everything they own laid out like
 // an inventory. Tap any square to read what it does.
-import { BRANCHES_BY_ID, CLASSES, GEAR, ORIGINS, PETS, SKILLS, SPELLS, WEAPONS, type SaveData } from '../../core';
+import { BRANCHES_BY_ID, CLASSES, GEAR, ORIGINS, PETS, SKILLS, SPELLS, WEAPONS, canGraduate, type SaveData } from '../../core';
 import { gearEffects, maxHpOf, maxManaOf, petDetail, totalStats, weaponDetail } from '../describe';
 import { h, pixelArt } from '../dom';
 import { icon, type IconName } from '../icons';
@@ -9,7 +9,7 @@ import { CLASS_COLORS } from '../palette';
 import type { TabActions } from '../shell';
 import { drawPet, drawWeapon } from '../sprites';
 import { PIXEL } from '../theme';
-import { lockedSlot } from '../widgets';
+import { lockedSlot, openSheet } from '../widgets';
 
 /** Size of an inventory square in screen pixels (style.css reads it as --inv-square). */
 const SQUARE = 64;
@@ -126,10 +126,31 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
     }, 3000);
   });
 
+  // Level 20 and the Champion beaten: the fighter can retire as a legend (after a confirm sheet).
+  const graduateBtn = canGraduate(save) ? h('button', { class: 'btn btn-primary btn-big graduate', type: 'button' }, icon('medal', '', 'normal'), 'Graduate') : '';
+  if (graduateBtn) {
+    graduateBtn.addEventListener('click', () => {
+      const yes = h('button', { class: 'btn btn-primary btn-big', type: 'button' }, 'Graduate');
+      const no = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Not yet');
+      const close = openSheet(
+        `Graduate ${c.name}`,
+        h('h2', {}, `Graduate ${c.name}?`),
+        h('p', { class: 'lede' }, 'They retire as a legend and keep their medals forever. Then you start a new fighter.'),
+        h('div', { class: 'sheet-actions' }, yes, no),
+      );
+      no.addEventListener('click', close);
+      yes.addEventListener('click', () => {
+        close();
+        actions.onGraduate();
+      });
+    });
+  }
+
   body.append(
     h(
       'div',
       { class: 'tab-page fighter-tab' },
+      graduateBtn,
       h(
         'p',
         { class: 'fighter-id' },

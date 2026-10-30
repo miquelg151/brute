@@ -471,5 +471,118 @@
       { "include": "no-page-scroll" },
       { "shot": "fight-loss" }
     ]
+  },
+  {
+    "name": "legends-empty",
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "click": ".tab-legends"
+      },
+      {
+        "include": "no-page-scroll"
+      },
+      {
+        "shot": "legends-empty"
+      }
+    ]
+  },
+  {
+    "name": "legends-three",
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const base = s.character; const mk = (name, classId, branch, title, medals, hair) => ({ graduatedAt: '2026-10-2' + hair + 'T10:00:00.000Z', character: { ...base, name, classId, branch, title, level: 20, appearance: { ...base.appearance, hairColor: hair, outfitColor: hair }, medals, bosses: { rusty: 'beaten', alley_cat: 'beaten', sewer_king: 'skipped', champion: 'beaten' }, stats: { fights: 41, wins: 33, kos: 12, streak: 4, bestStreak: 9, bossLosses: {} } } }); s.legends = [mk('Miquel the Great', 'brawler', 'brute', 'The Unstoppable', ['first_blood', 'hot_streak', 'unstoppable', 'boss_rusty', 'boss_alley_cat', 'boss_champion'], 1), mk('Rata', 'parkour', null, undefined, ['first_blood'], 2), mk('Ana', 'mystic', null, 'The Untouchable', [], 3)]; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "click": ".tab-legends"
+      },
+      {
+        "eval": "if (document.querySelectorAll('.legend-card').length !== 3) throw new Error('expected 3 legend cards'); const d = document.documentElement; if (d.scrollWidth > innerWidth) throw new Error('page is wider than the screen');"
+      },
+      {
+        "shot": "legends-three"
+      }
+    ]
+  },
+  {
+    "name": "legend-detail",
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const base = s.character; const mk = (name, classId, branch, title, medals, hair) => ({ graduatedAt: '2026-10-2' + hair + 'T10:00:00.000Z', character: { ...base, name, classId, branch, title, level: 20, appearance: { ...base.appearance, hairColor: hair, outfitColor: hair }, medals, bosses: { rusty: 'beaten', alley_cat: 'beaten', sewer_king: 'skipped', champion: 'beaten' }, stats: { fights: 41, wins: 33, kos: 12, streak: 4, bestStreak: 9, bossLosses: {} } } }); s.legends = [mk('Miquel the Great', 'brawler', 'brute', 'The Unstoppable', ['first_blood', 'hot_streak', 'unstoppable', 'boss_rusty', 'boss_alley_cat', 'boss_champion'], 1), mk('Rata', 'parkour', null, undefined, ['first_blood'], 2), mk('Ana', 'mystic', null, 'The Untouchable', [], 3)]; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "click": ".tab-legends"
+      },
+      {
+        "click": ".legend-card:nth-child(1)"
+      },
+      {
+        "eval": "const sh = document.querySelector('.sheet'); if (!sh) throw new Error('no sheet'); if (sh.scrollWidth > sh.clientWidth + 1) throw new Error('sheet is wider than itself');"
+      },
+      {
+        "shot": "legend-detail"
+      },
+      {
+        "eval": "document.querySelector('.sheet').scrollTop = 9999;"
+      },
+      {
+        "shot": "legend-detail-bottom"
+      }
+    ]
+  },
+  {
+    "name": "fighter-graduate",
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 20; c.branch = 'brute'; c.bosses = { rusty: 'beaten', alley_cat: 'beaten', sewer_king: 'beaten', champion: 'beaten' }; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "click": ".tab-fighter"
+      },
+      {
+        "eval": "if (!document.querySelector('.graduate')) throw new Error('no Graduate button');"
+      },
+      {
+        "shot": "fighter-graduate"
+      },
+      {
+        "click": ".graduate"
+      },
+      {
+        "shot": "fighter-graduate-confirm"
+      },
+      {
+        "click": ".sheet-actions .btn-primary"
+      },
+      {
+        "wait": 600
+      },
+      {
+        "eval": "if (!document.querySelector('.create-body')) throw new Error('creation did not open'); const kept = JSON.parse(localStorage.getItem('brute.legends') || '[]'); if (kept.length !== 1) throw new Error('legend was not stored');"
+      },
+      {
+        "shot": "graduated-creation"
+      }
+    ]
   }
 ]

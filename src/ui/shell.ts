@@ -1,5 +1,5 @@
 // The game's main frame once a fighter exists: a top bar with the fighter, the open tab in
-// the middle, and the tab bar at the bottom (Fighter · Fight · Cards).
+// the middle, and the tab bar at the bottom (Fighter · Fight · Cards · Legends).
 // Full-screen moments (creation, level-up, pre-fight, the fight) are drawn by main.ts instead.
 import { rankOf, xpToNext, type SaveData } from '../core';
 import { h, pixelArt } from './dom';
@@ -9,15 +9,18 @@ import { drawFighter } from './sprites';
 import { renderCardsTab } from './tabs/cardsTab';
 import { renderFightTab } from './tabs/fightTab';
 import { renderFighterTab } from './tabs/fighterTab';
+import { renderLegendsTab } from './tabs/legendsTab';
 import { rankBadge } from './widgets';
 
-export type TabId = 'fighter' | 'fight' | 'cards';
+export type TabId = 'fighter' | 'fight' | 'cards' | 'legends';
 
 /** What the shell asks main.ts to do. */
 export interface ShellActions {
   onFight(): void;
   onLevelUp(): void;
   onReset(): void;
+  /** The fighter graduated: main.ts keeps the legends and goes to creation. */
+  onGraduate(): void;
   /** Stores the save after a tab changed it (for example the deck). */
   onSave(): void;
 }
@@ -32,6 +35,7 @@ const TABS: { id: TabId; label: string; icon: IconName }[] = [
   { id: 'fighter', label: 'Fighter', icon: 'strength' },
   { id: 'fight', label: 'Fight', icon: 'fist' },
   { id: 'cards', label: 'Cards', icon: 'skill' },
+  { id: 'legends', label: 'Legends', icon: 'medal' },
 ];
 
 const TAB_KEY = 'brute.tab';
@@ -86,6 +90,12 @@ export function renderShell(root: HTMLElement, save: SaveData, actions: ShellAct
       shownXp = null;
       actions.onReset();
     },
+    // Graduating also forgets the open tab: the next fighter starts on Fight.
+    onGraduate: () => {
+      forgetTab();
+      shownXp = null;
+      actions.onGraduate();
+    },
     openTab: (id) => open(id, true),
   };
 
@@ -101,6 +111,7 @@ export function renderShell(root: HTMLElement, save: SaveData, actions: ShellAct
     body.scrollTop = 0;
     if (id === 'fight') renderFightTab(body, save, tabActions);
     else if (id === 'fighter') renderFighterTab(body, save, tabActions);
+    else if (id === 'legends') renderLegendsTab(body, save);
     else renderCardsTab(body, save, tabActions);
     if (animate) tabIn(body);
   }

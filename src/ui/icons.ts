@@ -434,6 +434,19 @@ const ICONS = {
     ],
     colors: { S: PAL.fog, L: PAL.white, Y: PAL.sand, D: PAL.wood, K: PAL.brownDark },
   },
+  // A medal on a ribbon, for feats and boss wins.
+  medal: {
+    rows: [
+      '.R...B.',
+      '..R.B..',
+      '..RBB..',
+      '.LYYYD.',
+      '.YYLYD.',
+      '.YYYYD.',
+      '..DDD..',
+    ],
+    colors: { R: PAL.red, B: PAL.blue, L: PAL.white, Y: PAL.yellow, D: PAL.amber },
+  },
 } satisfies Record<string, IconDef>;
 
 export type IconName = keyof typeof ICONS;

@@ -33,3 +33,27 @@ export function rankBadge(level: number): HTMLElement {
   const rank = rankOf(level);
   return h('span', { class: `rank-badge rank-${rank.id}` }, rank.name);
 }
+
+/**
+ * Opens a bottom sheet over the screen with `content` inside (same look as the pre-fight
+ * and break sheets). Tapping outside it or pressing Escape closes it. Returns the close function.
+ */
+export function openSheet(label: string, ...content: (Node | string)[]): () => void {
+  const sheet = h('section', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': label }, h('div', { class: 'sheet-handle', 'aria-hidden': 'true' }), ...content);
+  const backdrop = h('div', { class: 'sheet-backdrop' }, sheet);
+  const close = () => {
+    backdrop.remove();
+    document.body.classList.remove('sheet-open');
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') close();
+  };
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) close();
+  });
+  document.addEventListener('keydown', onKey);
+  document.body.classList.add('sheet-open');
+  document.body.append(backdrop);
+  return close;
+}

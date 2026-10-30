@@ -37,6 +37,8 @@ import {
   fighterStats,
   loadoutFor,
   newGame,
+  canGraduate,
+  graduate,
   prepareFight,
   prepareLevelUp,
   recordPlay,
@@ -3047,5 +3049,62 @@ describe('boss tricks', () => {
     const b = generateOpponent(15, new Rng(5));
     const log = runFight(a, b, 9);
     expect(log.events.some((e) => e.t === 'repair' || e.t === 'ninelives' || e.t === 'read')).toBe(false);
+  });
+});
+
+describe('graduation', () => {
+  /** A fighter who beat the Champion at level 20 with nothing pending. */
+  function champion(): SaveData {
+    const save = newGame('G', look, 'brawler', 'port', 5);
+    save.character.level = 20;
+    save.character.bosses = { champion: 'beaten' };
+    save.character.medals = ['first_blood', 'boss_champion'];
+    return save;
+  }
+
+  it('canGraduate needs level 20 and the Champion beaten, with nothing pending', () => {
+    const save = champion();
+    expect(canGraduate(save)).toBe(true);
+    save.character.bosses = { champion: 'skipped' };
+    expect(canGraduate(save)).toBe(false);
+    save.character.bosses = {};
+    expect(canGraduate(save)).toBe(false);
+    const low = champion();
+    low.character.level = 19;
+    expect(canGraduate(low)).toBe(false);
+  });
+
+  it('canGraduate is false with a pending level-up or a pending fight', () => {
+    const levelUp = champion();
+    levelUp.pendingLevelUps = 1;
+    expect(canGraduate(levelUp)).toBe(false);
+    const fight = champion();
+    fight.pendingFight = { opponent: fight.character, opponentPlan: { ...DEFAULT_PLAN }, live: false, seed: 1, tactics: null, inputs: { plays: [], breaks: [] } };
+    expect(canGraduate(fight)).toBe(false);
+  });
+
+  it('graduate stores a frozen deep copy and keeps older legends', () => {
+    const save = champion();
+    const first = graduate(save, new Date('2026-10-30T10:00:00Z'));
+    expect(save.legends).toHaveLength(1);
+    expect(save.legends[0]).toBe(first);
+    expect(first.graduatedAt).toBe('2026-10-30T10:00:00.000Z');
+    // Later changes to the save do not reach the legend.
+    save.character.name = 'Changed';
+    save.character.medals!.push('more');
+    expect(first.character.name).toBe('G');
+    expect(first.character.medals).toEqual(['first_blood', 'boss_champion']);
+    // A second graduation keeps the first, and the next fighter keeps both.
+    const next = newGame('H', look, 'brawler', 'port', 6, save.legends);
+    next.character.level = 20;
+    next.character.bosses = { champion: 'beaten' };
+    graduate(next, new Date('2026-11-01T00:00:00Z'));
+    expect(next.legends.map((l) => l.character.name)).toEqual(['G', 'H']);
+    expect(newGame('I', look, 'brawler', 'port', 7, next.legends).legends).toHaveLength(2);
+  });
+
+  it('graduate refuses a fighter who cannot graduate', () => {
+    const save = newGame('G', look, 'brawler', 'port', 5);
+    expect(() => graduate(save, new Date())).toThrow();
   });
 });
