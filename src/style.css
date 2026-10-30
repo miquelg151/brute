@@ -2721,6 +2721,13 @@ button.game-card {
   font-weight: 700;
   line-height: 1.15;
   text-align: center;
+  /* A long single word (Switchblade, Sledgehammer) breaks with a hyphen inside its tile
+     instead of running into the next item; overflow-wrap is the fallback. */
+  max-width: 100%;
+  min-width: 0;
+  -webkit-hyphens: auto; /* Safari on iPhone */
+  hyphens: auto;
+  overflow-wrap: anywhere;
   color: var(--sticker-fill);
   -webkit-text-stroke: var(--sticker-outline-sm) var(--sticker-ink);
   paint-order: stroke fill;

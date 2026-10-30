@@ -213,6 +213,7 @@
       { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.weapons = ['brick', 'bottle', 'pool_cue', 'crowbar', 'knuckles', 'switchblade', 'sledgehammer']; c.pets = ['rat', 'pigeon']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
       { "wait": 1500 },
       { "click": ".tab-fighter" },
+      { "eval": "const bad = []; const names = [...document.querySelectorAll('.inv-name')].filter((el) => el.offsetParent); for (const el of names) { const item = el.closest('.inv-item').getBoundingClientRect(); const r = el.getBoundingClientRect(); if (el.scrollWidth > el.clientWidth + 1 || r.left < item.left - 1 || r.right > item.right + 1) bad.push(`${el.textContent} is wider than its tile`); } for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) { const p = names[i].getBoundingClientRect(); const q = names[j].getBoundingClientRect(); if (p.left < q.right - 1 && q.left < p.right - 1 && p.top < q.bottom - 1 && q.top < p.bottom - 1) bad.push(`${names[i].textContent} overlaps ${names[j].textContent}`); } if (bad.length) throw new Error(`item names do not fit: ${bad.join(', ')}`);" },
       { "shot": "tab-fighter-new-items" }
     ]
   },
