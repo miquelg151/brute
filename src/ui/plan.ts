@@ -22,7 +22,7 @@ import { cardSticker, levelOf } from './cardView';
 import { gearEffects } from './describe';
 import { h, pixelArt } from './dom';
 import { draggable } from './drag';
-import { TRAIT_ICONS, icon, iconValue, type IconName } from './icons';
+import { OPTION_ICONS, TRAIT_ICONS, icon, iconValue, type IconName } from './icons';
 import { drawWeapon } from './sprites';
 
 /**
@@ -69,8 +69,20 @@ export function optionGroup<Id extends string>(
     );
   };
 
+  // How many letters fit a button at full size: four buttons in a row are narrower than three.
+  const fitLetters = ids.length >= 4 ? 9 : 11;
   const buttons = ids.map((id) => {
-    const btn = h('button', { class: 'segment', 'aria-pressed': id === selected ? 'true' : 'false' }, defs[id].name, matches(id) ? h('span', { class: 'segment-tick' }, ' ✓') : '');
+    // The option's icon on top, its word under it; a long word shrinks to stay on one line.
+    const word = defs[id].name;
+    const art = icon(OPTION_ICONS[id] ?? 'skill', word, 'small');
+    art.setAttribute('aria-hidden', 'true');
+    const btn = h(
+      'button',
+      { class: 'segment option-segment', 'aria-pressed': id === selected ? 'true' : 'false', 'aria-label': matches(id) ? `${word}, strong vs this foe` : word },
+      art,
+      h('span', { class: 'segment-word', style: `--word-fit:${Math.min(1, fitLetters / Math.max(fitLetters, word.length)).toFixed(2)}` }, word),
+      matches(id) ? h('span', { class: 'segment-tick', 'aria-hidden': 'true' }, '✓') : '',
+    );
     btn.addEventListener('click', () => {
       buttons.forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
       showDetail(id);
@@ -79,7 +91,7 @@ export function optionGroup<Id extends string>(
     return btn;
   });
   showDetail(selected);
-  return h('div', { class: 'option-group' }, h('div', { class: 'segments', role: 'group', 'data-count': ids.length, style: `--count:${ids.length}` }, ...buttons), detail);
+  return h('div', { class: 'option-group' }, h('div', { class: 'segments option-segments', role: 'group', 'data-count': ids.length, style: `--count:${ids.length}` }, ...buttons), detail);
 }
 
 /** Stance, target and weapon-use pickers. Edits `plan` in place. */

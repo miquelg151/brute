@@ -487,6 +487,20 @@ export const TRAIT_ICONS: Record<string, IconName> = {
   magic_user: 'magic',
 };
 
+/** The picture on each plan button (stance, target, weapon use), by option id. */
+export const OPTION_ICONS: Record<string, IconName> = {
+  balanced: 'stance',
+  aggressive: 'rage',
+  defensive: 'armor',
+  agile: 'dodge',
+  mixed: 'target',
+  fighter: 'fist',
+  pets: 'pet',
+  normal: 'weapon',
+  throw: 'fast',
+  keep: 'lock',
+};
+
 /** Health, strength, agility and speed as a row of icon + value. */
 export function statRow(hp: number, strength: number, agility: number, speed: number): HTMLElement {
   return h(

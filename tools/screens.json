@@ -84,6 +84,13 @@
     ]
   },
   {
+    "name": "plan-buttons-fit",
+    "helper": true,
+    "steps": [
+      { "eval": "const btns = [...document.querySelectorAll('.option-segments .segment')].filter((b) => b.offsetParent); if (btns.length < 10) throw new Error('expected icon option buttons, found ' + btns.length); for (const b of btns) { if (!b.querySelector('.icon')) throw new Error('no icon in ' + b.textContent); const w = b.querySelector('.segment-word'); if (w.scrollWidth > w.clientWidth + 1 || w.offsetHeight > 22) throw new Error('word wraps or overflows: ' + w.textContent); }" }
+    ]
+  },
+  {
     "name": "all-cards",
     "helper": true,
     "steps": [
@@ -121,6 +128,7 @@
       { "click": ".carousel-card:nth-child(3)" },
       { "include": "no-page-scroll" },
       { "include": "no-step-scroll" },
+      { "eval": "const stage = document.querySelector('.create-stage').getBoundingClientRect(); const card = document.querySelector('.carousel').getBoundingClientRect(); if (card.top - stage.bottom > 60) throw new Error('gap between fighter and class card: ' + Math.round(card.top - stage.bottom));" },
       { "shot": "create-class" }
     ]
   },
@@ -199,7 +207,11 @@
       { "include": "rich" },
       { "click": ".tab-fighter" },
       { "include": "no-page-scroll" },
+      { "eval": "if (document.querySelectorAll('.inv-heading').length !== 4) throw new Error('expected 4 groups (weapons, pets, gear, skills)'); const items = [...document.querySelectorAll('.inv-row:first-child .inv-item')]; const cols = new Set(items.map((i) => Math.round(i.getBoundingClientRect().top))).size; if (items.length >= 3 && cols !== 1) throw new Error('weapons do not sit in one row'); const note = document.querySelector('.inv-note').getBoundingClientRect(); if (innerHeight >= 800 && note.top > innerHeight) throw new Error('the inventory does not fit at ' + innerHeight + ': note at ' + Math.round(note.top));" },
       { "shot": "tab-fighter" },
+      { "click": ".stats .stat:nth-child(2)" },
+      { "eval": "const n = document.querySelector('.stat-note'); if (!n || n.classList.contains('hidden') || !n.textContent.startsWith('Strength')) throw new Error('no strength note: ' + (n && n.textContent));" },
+      { "shot": "tab-fighter-stat" },
       { "click": ".inv-item" },
       { "shot": "tab-fighter-note" },
       { "eval": "document.querySelector('.shell-body').scrollTop = 9999;" },
@@ -249,6 +261,7 @@
       { "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); s.character.level = 5; s.character.branch = 'brute'; s.pendingLevelUps = 1; s.offer = ['card:patch_up', 'card:hurl', 'card:rush']; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();" },
       { "wait": 1500 },
       { "include": "no-page-scroll" },
+      { "eval": "const list = document.querySelector('.levelup .choice-list').getBoundingClientRect(); if (innerHeight >= 800 && innerHeight - list.bottom > 120) throw new Error('empty space under the offers: ' + Math.round(innerHeight - list.bottom)); const t = document.querySelector('.upgrade .tag'); if (getComputedStyle(t).webkitTextStrokeWidth !== '0px') throw new Error('tag still drawn as a sticker');" },
       { "shot": "levelup" }
     ]
   },
@@ -337,6 +350,7 @@
       { "click": ".fight-go" },
       { "include": "prefight-fits" },
       { "include": "prefight-plan-fits" },
+      { "include": "plan-buttons-fit" },
       { "shot": "prefight-plan" },
       { "click": ".trait-chip" },
       { "shot": "prefight-trait" },
@@ -393,6 +407,7 @@
       { "click": "text=Start fight" },
       { "wait": 6000 },
       { "include": "no-page-scroll" },
+      { "eval": "const row = document.querySelector('.card-row').getBoundingClientRect(); const main = document.querySelector('.screen.fight').getBoundingClientRect(); if (main.bottom - row.bottom > 24) throw new Error('cards float ' + Math.round(main.bottom - row.bottom) + 'px above the bottom'); const card = document.querySelector('.card-row .game-card').getBoundingClientRect(); if (card.width < 80) throw new Error('cards too small: ' + card.width); const arena = document.querySelector('.arena').getBoundingClientRect(); if (document.querySelector('.fight-top-row').getBoundingClientRect().top < arena.bottom) throw new Error('controls overlap the arena');" },
       { "shot": "fight" }
     ]
   },
@@ -610,7 +625,7 @@
         "include": "no-page-scroll"
       },
       {
-        "eval": "if (!document.querySelector('.boss-card .boss-go')) throw new Error('no boss card'); const b = document.querySelector('.boss-card').getBoundingClientRect(); const g = document.querySelector('.fight-go').getBoundingClientRect(); if (b.bottom > g.top) throw new Error('boss card overlaps the Fight button'); const a = document.querySelector('.fight-arena').getBoundingClientRect(); if (a.height < 140) throw new Error('the street is squeezed: ' + a.height);"
+        "eval": "if (!document.querySelector('.boss-card .boss-go')) throw new Error('no boss card'); const b = document.querySelector('.boss-card').getBoundingClientRect(); const g = document.querySelector('.fight-go').getBoundingClientRect(); if (b.bottom > g.top) throw new Error('boss card overlaps the Fight button'); const a = document.querySelector('.fight-arena').getBoundingClientRect(); if (a.height < 140) throw new Error('the street is squeezed: ' + a.height); const t = document.querySelector('.boss-card-trick'); if (getComputedStyle(t).webkitLineClamp !== '2') throw new Error('trick not clamped to 2 lines'); if (!document.querySelector('.boss-card .boss-tag')) throw new Error('hint is not a tag'); const go = document.querySelector('.boss-go').getBoundingClientRect(); if (go.bottom > innerHeight) throw new Error('Challenge needs scrolling');"
       },
       {
         "shot": "boss-card"

@@ -1581,6 +1581,38 @@ h2.section-icon:not(.card h2) {
   color: var(--green-lit);
 }
 
+/* Plan buttons: the option's icon on top, its word under it on one line. */
+.option-segment {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px 2px 4px;
+}
+
+/* Every option icon gets the same height (the fist is drawn bigger than the rest). */
+.option-segment .icon canvas {
+  width: auto !important;
+  height: 21px !important;
+}
+
+.segment-word {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: calc(var(--t-xs) * var(--word-fit, 1));
+}
+
+/* The tick for "strong vs this foe" sits on the button's corner. */
+.option-segment .segment-tick {
+  position: absolute;
+  top: -8px;
+  right: -4px;
+  font-size: var(--t-m);
+}
+
 .option-detail {
   display: flex;
   flex-direction: column;
