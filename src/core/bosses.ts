@@ -135,7 +135,7 @@ export const BOSSES: Record<BossId, BossDef> = {
         branch: 'boxer',
         upgrades: [
           'brawler_strength', 'brawler_health', 'gen_health', 'gen_agility', 'gen_speed', 'gen_strength',
-          'gear:leather_jacket', 'skill:jab', 'skill:rhythm', 'card:haymaker', 'card:jab_flurry', 'gen_speed',
+          'gear:leather_jacket', 'skill:jab', 'skill:rhythm', 'card:haymaker', 'gen_speed', 'gen_speed',
           'gen_speed', 'gen_agility', 'gen_agility', 'gen_speed', 'gen_agility', 'gen_speed', 'gen_agility',
         ],
         trick: 'boss_read_the_fight',

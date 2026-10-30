@@ -53,10 +53,10 @@ proposals).
 
 | Level | Id | Name | Build | Trick |
 |---|---|---|---|---|
-| 5 | `rusty` | Rusty | Scrapyard Bouncer, heavy armor | **Spare Parts**: once per fight, when first at or below 50% health after taking damage, heals 25% of max health and gains +2 armor for the rest of the fight. Event `repair`. |
+| 5 | `rusty` | Rusty | Scrapyard Bouncer, heavy armor | **Spare Parts**: once per fight, when first at or below 50% health after taking damage, heals 25% of max health and gains +1 armor for the rest of the fight (tuned down from +2 by the balance tool). Event `repair`. |
 | 10 | `alley_cat` | Alley Cat | Rooftops Parkour (Acrobat), high dodge | **Nine Lives**: the first time a hit would knock her out, she survives with 1 health and surely dodges the next attack aimed at her. Event `ninelives`. |
 | 15 | `sewer_king` | Sewer King | Sewers Tamer (Pack) with rats, poison | **Rat Tide**: at the start of each round, a new rat pet joins him, up to 3 extra rats in total. Event `summon` (existing pattern if one exists, else new). |
-| 20 | `champion` | The Champion | Port Brawler (Boxer), balanced and strong | **Read the Fight**: at each break, he switches his plan (stance, target, weapon use) to the counter of the player's plan for the next round, using the existing advice/counter logic. |
+| 20 | `champion` | The Champion | Port Brawler (Boxer), balanced and strong | **Read the Fight**: at each break, he switches his plan (stance, target, weapon use) to the counter of the player's plan for the next round (the player's new pick at that break), using the existing advice/counter logic. Event `read`, only when his plan changes. |
 
 Bosses are data in `src/core/bosses.ts`; their tricks are skill ids (`boss_spare_parts`,
 `boss_nine_lives`, `boss_rat_tide`, `boss_read_the_fight`) implemented in `src/core/fight.ts`

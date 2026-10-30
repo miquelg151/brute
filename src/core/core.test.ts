@@ -2989,23 +2989,57 @@ describe('boss tricks', () => {
     expect(counterPlan(tamer, DEFAULT_PLAN, fallback).target).toBe('pets');
   });
 
-  it('Read the Fight: at each break the Champion counters the plan the player just fought with', () => {
+  it('Read the Fight: at each break the Champion counters the plan the player picks for the next round', () => {
     const champion = buildBoss('champion');
+    const bossPlan = BOSSES.champion.plan;
+    // The player switches to Defensive, then to Agile: each new plan is what he must counter.
+    const plans: Plan[] = [
+      { stance: 'defensive', target: 'mixed', weaponStyle: 'normal' },
+      { stance: 'agile', target: 'pets', weaponStyle: 'throw' },
+    ];
+    let reads = 0;
     for (let seed = 1; seed <= 8; seed++) {
       const player = generateOpponent(19, new Rng(seed));
-      const log = runFight(player, champion, seed, { b: { ...BOSSES.champion.plan } });
+      const breaks = plans.map((plan) => ({ ...plan, weapons: player.weapons, recover: false }));
+      const opts = { a: { interactive: true, breaks }, b: { ...bossPlan } };
+      const log = runFight(player, champion, seed, opts);
+      expect(runFight(player, champion, seed, opts)).toEqual(log);
       const champ = log.roster.findIndex((u) => u.isMain && u.team === 1);
-      expect(runFight(player, champion, seed, { b: { ...BOSSES.champion.plan } })).toEqual(log);
-      let playerPlan: Plan = { ...DEFAULT_PLAN };
+      let hisPlan: Plan = { ...bossPlan };
       log.events.forEach((e, i) => {
         if (e.t !== 'break') return;
         const [mine, his] = e.choices;
-        const { stance, target, weaponStyle } = his!;
-        expect({ stance, target, weaponStyle }).toEqual(counterPlan(player, playerPlan, BOSSES.champion.plan));
-        expect(log.events.slice(i + 1).find((x) => x.t === 'read' || x.t === 'tick')).toMatchObject({ t: 'read', actor: champ });
-        playerPlan = { stance: mine!.stance, target: mine!.target, weaponStyle: mine!.weaponStyle };
+        const now = { stance: his!.stance, target: his!.target, weaponStyle: his!.weaponStyle };
+        // He counters the player's NEW choice (the one in this break), not the round that just ended.
+        expect(now).toEqual(counterPlan(player, mine!, bossPlan));
+        // READ shows only when his plan really changes.
+        const read = log.events.slice(i + 1).find((x) => x.t === 'read' || x.t === 'tick');
+        const changed = JSON.stringify(now) !== JSON.stringify(hisPlan);
+        if (changed) {
+          expect(read).toMatchObject({ t: 'read', actor: champ });
+          reads++;
+        } else expect(read?.t).not.toBe('read');
+        hisPlan = now;
       });
     }
+    expect(reads).toBeGreaterThan(0);
+  });
+
+  it('Read the Fight: he answers the new pick in the same break, not the round before', () => {
+    // A Champion who hits like a feather and has lots of health, so the fight reaches both breaks.
+    const champion = buildBoss('champion');
+    champion.bonusStats = { ...champion.bonusStats, strength: -12, health: 100 };
+    const player = createCharacter('M', look, 'mystic', 'port');
+    expect(traitsOf(player)).toEqual(['magic_user']);
+    const pick = (stance: BreakChoice['stance']): BreakChoice => ({ stance, target: 'mixed', weaponStyle: 'normal', weapons: [], recover: false });
+    const log = runFight(player, champion, 3, { a: { interactive: true, breaks: [pick('defensive'), pick('agile')] }, b: { ...BOSSES.champion.plan } });
+    const his = log.events.flatMap((e) => (e.t === 'break' ? [[e.choices[1]!.stance, e.choices[1]!.weaponStyle]] : []));
+    // Defensive reads as tough: Aggressive and Keep. Back to Agile: he counters the magic again.
+    expect(his).toEqual([
+      ['aggressive', 'keep'],
+      ['agile', 'normal'],
+    ]);
+    expect(log.events.filter((e) => e.t === 'read')).toHaveLength(2);
   });
 
   it('a fighter without trick skills is not touched by the trick code', () => {

@@ -245,7 +245,7 @@ normal bot rules. Builds live in `src/core/bosses.ts`, tricks in `src/core/fight
 | Rusty | 5 | Scrapyard Bouncer (Wall): bat, Shield, Riot Vest, Body Slam, +2 Agility | Balanced | **Spare Parts** |
 | Alley Cat | 10 | Rooftops Parkour (Acrobat): Tracksuit, Sixth Sense, Momentum, Flurry, +3 Agility, +1 Speed, +4 Health | Agile, fighter first | **Nine Lives** |
 | Sewer King | 15 | Sewers Tamer (Pack): dog and rat, Pack Call, Gang Up, Toxic Spit (Sewers card), +5 Speed, +6 Agility, +6 Health | Balanced | **Rat Tide** |
-| The Champion | 19 | Port Brawler (Boxer): Combo, Jab, Rhythm, Haymaker, Leather Jacket, +2 Strength, +5 Speed, +5 Agility, +6 Health | Balanced | **Read the Fight** |
+| The Champion | 19 | Port Brawler (Boxer): Combo, Jab, Rhythm, Haymaker, Leather Jacket, +2 Strength, +6 Speed, +5 Agility, +6 Health | Balanced | **Read the Fight** |
 
 - **Spare Parts**: once per fight, the first time the fighter is at or below 50% health after
   taking damage (a hit, poison, bleed, burn or thorns), they heal 25% of max health (halved
@@ -260,12 +260,13 @@ normal bot rules. Builds live in `src/core/bosses.ts`, tricks in `src/core/fight
   pets), count for Pack Call and Gang Up, and stay until knocked out (they do not vanish at the
   end of a round like spirits). Replay: `+RAT`.
 - **Read the Fight**: at each break he changes his stance, target and weapon use to counter the
-  plan the player fought the round with, using the same advice the player sees: for each choice,
+  plan the player picks for the next round, using the same advice the player sees: for each choice,
   the first option whose "strong against" trait the player shows (Aggressive vs tough, Defensive
   vs many small hits, Agile vs magic; Fighter first vs fragile, Pets first vs pets; Throw vs
   counters, Keep vs tough). A player in the Defensive stance counts as tough. Where nothing
-  matches he keeps his starting choice. He decides before the player (like every automatic side),
-  so he reads the round that just ended, not the player's new choice. Replay: `READ`.
+  matches he keeps his starting choice. The player's side (team 0) decides first, so he answers
+  the new pick in the same break; if his foe has not picked (a bot on the other side), he reads
+  the plan they fought the round with. Replay: `READ`, only when his plan really changes.
 
 Balance target (`npm run balance -- 600 bosses`): generated bot fighters of the gate level win
 45-55% on average against each boss, and no class wins less than 30%.

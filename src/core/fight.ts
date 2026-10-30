@@ -99,7 +99,7 @@ export type FightEvent =
   | { t: 'repair'; actor: number; armor: number }
   /** Nine Lives (boss trick): the hit just before would have knocked the fighter out; they stay on 1 health. */
   | { t: 'ninelives'; actor: number }
-  /** Read the Fight (boss trick): at a break, the fighter switched plan to counter the foe's. */
+  /** Read the Fight (boss trick): at a break, the fighter switched to a new plan that counters the foe's. */
   | { t: 'read'; actor: number }
   | { t: 'death'; actor: number };
 
@@ -1597,10 +1597,12 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       const m = mains[team];
       const foe = mains[team === 0 ? 1 : 0];
       choices[team] = m.interactive ? (m.breaks?.[index] ?? null) : autoBreak(m, foe);
-      // Read the Fight (boss trick): counter the plan the foe fought this round with.
-      // It is decided before the player's choice is known, like every automatic choice.
+      // Read the Fight (boss trick): counter the foe's plan for the next round. Team 0 decides
+      // first, so a foe on team 0 has already picked; otherwise the plan they fought with is read.
+      // While a player's pick is still missing the fight waits here, so this choice is not used yet.
       if (!m.interactive && m.skills.has('boss_read_the_fight')) {
-        choices[team] = { ...choices[team]!, ...counterPlan(characters[foe.team], foe.plan, startPlans[team]!) };
+        const foePlan = choices[foe.team] ?? foe.plan;
+        choices[team] = { ...choices[team]!, ...counterPlan(characters[foe.team], foePlan, startPlans[team]!) };
       }
     }
     events.push({ t: 'break', round, choices });
@@ -1608,13 +1610,18 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       waiting = true;
       break;
     }
+    // Read the Fight shows READ only when the plan really changes.
+    const planBefore = mains.map((m) => `${m.plan.stance}/${m.plan.target}/${m.plan.weaponStyle}`);
     for (const team of [0, 1] as const) {
       const m = mains[team];
       applyBreak(m, choices[team]!, characters[team]);
       for (const u of units) if (u.team === team) u.gauge = u.isMain ? m.startGauge + (choices[team]!.recover ? RECOVER_GAUGE : 0) : 0;
       for (const u of units) if (u.team === team && !u.isMain) applyPlan(u, m.plan);
     }
-    for (const m of mains) if (!m.interactive && m.skills.has('boss_read_the_fight')) events.push({ t: 'read', actor: m.idx });
+    for (const m of mains) {
+      const changed = `${m.plan.stance}/${m.plan.target}/${m.plan.weaponStyle}` !== planBefore[m.team];
+      if (!m.interactive && m.skills.has('boss_read_the_fight') && changed) events.push({ t: 'read', actor: m.idx });
+    }
     emitRes();
   }
 
