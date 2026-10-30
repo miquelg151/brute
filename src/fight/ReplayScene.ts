@@ -702,7 +702,7 @@ export class ReplayScene extends Phaser.Scene {
     // A tiny heal (like the Sewers +1 every turn) must not slow the replay: no tint, almost no wait.
     const tiny = amount <= 1;
     if (!tiny) v.sprite.setTint(num(PAL.lime));
-    this.floatText(v.sprite.x, this.headY(v), `+${amount}`, PAL.lime);
+    if (amount > 0) this.floatText(v.sprite.x, this.headY(v), `+${amount}`, PAL.lime);
     v.hp = hp;
     this.drawBars(v);
     await this.wait(tiny ? 80 : 350);

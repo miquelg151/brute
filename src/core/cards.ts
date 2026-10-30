@@ -89,7 +89,7 @@ export const CARDS: Record<string, CardDef> = {
   taunt: card('taunt', 'Taunt', 3, 'bouncer', false, () => 'For your next 2 turns enemy pets must attack you, and your thorns against them are doubled.'),
   sledge_swing: card('sledge_swing', 'Sledge Swing', 5, 'bouncer', false, (l) => `A heavy hit (+${scaled(20, l)}%): if it lands, they lose 4 armor.`),
   gang_up: card('gang_up', 'Gang Up', 5, 'tamer', false, () => 'Every pet attacks at once and you attack too.'),
-  together: card('together', 'Together', 4, 'tamer', false, (l) => `You and your pets heal ${scaled(15, l)}% of your health.`),
+  together: card('together', 'Together', 4, 'tamer', false, (l) => `You and your pets heal ${scaled(15, l)}% of their health.`),
   fireball: card('fireball', 'Fireball', 5, 'mystic', false, (l) => `A spell (5 + magic) that can't be dodged and burns ${scaled(5, l)} on each of their next 3 turns.`),
   rune_circle: card('rune_circle', 'Rune Circle', 4, 'mystic', false, (l) => `Heal ${scaled(10, l)}% of your health and raise a ward of 8 + magic.`),
   // Origin cards: every fighter starts with the one from where they grew up.

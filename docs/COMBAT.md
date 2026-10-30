@@ -112,14 +112,16 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
 ## Signature mechanics (Boxer, Brute, Acrobat, Thief, Wall)
 
 - **Rhythm** (Rhythm skill, Boxing Wraps): every attack that lands adds a stack, up to 5, and each
-  stack is +5% damage. Any damage taken (hits, poison, bleed, thorns) resets the stacks. The
+  stack is +5% damage. Any damage taken (hits, poison, bleed, burn, thorns) resets the stacks. The
   skill or the wraps are needed for stacks to add damage; Boxing Wraps start every round with 2
   stacks. Jab Flurry adds stacks even without them.
 - **Bleed** (Bone Breaker: 25% chance on a landed melee hit, bleed 3; Street Bite): the target
   loses N health at the start of each of its next 3 turns, right after poison. Armor, wards and
   Second Wind are ignored. A new bleed restarts the 3 turns and keeps the higher N. Bleed and poison
   are separate effects.
-- **Momentum**: every dodge (even a sure one) gives the dodger +1 energy, up to the maximum.
+- **Momentum**: every rolled dodge gives the dodger +1 energy, up to the maximum. Sure dodges
+  (Backflip, Roll, Leap) do not, so Backflip cannot be chained for free energy. Backflip's own +2
+  energy still applies.
 - **Steal** (Quick Hands: 30% chance on a landed hit, 5 stamina from their fighter; Heist): the
   thief gains what the target loses, never more than the target had or the thief's maximum.
 - **Thorns** (Thorns skill 20%, Dumpster Lid 10%, they add up): an attacker that lands a melee
@@ -152,7 +154,7 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
 - **Taunt** also pulls enemy spirits, not only pets. Taunt and Rage do not tick down on a turn
   the fighter spends stunned, and they carry across rounds until used up.
 - **Thorns** use the health actually lost (at least 1, even when a ward absorbed the hit) and
-  ignore the attacker's Second Wind and Thick Skull.
+  ignore the attacker's Second Wind, Thick Skull and Guardian.
 - **Brick**'s +50% is +50 points on the throw multiplier, not 50% of the damage.
 - **Hurl** never lowers a stronger throw: if the weapon would throw for more, it keeps that.
 
@@ -170,7 +172,7 @@ level like any other card: +10% per level above 1, counts +1 at level 4.
 | Boxing Wraps | accessory | start every round with 2 rhythm stacks | Boxer |
 | Spring Sneakers | accessory | +6 dodge | Acrobat |
 | Dumpster Lid | armor | armor 2, thorns 10% | Wall |
-| Key Collar | accessory | pets get +40 health | Bond |
+| Key Collar | accessory | +40% pet health | Bond |
 | Neon Spray | accessory | +2 magic | Witch |
 | Rune Amulet | accessory | +30 magic resistance | Warden |
 | Cap | accessory | +4 dodge | general |

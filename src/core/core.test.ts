@@ -1747,6 +1747,7 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
     const boxer = learn(fresh('brawler'), 'rhythm');
     let maxStacks = 0;
     let resets = 0;
+    let checked = 0;
     for (const seed of seeds) {
       const log = plain(boxer, foe, seed);
       let stacks = 0;
@@ -1758,13 +1759,22 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
           stacks = e.stacks;
           maxStacks = Math.max(maxStacks, stacks);
         }
-        // A hit on the boxer that did damage: the stacks are gone right away.
+        // Damage to the boxer: the reset is emitted right BEFORE the hit event.
+        // Stacks are already 0 by then, so we look at the event that reset them.
         if (e.t === 'hit' && e.target === 0 && e.damage > 0) {
-          if (stacks > 0) expect(log.events[i + 1]).toMatchObject({ t: 'rhythm', actor: 0, stacks: 0 });
-          stacks = 0;
+          const before = log.events[i - 1]!;
+          if (before.t === 'rhythm' && before.actor === 0) {
+            expect(before.stacks).toBe(0);
+            checked++;
+          } else {
+            // No reset event right before: there were no stacks to lose.
+            expect(stacks).toBe(0);
+          }
         }
       });
     }
+    // The reset check really ran, and it ran on hits that had stacks to lose.
+    expect(checked).toBeGreaterThan(0);
     expect(maxStacks).toBe(5);
     expect(resets).toBeGreaterThan(0);
   });
@@ -1903,6 +1913,21 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
     expect(dodges).toBeGreaterThan(10);
   });
 
+  it('Momentum gives nothing for the sure dodges of Backflip', () => {
+    const acrobat = learn(fresh('parkour'), 'momentum');
+    const bouncer = fresh('bouncer');
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const log = play(acrobat, 'backflip', 5, seed, bouncer);
+      const after = log.events.slice(cardIndex(log, 'backflip'));
+      // The two sure dodges come right after the card, with no Momentum event next to them.
+      const sure = after.filter((e) => e.t === 'dodge' && e.target === 0).slice(0, 2);
+      expect(sure.length).toBe(2);
+      for (const d of sure) expect(after[after.indexOf(d) + 1]!.t).not.toBe('momentum');
+      // Backflip's own +2 energy is still there.
+      expect(after.find((e) => e.t === 'energy' && e.actor === 0)).toMatchObject({ energy: 2 });
+    }
+  });
+
   it('Backflip dodges the next 2 attacks for sure and gives +2 energy', () => {
     // Costs 4: playable at tick 5, when the fighter has 4 energy.
     const me = fresh('bouncer');
@@ -1938,6 +1963,23 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
     expect(after.find((e) => e.t === 'energy' && e.actor === 0)).toMatchObject({ energy: 2 });
     const log4 = play(me, 'heist', 5, 5, foe, 4);
     expect(log4.events.slice(cardIndex(log4, 'heist')).find((e) => e.t === 'steal')).toMatchObject({ energy: 3, stamina: 19 });
+  });
+
+  it('Heist shows no steal event when the foe has nothing to take', () => {
+    const me = fresh('parkour');
+    let heists = 0;
+    for (const seed of seeds) {
+      // The foe has played its energy away, and heist is played again and again.
+      const log = runFight(me, foe, seed, {
+        a: { interactive: true, deck: { heist: 1 }, plays: [10, 15, 20, 25, 30, 35, 40, 45, 50].map((tick) => ({ tick, card: 'heist' })), breaks: [] },
+        b: { interactive: true, deck: { rage: 1 }, plays: [{ tick: 0, card: 'rage' }], breaks: [] },
+      });
+      for (const e of log.events) {
+        if (e.t === 'steal') expect(e.energy + e.stamina).toBeGreaterThan(0);
+      }
+      heists += log.events.filter((e) => e.t === 'card' && e.card === 'heist').length;
+    }
+    expect(heists).toBeGreaterThan(0);
   });
 
   // --- Thorns (Wall) ---
@@ -2042,6 +2084,25 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
     });
     const reaction = log.events.find((e) => e.t === 'card' && e.actor === 1);
     expect(reaction).toMatchObject({ card: expect.stringMatching(/^(backflip|taunt)$/) });
+  });
+
+  it('bots do not answer with Taunt when the enemy has no pets', () => {
+    const bot = fresh('parkour');
+    /** Ticks at which the bot (team 1 main) played Taunt in the 5 ticks after the Rage at tick 10 (its reaction time). */
+    const tauntReactions = (log: FightLog) => {
+      let tick = 0;
+      const ticks: number[] = [];
+      for (const e of log.events) {
+        if (e.t === 'tick') tick = e.n;
+        if (e.t === 'card' && e.card === 'taunt' && e.actor === log.roster.findIndex((u) => u.team === 1 && u.isMain) && tick >= 10 && tick <= 15) ticks.push(tick);
+      }
+      return ticks;
+    };
+    const opts = { a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: 10, card: 'rage' }], breaks: [] }, b: { deck: { taunt: 1 } } };
+    // Only Taunt in the deck: with no enemy pets, the bot does not pick it as a defence.
+    expect(tauntReactions(runFight(foe, bot, 5, opts))).toEqual([]);
+    // With an enemy pet around, it is a valid answer.
+    expect(tauntReactions(runFight(createCharacter('T', look, 'tamer', 'port'), bot, 5, opts)).length).toBeGreaterThan(0);
   });
 });
 
@@ -2478,5 +2539,39 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
       const differs = seeds.some((seed) => JSON.stringify(plain({ ...fresh('brawler'), gear: [id] }, foe, seed, { a: worn }).events) !== JSON.stringify(plain(fresh('brawler'), foe, seed).events));
       expect([id, differs]).toEqual([id, true]);
     }
+  });
+});
+
+describe('old content regression guard', () => {
+  /**
+   * Fights between starting fighters (no new skills, cards or items) must stay exactly the same
+   * as on main before the content expansion (these hashes were checked against main). Each fight log is squeezed into one short hash.
+   * If you change an OLD rule on purpose, the hashes change: run the tests, check that the new
+   * values in the failure message are what you expect, then paste them below.
+   */
+  const hash = (log: FightLog): string => {
+    const text = JSON.stringify(log.events);
+    let h = 5381;
+    for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+    return `${text.length}:${h.toString(16)}`;
+  };
+  const fighters = (id: Character['classId']) => createCharacter('N', look, id, 'port');
+  const expected: Record<string, string> = {
+    'brawler vs tamer, seed 1': '6986:fa59e3de',
+    'tamer vs mystic, seed 2': '5788:df0a9366',
+    'mystic vs brawler, seed 3': '5399:2a52057e',
+    'brawler vs brawler, seed 4': '4967:e0c14c83',
+  };
+
+  it('keeps the exact fight logs of old-content fights', () => {
+    const seeds: [Character['classId'], Character['classId'], number][] = [
+      ['brawler', 'tamer', 1],
+      ['tamer', 'mystic', 2],
+      ['mystic', 'brawler', 3],
+      ['brawler', 'brawler', 4],
+    ];
+    const actual: Record<string, string> = {};
+    for (const [a, b, seed] of seeds) actual[`${a} vs ${b}, seed ${seed}`] = hash(runFight(fighters(a), fighters(b), seed));
+    expect(actual).toEqual(expected);
   });
 });

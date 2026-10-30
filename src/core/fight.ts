@@ -733,9 +733,13 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     def.bleedBy = by.idx;
   };
 
-  /** Dodge event, plus Momentum: a dodging fighter with the skill gains 1 energy. */
+  /** Dodge event. */
   const dodged = (att: Unit, def: Unit, kind: HitKind) => {
     events.push({ t: 'dodge', actor: att.idx, target: def.idx, kind });
+  };
+
+  /** Momentum: a fighter with the skill gains 1 energy for a dodge that was rolled. Sure dodges (Backflip, Roll, Leap) never give it. */
+  const momentum = (def: Unit) => {
     if (def.isMain && def.skills.has('momentum') && def.energy < MAX_ENERGY) {
       def.energy++;
       events.push({ t: 'momentum', actor: def.idx, energy: def.energy });
@@ -842,6 +846,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     }
     if (!sure && rng.chance(dodgeChance(att, def))) {
       dodged(att, def, kind);
+      momentum(def);
       if (kind !== 'counter' && def.skills.has('counter') && canPay(def, STAMINA_COST.counter) && rng.chance(50)) {
         pay(def, STAMINA_COST.counter);
         attack(def, att, 'counter');
@@ -929,6 +934,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (missesBlind(att, def)) return { survived: true, dealt: 0 };
     if (!sure && rng.chance(dodgeChance(att, def, true))) {
       dodged(att, def, 'spell');
+      momentum(def);
       return { survived: true, dealt: 0 };
     }
     const roll = rng.int(85, 116);
@@ -1280,7 +1286,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         foe.stamina -= stamina;
         u.energy = Math.min(MAX_ENERGY, u.energy + energy);
         u.stamina = Math.min(u.maxStamina, u.stamina + stamina);
-        events.push({ t: 'steal', actor: u.idx, target: foe.idx, energy, stamina });
+        // Nothing to steal, nothing to show.
+        if (energy > 0 || stamina > 0) events.push({ t: 'steal', actor: u.idx, target: foe.idx, energy, stamina });
         emitEnergy();
         break;
       }
@@ -1301,7 +1308,9 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const enemyLast = seenLastCard[u.team === 0 ? 1 : 0];
     if (enemyLast && tick - enemyLast.tick <= BOT_REACTION_TICKS && OFFENSIVE.has(enemyLast.card)) {
       // A Special Strike can't be dodged, so Roll, Leap and Backflip do not answer it.
-      const defence = DEFENSIVE.find((id) => can(id) && (enemyLast.card !== 'special' || (id !== 'roll' && id !== 'leap' && id !== 'backflip')));
+      // Taunt only makes sense when the enemy has a pet or spirit to pull in.
+      const enemyHasPets = units.some((p) => p.team !== u.team && !p.isMain && alive(p));
+      const defence = DEFENSIVE.find((id) => can(id) && (id !== 'taunt' || enemyHasPets) && (enemyLast.card !== 'special' || (id !== 'roll' && id !== 'leap' && id !== 'backflip')));
       if (defence) return pick(defence);
     }
     if (u.energy >= BOT_SPEND_AT) {
