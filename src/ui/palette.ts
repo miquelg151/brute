@@ -26,6 +26,11 @@ export const CLASS_COLORS: Record<ClassId, string> = {
   mystic: PAL.purple,
 };
 
+/** Class colours for text on paper: the light ones get a darker shade so they stay readable. */
+export function classTextColor(id: ClassId): string {
+  return id === 'bouncer' ? shade(CLASS_COLORS[id], -0.45) : CLASS_COLORS[id];
+}
+
 /** Darkens (negative) or lightens (positive) a #rrggbb color by an amount in [-1, 1]. */
 export function shade(hex: string, amount: number): string {
   const n = parseInt(hex.slice(1), 16);

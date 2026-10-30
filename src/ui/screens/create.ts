@@ -6,7 +6,7 @@ import { CARD_ICONS, cardSticker } from '../cardView';
 import { h, pixelArt } from '../dom';
 import { icon, statRow } from '../icons';
 import { reducedMotion } from '../motion';
-import { CLASS_COLORS, HAIR_COLORS, ORIGIN_COLORS, HAIR_STYLE_NAMES, OUTFIT_COLORS, SKIN_TONES } from '../palette';
+import { CLASS_COLORS, HAIR_COLORS, classTextColor, ORIGIN_COLORS, HAIR_STYLE_NAMES, OUTFIT_COLORS, SKIN_TONES } from '../palette';
 import { drawFighter } from '../sprites';
 import { HOME_STREET_SEED, streetCanvas } from '../street';
 
@@ -112,7 +112,7 @@ export function renderCreate(root: HTMLElement, legends: Legend[], onCreated: (s
     return h(
       'div',
       {},
-      h('div', { class: 'choice-title', style: `color:${CLASS_COLORS[id]}` }, c.name),
+      h('div', { class: 'choice-title', style: `color:${classTextColor(id)}` }, c.name),
       h('div', { class: 'choice-desc' }, c.description),
       h('div', { class: 'choice-stats' }, statRow(s.health, s.strength, s.agility, s.speed)),
       h('div', { class: 'choice-stats' }, `Starts with ${SKILLS[c.startSkill]?.name ?? ''}`),

@@ -413,6 +413,33 @@ a {
   gap: 8px;
 }
 
+/* On tall phones the screen fills the height: the offers sit low, in reach of the thumb,
+   and grow a little. A small phone already fills its screen, so nothing changes there. */
+.screen.levelup {
+  min-height: calc(100dvh - var(--step) * 7 - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+
+@media (min-height: 760px) {
+  .levelup .choice-list {
+    margin-top: auto;
+    gap: 14px;
+  }
+
+  .levelup .upgrade {
+    padding: 18px 14px;
+  }
+
+  .levelup .choice-desc {
+    font-size: var(--t-m);
+  }
+
+  /* The new rank's fighter gets a bigger celebration. */
+  .levelup .spot-big canvas {
+    width: auto !important;
+    height: 168px !important;
+  }
+}
+
 .levelup .upgrade {
   gap: var(--step);
   padding: 8px 12px;
@@ -471,10 +498,15 @@ a {
   min-width: 0;
 }
 
+/* A small coloured label ("New card", "Skill, Brawler only"): plain dark text on a pale pill. */
 .tag {
+  align-self: flex-start;
+  padding: 1px 8px;
   font-size: var(--t-xs);
   font-weight: 700;
-  color: var(--tag, var(--ink-soft));
+  color: var(--ink);
+  background: color-mix(in srgb, var(--tag, var(--ink-soft)) 28%, var(--paper));
+  border-radius: 999px;
 }
 
 .bar {
@@ -1384,7 +1416,6 @@ h2:not(.card h2),
 .fighter-id,
 .poster-side .small,
 .look-value,
-.tag,
 .slot {
   -webkit-text-stroke: var(--sticker-outline-sm) var(--sticker-ink);
   paint-order: stroke fill;
@@ -3029,9 +3060,13 @@ button.game-card {
   margin-top: 4px;
 }
 
-/* The Class and Name steps sit in the middle of their area. */
+/* The Class card sits right under the fighter; the Name step sits in the middle of its area. */
 .create-centred {
   min-height: 100%;
+  justify-content: flex-start;
+}
+
+.create-centred.create-name {
   justify-content: center;
 }
 
@@ -3768,9 +3803,21 @@ button.game-card {
 .boss-card-trick {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
+  cursor: pointer;
+}
+
+/* Tapping the trick shows it whole. */
+.boss-card-trick.open {
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+.boss-tag {
+  margin-top: 2px;
+  border-radius: 10px;
 }
 
 .boss-card-title {

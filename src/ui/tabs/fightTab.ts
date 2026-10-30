@@ -26,8 +26,9 @@ function bossCard(boss: BossDef, save: SaveData, actions: TabActions): HTMLEleme
         'div',
         { class: 'boss-card-text' },
         h('div', { class: 'boss-card-name' }, h('strong', { class: 'boss-card-title' }, boss.name), h('span', { class: 'dim' }, `Lv ${boss.level}`)),
-        h('p', { class: 'boss-card-trick' }, trick, boss.trickText),
-        h('p', { class: 'boss-card-hint' }, hint),
+        // Two lines at most; a tap shows the whole trick.
+        h('p', { class: 'boss-card-trick', onclick: (e: Event) => (e.currentTarget as HTMLElement).classList.toggle('open') }, trick, boss.trickText),
+        h('span', { class: 'tag boss-tag', style: '--tag:var(--coral-lit)' }, hint),
       ),
     ),
     h('button', { class: 'btn btn-primary boss-go', type: 'button', onclick: actions.onBoss }, 'Challenge'),

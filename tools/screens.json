@@ -128,7 +128,7 @@
       { "click": ".carousel-card:nth-child(3)" },
       { "include": "no-page-scroll" },
       { "include": "no-step-scroll" },
-      { "eval": "const stage = document.querySelector('.create-stage').getBoundingClientRect(); const card = document.querySelector('.carousel').getBoundingClientRect(); if (card.top - stage.bottom > 60) throw new Error('gap between fighter and class card: ' + Math.round(card.top - stage.bottom));" },
+      { "eval": "const stage = document.querySelector('.create-stage').getBoundingClientRect(); const first = document.querySelector('.carousel').parentElement.firstElementChild.getBoundingClientRect(); if (first.top - stage.bottom > 40) throw new Error('gap between fighter and class step: ' + Math.round(first.top - stage.bottom));" },
       { "shot": "create-class" }
     ]
   },
