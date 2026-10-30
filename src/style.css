@@ -3568,6 +3568,12 @@ button.game-card {
   text-align: center;
 }
 
+/* Smaller labels so "Best streak" stays on one line on a 360px phone. */
+.legend-stat .dim {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .legend-stat-value {
   font-size: var(--t-l);
   font-weight: var(--heavy);

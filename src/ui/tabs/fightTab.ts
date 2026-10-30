@@ -1,5 +1,5 @@
 // The Fight tab: your fighter on the street, the cards you will bring, and the big button.
-import { CARDS, DECK_SIZE, buildBoss, gatedBoss, preferredDeck, rankOf, xpToNext, type BossDef, type SaveData } from '../../core';
+import { CARDS, DECK_SIZE, buildBoss, challengeableBoss, gatedBoss, preferredDeck, rankOf, xpToNext, type BossDef, type SaveData } from '../../core';
 import { cardSticker, levelOf } from '../cardView';
 import { h, pixelArt } from '../dom';
 import { icon } from '../icons';
@@ -11,6 +11,8 @@ import type { TabActions } from '../shell';
 function bossCard(boss: BossDef, save: SaveData, actions: TabActions): HTMLElement {
   const c = save.character;
   const full = c.xp >= xpToNext(c.level) - 1;
+  // The Champion for a level 20+ veteran does not hold a level back: it is the exam to graduate.
+  const hint = gatedBoss(c) ? (full ? 'XP full. Beat the boss to level up.' : 'Beat the boss to level up.') : 'Beat the Champion to graduate.';
   const trick = icon('skill', 'Trick', 'small');
   trick.setAttribute('aria-hidden', 'true');
   return h(
@@ -25,7 +27,7 @@ function bossCard(boss: BossDef, save: SaveData, actions: TabActions): HTMLEleme
         { class: 'boss-card-text' },
         h('div', { class: 'boss-card-name' }, h('strong', { class: 'boss-card-title' }, boss.name), h('span', { class: 'dim' }, `Lv ${boss.level}`)),
         h('p', { class: 'boss-card-trick' }, trick, boss.trickText),
-        h('p', { class: 'boss-card-hint' }, full ? 'XP full. Beat the boss to level up.' : 'Beat the boss to level up.'),
+        h('p', { class: 'boss-card-hint' }, hint),
       ),
     ),
     h('button', { class: 'btn btn-primary boss-go', type: 'button', onclick: actions.onBoss }, 'Challenge'),
@@ -64,6 +66,6 @@ export function renderFightTab(body: HTMLElement, save: SaveData, actions: TabAc
     : h('button', { class: 'btn btn-primary fight-go', type: 'button', onclick: actions.onFight }, 'Fight');
 
   // A boss gates the level: its card sits above the cards. Normal fights stay available.
-  const boss = levelUpWaiting ? null : gatedBoss(c);
+  const boss = levelUpWaiting ? null : challengeableBoss(c);
   body.append(h('div', { class: boss ? 'fight-tab has-boss' : 'fight-tab' }, arena, boss ? bossCard(boss, save, actions) : '', deckRow, button));
 }

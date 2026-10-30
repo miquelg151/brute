@@ -150,6 +150,15 @@ export function gatedBoss(c: Character): BossDef | null {
   return boss;
 }
 
+/**
+ * The boss the fighter may fight now: the one that gates the level, or the Champion for a
+ * fighter at level 20 or more who has not beaten it yet (a veteran from before graduation
+ * existed). Only the first one holds the level back; the Champion at 20+ just opens graduation.
+ */
+export function challengeableBoss(c: Character): BossDef | null {
+  return gatedBoss(c) ?? (c.level >= 20 && !c.bosses?.champion ? BOSSES.champion : null);
+}
+
 /** A fresh copy of the boss fighter. */
 export function buildBoss(id: BossId): Character {
   return BOSSES[id].build();

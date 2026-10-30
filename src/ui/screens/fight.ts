@@ -9,6 +9,7 @@ import {
   WEAPON_STYLES,
   finishFight,
   lastPlayTick,
+  medalName,
   recordBreak,
   recordPlay,
   simulateFight,
@@ -25,7 +26,6 @@ import { icon, iconValue } from '../icons';
 import { playSpecialStrike } from '../minigames';
 import { confetti } from '../motion';
 import { planEditor, weaponPicker } from '../plan';
-import { medalName } from '../tabs/legendsTab';
 import { PAL } from '../theme';
 
 const SPEEDS = [1, 2, 4];

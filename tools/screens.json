@@ -618,6 +618,29 @@
     ]
   },
   {
+    "name": "boss-card-veteran",
+    "steps": [
+      {
+        "include": "setup"
+      },
+      {
+        "eval": "const s = JSON.parse(localStorage.getItem('brute.save')); const c = s.character; c.level = 20; c.xp = 0; c.branch = 'brute'; c.bosses = { rusty: 'skipped', alley_cat: 'skipped', sewer_king: 'skipped' }; localStorage.setItem('brute.save', JSON.stringify(s)); location.reload();"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "include": "no-page-scroll"
+      },
+      {
+        "eval": "if (!document.querySelector('.boss-card .boss-go')) throw new Error('no Champion card'); const t = document.querySelector('.boss-card').textContent; if (t.includes('XP full')) throw new Error('card says XP full'); if (!t.includes('graduate')) throw new Error('card does not mention graduating: ' + t);"
+      },
+      {
+        "shot": "boss-card-veteran"
+      }
+    ]
+  },
+  {
     "name": "boss-intro",
     "steps": [
       {

@@ -84,6 +84,7 @@ import {
   buildBoss,
   gateLevel,
   gatedBoss,
+  challengeableBoss,
   isRareUpgrade,
   prepareBossFight,
   rollBossOffer,
@@ -1433,14 +1434,50 @@ describe('class branches', () => {
   it('migration skips only bosses whose gate is below the level', () => {
     expect(migrateSave(v7Save(10))!.character.bosses).toEqual({ rusty: 'skipped' });
     expect(migrateSave(v7Save(5))!.character.bosses ?? {}).toEqual({});
-    // The Champion gates level 19, so a level 20 fighter skips it too.
+    // The Champion is never skipped: a level 20 veteran takes the exam.
     expect(migrateSave(v7Save(20))!.character.bosses).toEqual({
       rusty: 'skipped',
       alley_cat: 'skipped',
       sewer_king: 'skipped',
-      champion: 'skipped',
     });
     expect(migrateSave(v7Save(19))!.character.bosses).toEqual({ rusty: 'skipped', alley_cat: 'skipped', sewer_king: 'skipped' });
+  });
+
+  it('a migrated level 12 fighter is gated by the Sewer King at 15', () => {
+    const save = migrateSave(v7Save(12))!;
+    expect(gatedBoss(save.character)).toBeNull();
+    save.character.level = 15;
+    expect(gatedBoss(save.character)?.id).toBe('sewer_king');
+  });
+
+  it('a migrated level 19 fighter is gated by the Champion', () => {
+    const save = migrateSave(v7Save(19))!;
+    expect(gatedBoss(save.character)?.id).toBe('champion');
+    expect(challengeableBoss(save.character)?.id).toBe('champion');
+  });
+
+  it.each([20, 25])('a migrated level %i fighter can take the Champion exam and graduate', (level) => {
+    const save = migrateSave(v7Save(level))!;
+    expect(gatedBoss(save.character)).toBeNull();
+    expect(challengeableBoss(save.character)?.id).toBe('champion');
+    expect(canGraduate(save)).toBe(false);
+    // Make sure the fighter wins, whatever the boss does.
+    save.character.branch = 'boxer';
+    save.character.bonusStats = { ...save.character.bonusStats, health: 300, strength: 80 };
+    expect(prepareBossFight(save)!.bossId).toBe('champion');
+    startFight(save, DEFAULT_PLAN, save.character.weapons);
+    for (let log = simulateFight(save); log.winner === null; log = simulateFight(save)) recordBreak(save, keep(save.character.weapons));
+    const result = finishFight(save);
+    expect(result.won).toBe(true);
+    expect(result.bossBeaten).toBe(true);
+    expect(result.levelsGained).toBe(0);
+    expect(save.character.level).toBe(level);
+    expect(save.pendingLevelUps).toBe(0);
+    expect(save.offer).toBeNull();
+    expect(save.character.bosses?.champion).toBe('beaten');
+    expect(save.character.medals).toContain('boss_champion');
+    expect(canGraduate(save)).toBe(true);
+    expect(challengeableBoss(save.character)).toBeNull();
   });
 
   it('newGame keeps the legends it is given, and starts with none otherwise', () => {

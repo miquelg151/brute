@@ -177,6 +177,8 @@ describe('branch feats', () => {
     expect(feat('boxer_unbroken').check(context([rhythm(2), rhythm(0)], { progress: 2 }))).toBe(0);
     // A new round starting at zero is not a reset.
     expect(done('boxer_unbroken', [rhythm(2), { t: 'round', round: 2 }, rhythm(0)], { progress: 2 })).toBe(true);
+    // The Sewer King's rats join right after the round starts: still not a reset.
+    expect(done('boxer_unbroken', [rhythm(2), { t: 'round', round: 2 }, { t: 'summon', actor: 2, owner: 1 } as never, rhythm(0)], { progress: 2 })).toBe(true);
     expect(done('boxer_unbroken', [rhythm(2)], { progress: 2, won: false })).toBe(false);
   });
   it('brute', () => {

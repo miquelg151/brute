@@ -42,7 +42,9 @@ cosmetics, (3) cosmetics and customisation, then a full balance pass.
 
 Migration from save v7 keeps the fighter. Bosses with gate level below the fighter's current level
 are marked **skipped**: they never block, give no medal and no special offer. The next boss at or
-above the current level works normally. Legends list starts empty.
+above the current level works normally. The Champion is never skipped: a fighter already at level
+20 or more takes the exam like everyone else (it holds no level back for them) and graduates when
+they beat it. Legends list starts empty.
 
 ## The four bosses
 

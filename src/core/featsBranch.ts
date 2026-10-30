@@ -32,9 +32,13 @@ function longestDodgeRun(ctx: FeatContext): number {
 /** True if the player's rhythm built up and was then knocked down (a new round starting at zero does not count). */
 function rhythmWasReset(ctx: FeatContext): boolean {
   let stacks = 0;
-  return events(ctx).some((e, i) => {
+  const list = events(ctx);
+  return list.some((e, i) => {
     if (e.t !== 'rhythm' || e.actor !== me(ctx)) return false;
-    const reset = e.stacks < stacks && events(ctx)[i - 1]?.t !== 'round';
+    // The round-start reset may come after summon events (the Sewer King's rats), so look past them.
+    let before = i - 1;
+    while (before >= 0 && list[before]!.t === 'summon') before--;
+    const reset = e.stacks < stacks && list[before]?.t !== 'round';
     stacks = e.stacks;
     return reset;
   });

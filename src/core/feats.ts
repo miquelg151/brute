@@ -10,7 +10,7 @@ import { BRANCH_FEATS } from './featsBranch';
 import type { FightResult } from './game';
 import type { Character } from './types';
 
-export * from './featTools';
+export type { FeatDef, FeatContext } from './featTools';
 
 const won = (ctx: FeatContext): boolean => ctx.result.won;
 /** A win against a boss (any try that beats it). */
@@ -124,3 +124,12 @@ export function setTitle(c: Character, title: string | undefined): void {
 
 /** The feat with this id, if there is one (boss medals are not feats). */
 export const featById = (id: string): FeatDef | undefined => FEATS_BY_ID[id];
+
+/** The readable name of a medal id: a feat's name, or the boss for `boss_<id>`. */
+export function medalName(id: string): string {
+  if (id.startsWith('boss_')) {
+    const boss = BOSSES[id.slice(5) as keyof typeof BOSSES];
+    return boss ? `Beat ${boss.name}` : id;
+  }
+  return featById(id)?.name ?? id;
+}

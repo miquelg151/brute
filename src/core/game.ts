@@ -1,5 +1,5 @@
 import { DECK_SIZE, cardLevel, originCard, startingCards } from './cards';
-import { BOSSES, buildBoss, gateLevel, gatedBoss, type BossId } from './bosses';
+import { BOSSES, buildBoss, challengeableBoss, gateLevel, gatedBoss, type BossId } from './bosses';
 import { createCharacter } from './character';
 import { evaluateFeats } from './feats';
 import { gearFor, loadoutFor, runFight, type BreakChoice, type CardPlay, type FightLog, type GearChoice } from './fight';
@@ -182,7 +182,7 @@ export function prepareFight(save: SaveData): PendingFight | null {
 export function prepareBossFight(save: SaveData): PendingFight | null {
   if (save.pendingFight) return save.pendingFight.bossId ? save.pendingFight : null;
   if (save.pendingLevelUps > 0) return null;
-  const boss = gatedBoss(save.character);
+  const boss = challengeableBoss(save.character);
   if (!boss) return null;
 
   // Each try gets its own seed, like normal fights.
@@ -274,12 +274,14 @@ export function finishFight(save: SaveData): FightResult {
   const xpOffered = won ? XP_WIN : XP_LOSS;
   const xpBefore = totalXp(save.character);
   // Beating the boss that gates the fighter lifts the gate: the held XP overflows at once.
-  const bossBeaten = won && !!fight.bossId && gatedBoss(save.character)?.id === fight.bossId;
+  // A level 20+ veteran beating the Champion gets the medal and the 'beaten' mark, but no level.
+  const bossBeaten = won && !!fight.bossId && challengeableBoss(save.character)?.id === fight.bossId;
+  const liftsGate = bossBeaten && gatedBoss(save.character)?.id === fight.bossId;
   if (bossBeaten) {
     (save.character.bosses ??= {})[fight.bossId!] = 'beaten';
-    save.character.xp = xpToNext(save.character.level);
+    if (liftsGate) save.character.xp = xpToNext(save.character.level);
   }
-  const levelsGained = addXp(save.character, bossBeaten ? 0 : xpOffered);
+  const levelsGained = bossBeaten && !liftsGate ? 0 : addXp(save.character, bossBeaten ? 0 : xpOffered);
   // What really counted: nothing when the boss gate held the XP back, nothing extra for a boss win
   // (it lifts the gate on its own, the XP is not "earned").
   const xpGained = bossBeaten ? 0 : Math.max(0, Math.min(xpOffered, totalXp(save.character) - xpBefore));
@@ -361,11 +363,12 @@ export function migrateSave(raw: unknown): SaveData | null {
   }
   if (save.version === 7) {
     // Graduation is new: no legends yet. Bosses the fighter is already past are skipped,
-    // so they never block (see gateLevel).
+    // so they never block (see gateLevel). The Champion is never skipped: a level 20+ veteran
+    // takes the exam like everyone else (see challengeableBoss).
     const c = save.character as Character;
     save.legends = [];
     for (const boss of Object.values(BOSSES)) {
-      if (c.level > gateLevel(boss)) (c.bosses ??= {})[boss.id] = 'skipped';
+      if (boss.id !== 'champion' && c.level > gateLevel(boss)) (c.bosses ??= {})[boss.id] = 'skipped';
     }
     save.version = 8;
   }

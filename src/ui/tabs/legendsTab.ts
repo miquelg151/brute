@@ -1,6 +1,6 @@
 // The Legends tab: every fighter who graduated, as a wall of little cards. Tap one to read
 // their medals, bosses and record. Legends are snapshots, so this tab never changes them.
-import { BOSSES, BRANCHES_BY_ID, CLASSES, ORIGINS, featById, type Legend, type SaveData } from '../../core';
+import { BOSSES, BRANCHES_BY_ID, CLASSES, ORIGINS, medalName, type Legend, type SaveData } from '../../core';
 import { h, pixelArt } from '../dom';
 import { icon } from '../icons';
 import { CLASS_COLORS } from '../palette';
@@ -11,15 +11,6 @@ import { openSheet } from '../widgets';
 function classLine(legend: Legend): string {
   const c = legend.character;
   return c.branch ? `${CLASSES[c.classId].name} · ${BRANCHES_BY_ID[c.branch].name}` : CLASSES[c.classId].name;
-}
-
-/** The readable name of a medal id: a feat's name, or the boss for `boss_<id>`. */
-export function medalName(id: string): string {
-  if (id.startsWith('boss_')) {
-    const boss = BOSSES[id.slice(5) as keyof typeof BOSSES];
-    return boss ? `Beat ${boss.name}` : id;
-  }
-  return featById(id)?.name ?? id;
 }
 
 function dateText(iso: string): string {
@@ -93,7 +84,7 @@ function openDetail(legend: Legend): void {
         h('p', { class: 'dim' }, `Graduated ${dateText(legend.graduatedAt)}`),
       ),
     ),
-    stats ? h('div', { class: 'legend-stats' }, record('Fights', stats.fights), record('Wins', stats.wins), record('KOs', stats.kos), record('Streak', stats.bestStreak)) : '',
+    stats ? h('div', { class: 'legend-stats' }, record('Fights', stats.fights), record('Wins', stats.wins), record('KOs', stats.kos), record('Best streak', stats.bestStreak)) : '',
     h('h2', { class: 'section-icon' }, icon('medal', 'Medals', 'normal'), `Medals (${medals.length})`),
     medals.length ? h('ul', { class: 'legend-medal-list' }, ...medals.map((id) => h('li', {}, icon('medal', '', 'small'), medalName(id)))) : h('p', { class: 'dim' }, 'No medals.'),
     h('h2', {}, 'Bosses'),
