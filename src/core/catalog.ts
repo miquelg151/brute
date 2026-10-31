@@ -104,7 +104,7 @@ export interface BranchDef {
   classId: ClassId;
   name: string;
   description: string;
-  /** Three icon names (from the UI icon set) that hint at what is inside. */
+  /** Three icon names (from the UI icon set) of skills or cards inside the branch. */
   icons: [string, string, string];
 }
 
@@ -307,24 +307,24 @@ const branch = (id: BranchId, classId: ClassId, name: string, description: strin
 /** The two branches of each class. The items of each branch are tagged in UPGRADES below. */
 export const BRANCHES: Record<ClassId, [BranchDef, BranchDef]> = {
   brawler: [
-    branch('boxer', 'brawler', 'Boxer', 'Quick chained punches.', ['fist', 'manyHits', 'damage']),
-    branch('brute', 'brawler', 'Brute', 'Endure and come back.', ['rage', 'health', 'heavy']),
+    branch('boxer', 'brawler', 'Boxer', 'Quick chained punches.', ['skill_jab', 'skill_double_strike', 'skill_rhythm']),
+    branch('brute', 'brawler', 'Brute', 'Endure and come back.', ['skill_fury', 'skill_thick_skull', 'skill_bone_breaker']),
   ],
   parkour: [
-    branch('acrobat', 'parkour', 'Acrobat', 'Dodge everything.', ['dodge', 'counter', 'agility']),
-    branch('thief', 'parkour', 'Thief', 'Steal and annoy.', ['weapon', 'fast', 'stamina']),
+    branch('acrobat', 'parkour', 'Acrobat', 'Dodge everything.', ['skill_sixth_sense', 'skill_wall_run', 'card_backflip']),
+    branch('thief', 'parkour', 'Thief', 'Steal and annoy.', ['skill_disarm', 'card_pickpocket', 'card_heist']),
   ],
   bouncer: [
-    branch('wall', 'bouncer', 'Wall', 'Nothing gets through.', ['armor', 'stance', 'health']),
-    branch('wrecker', 'bouncer', 'Wrecker', 'Heavy weapons, heavy hits.', ['heavy', 'weapon', 'damage']),
+    branch('wall', 'bouncer', 'Wall', 'Nothing gets through.', ['skill_bulwark', 'skill_iron_skin', 'skill_thorns']),
+    branch('wrecker', 'bouncer', 'Wrecker', 'Heavy weapons, heavy hits.', ['skill_heavy_hands', 'skill_demolition', 'card_sledge_swing']),
   ],
   tamer: [
-    branch('pack', 'tamer', 'Pack', 'Many pets.', ['pet', 'manyHits', 'speed']),
-    branch('bond', 'tamer', 'Bond', 'Few pets, but strong ones.', ['pet', 'health', 'rage']),
+    branch('pack', 'tamer', 'Pack', 'Many pets.', ['skill_whistle', 'card_stray_dog', 'skill_pack_call']),
+    branch('bond', 'tamer', 'Bond', 'Few pets, but strong ones.', ['skill_bond', 'skill_guardian', 'card_together']),
   ],
   mystic: [
-    branch('witch', 'mystic', 'Witch', 'Damage magic.', ['magic', 'mana', 'damage']),
-    branch('warden', 'mystic', 'Warden', 'Protect and heal.', ['armor', 'health', 'magic']),
+    branch('witch', 'mystic', 'Witch', 'Damage magic.', ['skill_flame', 'skill_drain', 'card_fireball']),
+    branch('warden', 'mystic', 'Warden', 'Protect and heal.', ['skill_ward', 'skill_mend', 'skill_spirit']),
   ],
 };
 

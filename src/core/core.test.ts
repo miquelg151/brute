@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   CARDS,
@@ -1220,10 +1219,8 @@ describe('class branches', () => {
     expect(UPGRADES.filter((u) => u.kind === 'stat' && u.branch !== undefined)).toEqual([]);
   });
 
-  it('every class has two branches with a name, a description and three known icons', () => {
-    // Icon names are read from the UI icon file, so core tests stay free of the browser.
-    const iconFile = readFileSync(new URL('../ui/icons.ts', import.meta.url), 'utf-8');
-    const iconNames = [...iconFile.matchAll(/^ {2}([a-zA-Z]+): [{F]/gm)].map((m) => m[1]);
+  // That each branch icon really exists is checked in src/ui/icons.test.ts.
+  it('every class has two branches with a name, a description and three icons', () => {
     for (const classId of CLASS_IDS) {
       const pair = BRANCHES[classId];
       expect(pair).toHaveLength(2);
@@ -1233,7 +1230,6 @@ describe('class branches', () => {
         expect(b.name.length).toBeGreaterThan(2);
         expect(b.description.length).toBeGreaterThan(5);
         expect(b.icons).toHaveLength(3);
-        for (const name of b.icons) expect(iconNames).toContain(name);
       }
     }
   });

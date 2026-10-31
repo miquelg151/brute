@@ -7,9 +7,9 @@ import { CLASS_COLORS } from '../palette';
 import { drawFighter } from '../sprites';
 import { HOME_STREET_SEED, streetCanvas } from '../street';
 
-/** An icon's name in plain words for screen readers, e.g. 'manyHits' -> 'many hits'. */
+/** An icon's name in plain words for screen readers, e.g. 'skill_double_strike' -> 'double strike'. */
 function iconWords(name: string): string {
-  return name.replace(/([A-Z])/g, ' $1').toLowerCase();
+  return name.replace(/^(skill|card|gear)_/, '').replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').toLowerCase();
 }
 
 /** One of a branch's three icons. Wide ones (the fist) are drawn smaller, so all three look the same size. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARD_IDS, GEAR, SKILLS } from '../core';
+import { BRANCHES, CARD_IDS, GEAR, SKILLS } from '../core';
 import { CARD_ICONS } from './cardView';
 import { ICON_NAMES } from './icons';
 import { CARD_ART } from './iconsCards';
@@ -19,6 +19,10 @@ describe('icons', () => {
     for (const id of CARD_IDS) expect(ICON_NAMES, id).toContain(CARD_ICONS[id]);
     const used = CARD_IDS.map((id) => CARD_ICONS[id]);
     expect(new Set(used).size).toBe(used.length);
+  });
+
+  it('every branch shows three real icons', () => {
+    for (const b of Object.values(BRANCHES).flat()) for (const name of b.icons) expect(ICON_NAMES, b.id).toContain(name);
   });
 
   it('every drawn icon is a 7 × 7 grid with a colour for each letter', () => {
