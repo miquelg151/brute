@@ -3,7 +3,7 @@
 import { BOSSES, BRANCHES_BY_ID, CLASSES, GEAR, ORIGINS, PETS, SKILLS, SPELLS, WEAPONS, availableTitles, canGraduate, featsFor, setTitle, type SaveData } from '../../core';
 import { STAT_NOTES, gearEffects, maxHpOf, maxManaOf, petDetail, totalStats, weaponDetail } from '../describe';
 import { h, pixelArt } from '../dom';
-import { icon, type IconName } from '../icons';
+import { gearIcon, icon, skillIcon, type IconName } from '../icons';
 import { reducedMotion } from '../motion';
 import { CLASS_COLORS } from '../palette';
 import type { TabActions } from '../shell';
@@ -129,7 +129,7 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
   const gearItems = (slot: 'armor' | 'accessory'): Item[] =>
     c.gear
       .filter((id) => GEAR[id]?.slot === slot)
-      .map((id) => ({ name: GEAR[id]!.name, detail: `${gearEffects(GEAR[id]!)}. Choose what to wear before each fight.`, art: () => icon(slot, GEAR[id]!.name, 'normal') }));
+      .map((id) => ({ name: GEAR[id]!.name, detail: `${gearEffects(GEAR[id]!)}. Choose what to wear before each fight.`, art: () => icon(gearIcon(id, slot), GEAR[id]!.name, 'normal') }));
 
   const groups: Group[] = [
     {
@@ -150,8 +150,7 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
       items: c.skills.map((id) => ({
         name: SKILLS[id]?.name ?? id,
         detail: SKILLS[id]?.description ?? '',
-        // Spells get the magic icon so they stand out from the other skills.
-        art: () => icon(SPELLS[id] ? 'magic' : 'skill', SKILLS[id]?.name ?? id, 'normal'),
+        art: () => icon(skillIcon(id, !!SPELLS[id]), SKILLS[id]?.name ?? id, 'normal'),
       })),
     },
   ];

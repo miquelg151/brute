@@ -4,7 +4,10 @@ import { h } from './dom';
 import { icon, type IconName } from './icons';
 import { CLASS_COLORS, ORIGIN_COLORS } from './palette';
 
-/** Which interface icon each card shows (any icon can be replaced by a PNG, see docs/ART.md). */
+/**
+ * Which icon each card shows. Every card has its own; the `card_*` ones are drawn in
+ * iconsCards.ts (any icon can be replaced by a PNG, see docs/ART.md).
+ */
 export const CARD_ICONS: Record<string, IconName> = {
   special: 'damage',
   rage: 'rage',
@@ -20,27 +23,27 @@ export const CARD_ICONS: Record<string, IconName> = {
   haymaker: 'fights',
   flurry: 'manyHits',
   body_slam: 'heavy',
-  stray_dog: 'pet',
+  stray_dog: 'card_stray_dog',
   bolt: 'magic',
-  weather_wave: 'stance',
-  leap: 'counter',
-  last_train: 'fast',
-  scrap_shield: 'armor',
-  toxic_spit: 'fragile',
-  power_surge: 'skip',
-  headbutt: 'heavy',
-  pickpocket: 'accessory',
-  ground_pound: 'manyHits',
-  jab_flurry: 'manyHits',
-  street_bite: 'fragile',
-  backflip: 'dodge',
-  heist: 'accessory',
-  taunt: 'armor',
-  sledge_swing: 'heavy',
-  gang_up: 'manyHits',
-  together: 'pet',
-  fireball: 'magic',
-  rune_circle: 'armor',
+  weather_wave: 'card_weather_wave',
+  leap: 'card_leap',
+  last_train: 'card_last_train',
+  scrap_shield: 'card_scrap_shield',
+  toxic_spit: 'card_toxic_spit',
+  power_surge: 'card_power_surge',
+  headbutt: 'card_headbutt',
+  pickpocket: 'card_pickpocket',
+  ground_pound: 'card_ground_pound',
+  jab_flurry: 'card_jab_flurry',
+  street_bite: 'card_street_bite',
+  backflip: 'card_backflip',
+  heist: 'card_heist',
+  taunt: 'card_taunt',
+  sledge_swing: 'card_sledge_swing',
+  gang_up: 'card_gang_up',
+  together: 'card_together',
+  fireball: 'card_fireball',
+  rune_circle: 'card_rune_circle',
 };
 
 /**

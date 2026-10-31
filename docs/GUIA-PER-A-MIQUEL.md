@@ -79,18 +79,20 @@ Atenció: si canvies una icona que fa servir una carta, també canvia a la carta
   un canvi petit de codi.
 - Fes servir els colors del joc (la paleta és `PAL` a `src/ui/theme.ts`) perquè tot lligui.
 
-### Afegir icones noves (una icona pròpia per a cada carta o habilitat)
+### Icones de cada habilitat, peça d'equip i carta
 
-Això necessita un petit canvi de codi. La manera més fàcil:
+Cada habilitat, encanteri, truc de boss, peça d'equip i carta té la seva icona:
 
-1. Dibuixa les icones a 7 × 7 i guarda-les a `public/art/icons/` amb el nom de la carta o
-   habilitat, per exemple `icons/card-headbutt.png`, `icons/skill-combo.png`.
-2. Fes una llista a `docs/idees.md`: "headbutt → icons/card-headbutt.png".
-3. Quan tornis, Claude les connectarà (afegirà els noms a `icons.ts` i a `CARD_ICONS`).
+- habilitats, encanteris i trucs: `src/ui/iconsSkills.ts`, amb el nom `skill_<id>`
+  (per exemple `skill_combo`);
+- equip: `src/ui/iconsGear.ts`, amb el nom `gear_<id>` (per exemple `gear_cap`);
+- cartes que no fan servir una icona general: `src/ui/iconsCards.ts`, amb el nom
+  `card_<id>`. La llista completa "carta → icona" és `CARD_ICONS` a `src/ui/cardView.ts`.
 
-Ara mateix les habilitats fan servir una **estrella genèrica**, així que les icones
-d'habilitats són les que més es notarien. Els noms de les cartes i habilitats són a
-`src/core/cards.ts` (cartes) i `src/core/catalog.ts` (habilitats, `SKILLS`).
+Per canviar-ne una amb un PNG teu, fes el mateix que a l'apartat d'abans amb aquest nom,
+per exemple `"skill_combo": "icons/skill_combo.png"`. Els `<id>` són a
+`src/core/catalog.ts` (`SKILLS`, `GEAR`) i a `src/core/cards.ts` (`CARDS`).
+Si afegeixes una habilitat, peça o carta nova, `npm test` et dirà que li falta la icona.
 
 ## 4. Números (sense programar)
 

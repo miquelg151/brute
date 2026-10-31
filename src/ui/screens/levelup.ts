@@ -2,7 +2,7 @@ import { BOSS_OFFER_SIZE, CLASSES, GEAR, SPELLS, UPGRADES_BY_ID, isCrossClass, i
 import { cardSticker } from '../cardView';
 import { upgradeDetail, upgradeKindLabel } from '../describe';
 import { h, pixelArt } from '../dom';
-import { icon, type IconName } from '../icons';
+import { gearIcon, icon, skillIcon, type IconName } from '../icons';
 import { pause } from '../motion';
 import { CLASS_COLORS } from '../palette';
 import { drawFighter, drawPet, drawWeapon } from '../sprites';
@@ -25,15 +25,13 @@ export function renderLevelUp(root: HTMLElement, save: SaveData, onPick: (upgrad
     const u = UPGRADES_BY_ID[id]!;
     const classPool = u.pool === 'general' ? null : u.pool;
     const art = u.kind === 'weapon' ? drawWeapon(u.ref) : u.kind === 'pet' ? drawPet(u.ref) : null;
-    // Stat upgrades show the icon of the stat they raise most; skills show the skill icon.
+    // Stat upgrades show the icon of the stat they raise most; skills and gear their own icon.
     const mainStat = (
       u.kind === 'stat'
         ? Object.entries(u.stats).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0]?.[0]
         : u.kind === 'gear'
-          ? GEAR[u.ref]?.slot
-          : SPELLS[u.ref]
-            ? 'magic'
-            : 'skill'
+          ? gearIcon(u.ref, GEAR[u.ref]?.slot ?? 'armor')
+          : skillIcon(u.ref, !!SPELLS[u.ref])
     ) as IconName;
     const picture =
       u.kind === 'card' ? cardSticker(u.ref, 1, { size: 'small' }) : art ? slot(art, '') : h('div', { class: 'slot' }, h('div', { class: 'slot-art' }, icon(mainStat, u.name, 'normal')));

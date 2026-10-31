@@ -4,10 +4,13 @@
 import { artImage, artManifest, imageToCanvas } from './art';
 import { h, pixelArt } from './dom';
 import { FIST } from './fist';
+import { CARD_ART } from './iconsCards';
+import { GEAR_ICONS } from './iconsGear';
+import { SKILL_ICONS } from './iconsSkills';
 import { sprite } from './sprites';
 import { PAL, type PixelSize } from './theme';
 
-interface IconDef {
+export interface IconDef {
   rows: string[];
   colors: Record<string, string>;
 }
@@ -15,7 +18,7 @@ interface IconDef {
 // Every icon is drawn on the same 7 × 7 grid (a few are narrower), only with palette
 // colours, lit from the top left: L is the light side, D the dark side.
 
-const ICONS = {
+const BASE_ICONS = {
   health: {
     rows: [
       '.RR.RR.',
@@ -29,17 +32,18 @@ const ICONS = {
     colors: { R: PAL.red, L: PAL.blush },
   },
 
+  // A dumbbell.
   strength: {
     rows: [
-      '...L...',
-      '..LG L..'.replace(/ /g, ''),
-      '.LGGG L.'.replace(/ /g, ''),
-      'LGGGGGL',
-      '.LGGG L.'.replace(/ /g, ''),
-      '..LG L..'.replace(/ /g, ''),
-      '...L...',
+      '.......',
+      'LL...LL',
+      'GG...GG',
+      'GGBBBGG',
+      'GG...GG',
+      'DD...DD',
+      '.......',
     ],
-    colors: { G: PAL.fog, L: PAL.white },
+    colors: { L: PAL.white, G: PAL.fog, D: PAL.smoke, B: PAL.stone },
   },
 
   agility: {
@@ -449,6 +453,10 @@ const ICONS = {
   },
 } satisfies Record<string, IconDef>;
 
+// Skills, gear and card icons live in their own files (iconsSkills.ts, iconsGear.ts,
+// iconsCards.ts) so each list stays short.
+const ICONS = { ...BASE_ICONS, ...SKILL_ICONS, ...GEAR_ICONS, ...CARD_ART };
+
 export type IconName = keyof typeof ICONS;
 export const ICON_NAMES = Object.keys(ICONS) as IconName[];
 
@@ -500,6 +508,18 @@ export const OPTION_ICONS: Record<string, IconName> = {
   throw: 'fast',
   keep: 'lock',
 };
+
+/** The icon of a skill or spell; spells without their own art fall back to the magic icon. */
+export function skillIcon(id: string, isSpell = false): IconName {
+  const name = `skill_${id}`;
+  return name in ICONS ? (name as IconName) : isSpell ? 'magic' : 'skill';
+}
+
+/** The icon of a gear piece; falls back to the icon of its slot. */
+export function gearIcon(id: string, slot: 'armor' | 'accessory'): IconName {
+  const name = `gear_${id}`;
+  return name in ICONS ? (name as IconName) : slot;
+}
 
 /** Health, strength, agility and speed as a row of icon + value. */
 export function statRow(hp: number, strength: number, agility: number, speed: number): HTMLElement {

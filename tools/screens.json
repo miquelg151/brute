@@ -240,6 +240,19 @@
     ]
   },
   {
+    "name": "gallery-icons",
+    "steps": [
+      { "eval": "setTimeout(() => { location.search = '?gallery'; }, 0);" },
+      { "wait": 2500 },
+      { "eval": "const head = [...document.querySelectorAll('h2')].find((el) => el.textContent === 'Icons'); const grid = head.nextElementSibling; document.body.replaceChildren(grid); const css = document.createElement('style'); css.textContent = '.gallery-grid{display:grid !important;grid-template-columns:repeat(8,1fr);gap:2px} .gallery-tile{margin:0;padding:1px} .gallery-tile canvas{width:28px !important;height:auto !important} .gallery-tile figcaption{font-size:6px;line-height:1;word-break:break-all} .gallery-tile .tag,.gallery-tile a{display:none}'; document.head.append(css); window.scrollTo(0, 0);" },
+      { "shot": "gallery-icons" },
+      { "eval": "window.scrollTo(0, window.innerHeight - 20);" },
+      { "shot": "gallery-icons-2" },
+      { "eval": "window.scrollTo(0, 2 * (window.innerHeight - 20));" },
+      { "shot": "gallery-icons-3" }
+    ]
+  },
+  {
     "name": "tab-cards",
     "steps": [
       { "include": "rich" },
