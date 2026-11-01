@@ -12,4 +12,5 @@ export * from './ranks';
 export * from './feats';
 export * from './legends';
 export * from './league';
+export * from './cosmetics';
 export * from './game';

@@ -3,6 +3,7 @@
 // Every sprite faces right; the replay flips it for the right-hand team.
 import { RANKS, rankOf, type Appearance, type ClassId } from '../core';
 import { artImage, artManifest, imageToCanvas } from './art';
+import { HAIR_ART, HAT_ART, type HeadArt } from './cosmeticArt';
 import { HAIR_COLORS, OUTFIT_COLORS, SKIN_TONES, shade } from './palette';
 import { PAL } from './theme';
 
@@ -232,7 +233,13 @@ function customFighter(fighter: FighterLook): HTMLCanvasElement | null {
   const outfit = artImage(f.outfit?.[classId]);
   if (outfit) imageToCanvas(outfit, OUTFIT_COLORS[look.outfitColor], canvas);
   const hair = artImage(f.hair?.[look.hairStyle]);
-  if (hair) imageToCanvas(hair, HAIR_COLORS[look.hairColor], canvas);
+  const hairColor = HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[0]!;
+  const heads = headsOf(body, f.frameWidth ?? body.naturalWidth);
+  if (hair) imageToCanvas(hair, hairColor, canvas);
+  else if (HAIR_ART[look.hairStyle]) {
+    const art = HAIR_ART[look.hairStyle]!;
+    drawOnHeads(canvas, heads, { ...art, colors: { H: hairColor, S: shade(hairColor, -0.3), L: shade(hairColor, 0.3) } });
+  }
   const extra = artImage(f.extra?.[classId]);
   if (extra) imageToCanvas(extra, undefined, canvas);
   const origin = fighter.originId ? artImage(f.origin?.[fighter.originId]) : null;
@@ -245,7 +252,57 @@ function customFighter(fighter: FighterLook): HTMLCanvasElement | null {
     const rank = artImage(f.rank?.[r.id]);
     if (rank) imageToCanvas(rank, undefined, canvas);
   }
+  // The hat goes on last, over everything on the head.
+  if (look.hat) {
+    const hatImage = artImage(f.hat?.[look.hat]);
+    if (hatImage) imageToCanvas(hatImage, undefined, canvas);
+    else if (HAT_ART[look.hat]) drawOnHeads(canvas, heads, HAT_ART[look.hat]!);
+  }
   return canvas;
+}
+
+/** Where the head is in each frame: its top row and its leftmost and rightmost columns. */
+interface Head {
+  top: number;
+  left: number;
+  right: number;
+}
+
+/** Finds the head in every frame of the body strip: the first row with skin, and its width two rows lower. */
+function headsOf(body: HTMLImageElement, frameWidth: number): Head[] {
+  const c = imageToCanvas(body);
+  const { data, width, height } = c.getContext('2d')!.getImageData(0, 0, c.width, c.height);
+  const solid = (x: number, y: number) => data[(y * width + x) * 4 + 3]! > 0;
+  const heads: Head[] = [];
+  for (let x0 = 0; x0 + frameWidth <= width; x0 += frameWidth) {
+    let top = 0;
+    while (top < height && ![...Array(frameWidth).keys()].some((i) => solid(x0 + i, top))) top++;
+    const row = Math.min(height - 1, top + 2);
+    let left = 0;
+    let right = frameWidth - 1;
+    while (left < frameWidth - 1 && !solid(x0 + left, row)) left++;
+    while (right > 0 && !solid(x0 + right, row)) right--;
+    heads.push({ top, left: x0 + left, right: x0 + right });
+  }
+  return heads;
+}
+
+/** Draws a hat or hair grid on every frame's head (see cosmeticArt.ts for the layout). */
+function drawOnHeads(canvas: HTMLCanvasElement, heads: Head[], art: HeadArt): void {
+  const ctx = canvas.getContext('2d')!;
+  for (const head of heads) {
+    // A 12-wide grid is centred on the head, so heads a pixel wider or narrower still fit.
+    const x0 = Math.round((head.left + head.right) / 2 - 5.5);
+    const y0 = head.top + art.sit - (art.rows.length - 1);
+    art.rows.forEach((row, y) => {
+      [...row].forEach((ch, x) => {
+        const color = art.colors[ch];
+        if (!color) return;
+        ctx.fillStyle = color;
+        ctx.fillRect(x0 + x, y0 + y, 1, 1);
+      });
+    });
+  }
 }
 
 export type Pose = 'idle' | 'attack' | 'hurt';

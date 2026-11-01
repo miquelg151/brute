@@ -17,6 +17,8 @@ export interface ArtManifest {
     origin?: Record<string, string>;
     /** One full-colour layer per rank (no file for 'rookie'), drawn last (wraps, chain, medal, belt...). They stack: a fighter wears every rank layer up to its own. */
     rank?: Partial<Record<RankId, string>>;
+    /** One full-colour layer per hat cosmetic id, drawn last. Without one, the hat is drawn in code (cosmeticArt.ts). */
+    hat?: Record<string, string>;
     /** Width of one animation frame: every layer is a strip of frames side by side. Leave it out for a single picture. */
     frameWidth?: number;
     /** Which frames (counting from 0) each pose uses. Idle frames loop; attack frames play in order. */

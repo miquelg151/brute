@@ -1,6 +1,6 @@
 // The League tab: pick a legend and play league matches for trophies. Under it, the trophy
 // road with every stop and its reward. Shown only once there is at least one legend.
-import { ARENAS, BRANCHES_BY_ID, CARDS, CLASSES, GEAR, ROAD, arenaIndex, leagueTitle, type RoadReward, type SaveData } from '../../core';
+import { ARENAS, BRANCHES_BY_ID, CARDS, CLASSES, COSMETICS, GEAR, type CosmeticKind, ROAD, arenaIndex, leagueTitle, type RoadReward, type SaveData } from '../../core';
 import { CARD_ICONS } from '../cardView';
 import { h, pixelArt } from '../dom';
 import { gearIcon, icon, type IconName } from '../icons';
@@ -10,15 +10,26 @@ import type { TabActions } from '../shell';
 
 const PICK_KEY = 'brute.leagueLegend';
 
+/** What each kind of cosmetic is called on screen. */
+export const COSMETIC_LABEL: Record<CosmeticKind, string> = {
+  hat: 'Hat',
+  hairStyle: 'Hair',
+  hairColor: 'Hair colour',
+  outfitColor: 'Outfit colour',
+  celebration: 'Celebration',
+};
+
 /** A road reward in plain words, e.g. 'Card: Cheap Shot' or 'Title: Alley Cat'. */
 export function roadRewardText(r: RoadReward): string {
   if (r.kind === 'title') return `Title: ${r.title}`;
+  if (r.kind === 'cosmetic') return `${COSMETIC_LABEL[COSMETICS[r.id]?.kind ?? 'hat']}: ${COSMETICS[r.id]?.name ?? r.id}`;
   return CARDS[r.item] ? `Card: ${CARDS[r.item]!.name}` : `Gear: ${GEAR[r.item]?.name ?? r.item}`;
 }
 
 /** The picture of a road reward: the item's own icon, or a medal for a title. */
 function rewardIcon(r: RoadReward): IconName {
   if (r.kind === 'title') return 'medal';
+  if (r.kind === 'cosmetic') return 'look';
   return CARDS[r.item] ? (CARD_ICONS[r.item] ?? 'skill') : gearIcon(r.item, GEAR[r.item]?.slot ?? 'armor');
 }
 

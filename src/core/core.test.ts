@@ -355,7 +355,7 @@ describe('game', () => {
     delete (v4.character as Partial<Character>).cards;
     delete (v4.character as Partial<Character>).cardUses;
     const save = migrateSave(JSON.parse(JSON.stringify(v4)))!;
-    expect(save.version).toBe(9);
+    expect(save.version).toBe(10);
     expect(save.character.name).toBe('Old');
     expect(save.character.cards).toEqual(['special', 'roll', 'weather_wave']);
     expect(save.character.cardUses).toEqual({});
@@ -370,7 +370,7 @@ describe('game', () => {
     save.version = 5;
     save.pendingFight = { anything: true };
     const migrated = migrateSave(save)!;
-    expect(migrated.version).toBe(9);
+    expect(migrated.version).toBe(10);
     expect(migrated.character.cards).toEqual(['special', 'wall', 'scrap_shield', 'patch_up', 'hurl', 'rush']);
     expect(migrated.pendingFight).toBeNull();
   });
@@ -1404,7 +1404,7 @@ describe('class branches', () => {
     save.pendingFight = { anything: true };
     const migrated = migrateSave(JSON.parse(JSON.stringify(save)))!;
     expect(migrated.version).toBe(SAVE_VERSION);
-    expect(SAVE_VERSION).toBe(9);
+    expect(SAVE_VERSION).toBe(10);
     expect(migrated.pendingFight).toEqual({ anything: true });
     expect(migrated.character.branch).toBeUndefined();
     expect(needsBranch(migrated.character)).toBe(true);
@@ -1420,9 +1420,9 @@ describe('class branches', () => {
     return JSON.parse(JSON.stringify(save));
   }
 
-  it('a version 7 save becomes version 9: fighter kept, no legends, older bosses skipped', () => {
+  it('a version 7 save becomes version 10: fighter kept, no legends, older bosses skipped', () => {
     const migrated = migrateSave(v7Save(12))!;
-    expect(migrated.version).toBe(9);
+    expect(migrated.version).toBe(10);
     expect(migrated.legends).toEqual([]);
     expect(migrated.character.name).toBe('M');
     expect(migrated.character.level).toBe(12);

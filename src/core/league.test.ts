@@ -147,12 +147,12 @@ describe('league matches', () => {
     expect(newGame('Plain', look, 'mystic', 'port', 3).character.unlocked).toBeUndefined();
   });
 
-  it('a version 8 save gets an empty league', () => {
+  it('a version 8 save gets an empty league (and becomes version 10)', () => {
     const save = newGame('Old', look, 'brawler', 'port', 4) as unknown as Record<string, unknown>;
     delete save.league;
     save.version = 8;
     const migrated = migrateSave(JSON.parse(JSON.stringify(save)))!;
-    expect(migrated.version).toBe(9);
+    expect(migrated.version).toBe(10);
     expect(migrated.league).toEqual(newLeague());
   });
 });

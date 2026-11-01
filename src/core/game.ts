@@ -3,6 +3,7 @@ import { BOSSES, buildBoss, challengeableBoss, gateLevel, gatedBoss, type BossId
 import { createCharacter } from './character';
 import { evaluateFeats } from './feats';
 import { gearFor, loadoutFor, runFight, type BreakChoice, type CardPlay, type FightLog, type GearChoice } from './fight';
+import { grantCosmetics, newCosmetics, type CosmeticState } from './cosmetics';
 import { applyMatch, arenaIndex, ARENAS, buildRival, newLeague, type LeagueState, type MatchOutcome } from './league';
 import { generateOpponent } from './opponents';
 import { OFFER_SIZE, XP_LOSS, XP_WIN, addXp, applyUpgrade, chooseBranch, rollBossOffer, rollOffer, xpToNext } from './progression';
@@ -10,7 +11,7 @@ import { Rng, mixSeed } from './rng';
 import { DEFAULT_PLAN, STANCE_IDS, TARGET_IDS, WEAPON_STYLE_IDS, counterPlan, type Plan } from './tactics';
 import type { Appearance, BranchId, Character, ClassId, FighterStats, Legend } from './types';
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 /** What the player decides before a fight. Locked once the fight starts. */
 export interface Tactics extends Plan {
@@ -60,6 +61,8 @@ export interface SaveData {
   legends: Legend[];
   /** The Legends League: trophies, road rewards and unlocked items. Kept like the legends. */
   league: LeagueState;
+  /** Cosmetics owned and the chosen victory celebration. Kept like the league. */
+  cosmetics: CosmeticState;
 }
 
 export interface FightResult {
@@ -81,6 +84,8 @@ export interface FightResult {
   newMedals: string[];
   /** Set for a league match: trophies, arenas and road stops reached. */
   league?: MatchOutcome;
+  /** Cosmetics earned by this fight (road stops or medals). */
+  newCosmetics: string[];
 }
 
 /**
@@ -95,6 +100,7 @@ export function newGame(
   seed: number,
   legends: Legend[] = [],
   league: LeagueState = newLeague(),
+  cosmetics: CosmeticState = newCosmetics(),
 ): SaveData {
   const character = createCharacter(name, appearance, classId, originId);
   if (league.unlocked.length) character.unlocked = [...league.unlocked];
@@ -108,7 +114,13 @@ export function newGame(
     pendingFight: null,
     legends,
     league,
+    cosmetics,
   };
+}
+
+/** Gives the save every cosmetic its road stops and medals have earned. Returns the new ones. */
+export function grantSaveCosmetics(save: SaveData): string[] {
+  return grantCosmetics(save.cosmetics, { roadStops: save.league.rewards, fighters: [save.character], legends: save.legends });
 }
 
 /** Who fights in the pending fight: the legend in a league match, otherwise the fighter. */
@@ -302,7 +314,8 @@ export function finishFight(save: SaveData): FightResult {
   // A league match only moves trophies: the legend and the fighter stay as they are.
   if (fight.league) {
     save.pendingFight = null;
-    return { opponent: fight.opponent, log, won, xpGained: 0, levelsGained: 0, cardsPlayed: {}, cardLevelUps: [], newMedals: [], league: applyMatch(save.league, won) };
+    const league = applyMatch(save.league, won);
+    return { opponent: fight.opponent, log, won, xpGained: 0, levelsGained: 0, cardsPlayed: {}, cardLevelUps: [], newMedals: [], league, newCosmetics: grantSaveCosmetics(save) };
   }
   // Update the fighter's record. A knockout is a main fighter going down before the end of round 3.
   const stats = fighterStats(save.character);
@@ -345,7 +358,7 @@ export function finishFight(save: SaveData): FightResult {
     if (after > before) cardLevelUps.push({ card, level: after });
   }
   save.pendingFight = null;
-  const result: FightResult = { opponent: fight.opponent, log, won, xpGained, levelsGained, cardsPlayed, cardLevelUps, newMedals: [] };
+  const result: FightResult = { opponent: fight.opponent, log, won, xpGained, levelsGained, cardsPlayed, cardLevelUps, newMedals: [], newCosmetics: [] };
   if (fight.bossId) {
     result.bossId = fight.bossId;
     if (bossBeaten) result.bossBeaten = true;
@@ -357,6 +370,7 @@ export function finishFight(save: SaveData): FightResult {
     result.newMedals.push(`boss_${fight.bossId}`);
   }
   result.newMedals.push(...evaluateFeats(save.character, result));
+  result.newCosmetics = grantSaveCosmetics(save);
   return result;
 }
 
@@ -421,6 +435,13 @@ export function migrateSave(raw: unknown): SaveData | null {
     // The league is new: no trophies yet.
     save.league = newLeague();
     save.version = 9;
+  }
+  if (save.version === 9) {
+    // Cosmetics are new: the medals and road stops already earned give theirs at once.
+    save.cosmetics = newCosmetics();
+    const s = save as unknown as SaveData;
+    grantSaveCosmetics(s);
+    save.version = 10;
   }
   return save.version === SAVE_VERSION ? (save as unknown as SaveData) : null;
 }

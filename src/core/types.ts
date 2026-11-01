@@ -27,9 +27,15 @@ export interface Appearance {
   hairStyle: number;
   hairColor: number;
   outfitColor: number;
+  /** A hat cosmetic id (see COSMETICS), if the fighter wears one. */
+  hat?: string;
 }
 
-export const APPEARANCE_OPTIONS: Record<keyof Appearance, number> = {
+/** The parts of a look picked by number (everything but the hat). */
+export type LookPart = Exclude<keyof Appearance, 'hat'>;
+
+/** How many base options each part has. Cosmetics add more after these (see COSMETICS). */
+export const APPEARANCE_OPTIONS: Record<LookPart, number> = {
   skinTone: 6,
   hairStyle: 4,
   hairColor: 6,

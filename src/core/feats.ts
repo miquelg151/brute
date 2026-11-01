@@ -112,13 +112,13 @@ export function availableTitles(c: Character): string[] {
   return FEATS.filter((f) => f.title && c.medals?.includes(f.id)).map((f) => f.title!);
 }
 
-/** Wears an earned title, or none with undefined. */
-export function setTitle(c: Character, title: string | undefined): void {
+/** Wears an earned title, or none with undefined. `extra` are other titles earned (the league's). */
+export function setTitle(c: Character, title: string | undefined, extra: string[] = []): void {
   if (title === undefined) {
     delete c.title;
     return;
   }
-  if (!availableTitles(c).includes(title)) throw new Error(`Title '${title}' is not earned`);
+  if (!availableTitles(c).includes(title) && !extra.includes(title)) throw new Error(`Title '${title}' is not earned`);
   c.title = title;
 }
 

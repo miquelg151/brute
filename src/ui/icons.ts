@@ -438,6 +438,19 @@ const BASE_ICONS = {
     ],
     colors: { S: PAL.fog, L: PAL.white, Y: PAL.sand, D: PAL.wood, K: PAL.brownDark },
   },
+  // A T-shirt, for the look (cosmetics).
+  look: {
+    rows: [
+      '.TT.TT.',
+      'TTTWTTT',
+      'TTTTTTT',
+      '.LTTTD.',
+      '..TTT..',
+      '..TTT..',
+      '..DDD..',
+    ],
+    colors: { T: PAL.teal, W: PAL.white, L: PAL.cyan, D: PAL.forest },
+  },
   // A trophy cup, for the Legends League.
   trophy: {
     rows: [

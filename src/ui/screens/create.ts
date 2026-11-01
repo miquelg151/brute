@@ -1,7 +1,7 @@
 // Creating a fighter, in four steps: Class, Origin, Look, Name.
 // The look comes after class and origin, so the player styles the fighter they will really get.
 // Your fighter stands on the street at the top the whole time and changes as you pick.
-import { CARDS, CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, originCard as originCardId, type Appearance, type ClassId, type LeagueState, type Legend, type SaveData } from '../../core';
+import { CARDS, CLASSES, CLASS_IDS, ORIGINS, ORIGIN_IDS, APPEARANCE_OPTIONS, SKILLS, newGame, originCard as originCardId, type Appearance, type ClassId, type LookPart, type LeagueState, type Legend, type SaveData } from '../../core';
 import { CARD_ICONS, cardSticker } from '../cardView';
 import { h, pixelArt } from '../dom';
 import { icon, statRow } from '../icons';
@@ -10,7 +10,7 @@ import { CLASS_COLORS, HAIR_COLORS, classTextColor, ORIGIN_COLORS, HAIR_STYLE_NA
 import { drawFighter } from '../sprites';
 import { HOME_STREET_SEED, streetCanvas } from '../street';
 
-const LOOK_ROWS: { key: keyof Appearance; label: string }[] = [
+const LOOK_ROWS: { key: LookPart; label: string }[] = [
   { key: 'skinTone', label: 'Skin' },
   { key: 'hairStyle', label: 'Hair' },
   { key: 'hairColor', label: 'Hair color' },
@@ -18,7 +18,7 @@ const LOOK_ROWS: { key: keyof Appearance; label: string }[] = [
 ];
 
 /** Look options that are colours, shown as a swatch instead of a number. */
-const LOOK_COLORS: Partial<Record<keyof Appearance, string[]>> = {
+const LOOK_COLORS: Partial<Record<LookPart, string[]>> = {
   skinTone: SKIN_TONES,
   hairColor: HAIR_COLORS,
   outfitColor: OUTFIT_COLORS,
@@ -53,7 +53,7 @@ export function renderCreate(root: HTMLElement, legends: Legend[], league: Leagu
 
   const preview = h('div', { class: 'spot' });
   const nameInput = h('input', { class: 'name-input', maxLength: 14, placeholder: 'Name your fighter', autocomplete: 'off', enterKeyHint: 'done' });
-  const lookValues = new Map<keyof Appearance, HTMLElement>();
+  const lookValues = new Map<LookPart, HTMLElement>();
 
   const refreshPreview = () => {
     preview.replaceChildren(pixelArt(drawFighter({ appearance: look, classId, originId, level: 1 }), 'big'));
@@ -67,7 +67,7 @@ export function renderCreate(root: HTMLElement, legends: Legend[], league: Leagu
     }
   };
 
-  const lookRow = (key: keyof Appearance, label: string) => {
+  const lookRow = (key: LookPart, label: string) => {
     const value = h('span', { class: 'look-value' });
     lookValues.set(key, value);
     const change = (d: number) => () => {

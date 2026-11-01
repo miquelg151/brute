@@ -41,7 +41,7 @@ export const ARENAS: ArenaDef[] = [
   { id: 'neon_strip', name: 'Neon Strip', trophies: 1200, rivalStatPct: 16, rivalsCounter: true },
 ];
 
-export type RoadReward = { kind: 'title'; title: string } | { kind: 'unlock'; item: string };
+export type RoadReward = { kind: 'title'; title: string } | { kind: 'unlock'; item: string } | { kind: 'cosmetic'; id: string };
 
 export interface RoadStop {
   id: string;
@@ -51,20 +51,21 @@ export interface RoadStop {
 
 /** The trophy road: a stop every 150 trophies. Arena entries unlock an item. */
 export const ROAD: RoadStop[] = [
-  { id: 'r150', trophies: 150, rewards: [{ kind: 'title', title: 'Alley Cat' }] },
+  { id: 'r150', trophies: 150, rewards: [{ kind: 'title', title: 'Alley Cat' }, { kind: 'cosmetic', id: 'neon_pink' }] },
   { id: 'r300', trophies: 300, rewards: [{ kind: 'unlock', item: 'cheap_shot' }] },
-  { id: 'r450', trophies: 450, rewards: [{ kind: 'title', title: 'Dock Boss' }] },
+  { id: 'r450', trophies: 450, rewards: [{ kind: 'title', title: 'Dock Boss' }, { kind: 'cosmetic', id: 'shades' }] },
   { id: 'r600', trophies: 600, rewards: [{ kind: 'unlock', item: 'bike_helmet' }] },
-  { id: 'r750', trophies: 750, rewards: [{ kind: 'title', title: 'Tunnel Rat' }] },
+  { id: 'r750', trophies: 750, rewards: [{ kind: 'title', title: 'Tunnel Rat' }, { kind: 'cosmetic', id: 'bun' }] },
   { id: 'r900', trophies: 900, rewards: [{ kind: 'unlock', item: 'smoke_bomb' }] },
-  { id: 'r1050', trophies: 1050, rewards: [{ kind: 'title', title: 'Skyline Runner' }] },
-  { id: 'r1200', trophies: 1200, rewards: [{ kind: 'unlock', item: 'neon_jacket' }] },
+  { id: 'r1050', trophies: 1050, rewards: [{ kind: 'title', title: 'Skyline Runner' }, { kind: 'cosmetic', id: 'ninja_mask' }] },
+  { id: 'r1200', trophies: 1200, rewards: [{ kind: 'unlock', item: 'neon_jacket' }, { kind: 'cosmetic', id: 'fireworks' }] },
   {
     id: 'r1500',
     trophies: 1500,
     rewards: [
       { kind: 'unlock', item: 'crowd_favourite' },
       { kind: 'title', title: 'King of the Strip' },
+      { kind: 'cosmetic', id: 'crown' },
     ],
   },
 ];
@@ -95,6 +96,11 @@ export function leagueTitle(state: LeagueState): string | undefined {
     for (const r of stop.rewards) if (r.kind === 'title') title = r.title;
   }
   return title;
+}
+
+/** Every road title earned, in road order (any of them can be worn). */
+export function leagueTitles(state: LeagueState): string[] {
+  return ROAD.filter((s) => state.rewards.includes(s.id)).flatMap((s) => s.rewards.flatMap((r) => (r.kind === 'title' ? [r.title] : [])));
 }
 
 /** Items the road unlocks up to a trophy count (what rivals of that arena may carry). */

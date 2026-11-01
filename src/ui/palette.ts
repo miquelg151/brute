@@ -4,9 +4,10 @@ import { PAL } from './theme';
 // Colours the player can pick for a fighter, and the colour of each class.
 // They all come from the game palette in theme.ts.
 export const SKIN_TONES = [PAL.skin1, PAL.skin2, PAL.skin3, PAL.skin4, PAL.skin5, PAL.skin6];
-export const HAIR_COLORS = [PAL.night, PAL.brownDark, PAL.wood, PAL.sand, PAL.crimson, PAL.violet];
-export const OUTFIT_COLORS = [PAL.blue, PAL.red, PAL.green, PAL.yellow, PAL.purple, PAL.orange, PAL.teal, PAL.mist];
-export const HAIR_STYLE_NAMES = ['Short', 'Mohawk', 'Long', 'Bald'];
+// The last ones are cosmetics (Neon Pink, Ice; Gold, Black): see COSMETICS in src/core/cosmetics.ts.
+export const HAIR_COLORS = [PAL.night, PAL.brownDark, PAL.wood, PAL.sand, PAL.crimson, PAL.violet, PAL.magenta, PAL.ice];
+export const OUTFIT_COLORS = [PAL.blue, PAL.red, PAL.green, PAL.yellow, PAL.purple, PAL.orange, PAL.teal, PAL.mist, PAL.amber, PAL.asphalt];
+export const HAIR_STYLE_NAMES = ['Short', 'Mohawk', 'Long', 'Bald', 'Spiky', 'Bun'];
 
 /** The colour of each origin (its cards' stripe). */
 export const ORIGIN_COLORS: Record<string, string> = {
