@@ -99,9 +99,9 @@ export const CARDS: Record<string, CardDef> = {
   scrap_shield: card('scrap_shield', 'Scrap Shield', 4, 'origin', true, (l) => `A barrier that stops ${scaled(12, l)} physical damage this round.`),
   toxic_spit: card('toxic_spit', 'Toxic Spit', 4, 'origin', true, (l) => `Poison: they lose ${scaled(4, l)} health on each of their next 3 turns. Armor doesn't help.`),
   // League cards: won on the trophy road (see league.ts), then offered to any class.
-  cheap_shot: card('cheap_shot', 'Cheap Shot', 3, 'general', false, (l) => `Your next hit ignores armor and does +${scaled(10, l)}% damage.`),
+  cheap_shot: card('cheap_shot', 'Cheap Shot', 3, 'general', false, (l) => `Your next hit ignores armor and does +${scaled(25, l)}% damage.`),
   smoke_bomb: card('smoke_bomb', 'Smoke Bomb', 4, 'general', false, (l) => `Their next attack misses and you dodge the ${scaledCount(1, l) === 1 ? 'one after for sure' : `next ${scaledCount(1, l)} after it for sure`}.`),
-  crowd_favourite: card('crowd_favourite', 'Crowd Favourite', 4, 'general', false, (l) => `Heal ${scaled(8, l)}% of your health and gain 2 energy.`),
+  crowd_favourite: card('crowd_favourite', 'Crowd Favourite', 4, 'general', false, (l) => `Heal ${scaled(5, l)}% of your health and gain 2 energy.`),
   power_surge: card('power_surge', 'Power Surge', 6, 'origin', true, (l) => `A shocking hit${l > 1 ? ` (+${10 * (l - 1)}%)` : ''}: if it lands, they lose their next turn.`),
 };
 

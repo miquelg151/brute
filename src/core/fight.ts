@@ -1365,14 +1365,14 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         break;
       case 'cheap_shot':
         u.nextHitIgnoresArmor = true;
-        u.nextHitPct += scaled(10, level);
+        u.nextHitPct += scaled(25, level);
         break;
       case 'smoke_bomb':
         enemyMainOf(u).blinded = true;
         u.sureDodges += scaledCount(1, level);
         break;
       case 'crowd_favourite':
-        heal(u, Math.floor((u.maxHp * scaled(8, level)) / 100));
+        heal(u, Math.floor((u.maxHp * scaled(5, level)) / 100));
         u.energy = Math.min(MAX_ENERGY, u.energy + 2);
         emitEnergy();
         break;

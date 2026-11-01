@@ -108,19 +108,30 @@ Després de canviar un número:
 1. `npm test` (si un test falla, potser comprova aquell número: digues-ho a Claude);
 2. `npm run balance -- 500 classes` per veure si l'equilibri continua bé.
 
-## 5. Colors i textos
+## 5. La Legends League
+
+- Les regles són a `src/core/league.ts`:
+  - `ARENAS`: nom de cada arena, trofeus per entrar-hi i quant més forts són els rivals
+    (`rivalStatPct`);
+  - `ROAD`: les parades del camí de trofeus i què dona cadascuna (títol o objecte);
+  - `WIN_TROPHIES` / `LOSS_TROPHIES`: trofeus que guanyes i perds.
+- Les cartes i l'equip que es desbloquegen són a `cards.ts` i a `GEAR` (`catalog.ts`). La llista
+  del que està bloquejat és `LOCKED_CONTENT` (`catalog.ts`).
+- La pestanya és `src/ui/tabs/leagueTab.ts`.
+
+## 6. Colors i textos
 
 - Colors de tot el joc: `PAL` a `src/ui/theme.ts`. Canviar-ne un el canvia a tot arreu.
 - Noms i textos del joc (en anglès): són a `catalog.ts`, `cards.ts` i a les pantalles de
   `src/ui/screens/` i `src/ui/tabs/`.
 
-## 6. Captures del mòbil sense mòbil
+## 7. Captures del mòbil sense mòbil
 
 Amb el joc obert (`npm run dev`), en una altra terminal:
 `npm run screens` fa captures de totes les pantalles a mida de mòbil a la carpeta `screens/`.
 Va bé per veure si un canvi trenca alguna pantalla.
 
-## 7. Pujar els canvis
+## 8. Pujar els canvis
 
 Si vols, pots deixar-ho tot a la branca i que Claude ho revisi i ho pugi. Si ho vols pujar tu:
 ```
