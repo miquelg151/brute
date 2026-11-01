@@ -108,6 +108,12 @@ export interface BranchDef {
   icons: [string, string, string];
 }
 
+/**
+ * Items (card and gear ids) that only the trophy road unlocks. A fighter is offered one
+ * only once it is in their `unlocked` list (copied from the league when they were created).
+ */
+export const LOCKED_CONTENT: readonly string[] = ['cheap_shot', 'bike_helmet', 'smoke_bomb', 'neon_jacket', 'crowd_favourite'];
+
 /** Max weapons a fighter brings into one fight. */
 export const LOADOUT_SIZE = 3;
 
@@ -208,6 +214,9 @@ export const GEAR: Record<string, GearDef> = {
   patched_coat: { id: 'patched_coat', name: 'Patched Coat', slot: 'armor', armor: 2, speed: -1 },
   backpack: { id: 'backpack', name: 'Backpack', slot: 'accessory', staminaRegen: 1 },
   headphones: { id: 'headphones', name: 'Headphones', slot: 'accessory', speed: 1, dodge: 2 },
+  // League gear: won on the trophy road (see league.ts).
+  bike_helmet: { id: 'bike_helmet', name: 'Bike Helmet', slot: 'armor', armor: 1, dodge: 3 },
+  neon_jacket: { id: 'neon_jacket', name: 'Neon Jacket', slot: 'armor', magic: 2, magicResist: 15 },
 };
 
 export const PETS: Record<string, PetDef> = {
@@ -383,6 +392,12 @@ export const UPGRADES: UpgradeDef[] = [
   ref('card', 'general', 'rush'),
   ref('card', 'general', 'feint'),
   ref('card', 'general', 'second_breath'),
+  // Locked until the trophy road unlocks them (LOCKED_CONTENT).
+  ref('card', 'general', 'cheap_shot'),
+  ref('gear', 'general', 'bike_helmet'),
+  ref('card', 'general', 'smoke_bomb'),
+  ref('gear', 'general', 'neon_jacket'),
+  ref('card', 'general', 'crowd_favourite'),
   // Brawler: common
   stat('brawler_strength', 'brawler', '+1 Strength, +1 Health', { strength: 1, health: 1 }),
   stat('brawler_health', 'brawler', '+3 Health', { health: 3 }),

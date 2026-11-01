@@ -44,6 +44,9 @@ export const CARD_ICONS: Record<string, IconName> = {
   together: 'card_together',
   fireball: 'card_fireball',
   rune_circle: 'card_rune_circle',
+  cheap_shot: 'card_cheap_shot',
+  smoke_bomb: 'card_smoke_bomb',
+  crowd_favourite: 'card_crowd_favourite',
 };
 
 /**

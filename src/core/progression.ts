@@ -1,5 +1,5 @@
 import { gatedBoss } from './bosses';
-import { BRANCHES, UPGRADES, UPGRADES_BY_ID, type UpgradeDef, type UpgradePool } from './catalog';
+import { BRANCHES, LOCKED_CONTENT, UPGRADES, UPGRADES_BY_ID, type UpgradeDef, type UpgradePool } from './catalog';
 import type { Rng } from './rng';
 import { addStats, type BranchId, type Character } from './types';
 
@@ -57,7 +57,12 @@ function owns(c: Character, u: UpgradeDef): boolean {
 }
 
 export function eligibleUpgrades(c: Character, pool: UpgradePool): UpgradeDef[] {
-  return UPGRADES.filter((u) => u.pool === pool && !owns(c, u));
+  return UPGRADES.filter((u) => u.pool === pool && !owns(c, u) && !isLocked(c, u));
+}
+
+/** League items stay out of offers until the fighter has them unlocked. */
+function isLocked(c: Character, u: UpgradeDef): boolean {
+  return u.kind !== 'stat' && LOCKED_CONTENT.includes(u.ref) && !c.unlocked?.includes(u.ref);
 }
 
 /** True once the fighter has reached the branch level without picking a branch. */

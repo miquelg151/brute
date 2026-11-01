@@ -88,4 +88,13 @@ export const GEAR_ICONS = {
     rows: ['..KKK..', '.K...K.', 'K.....K', 'K.....K', 'RR...RR', 'RR...RR', 'RR...RR'],
     colors: { K: PAL.stone, R: PAL.red },
   },
+  // League gear.
+  gear_bike_helmet: {
+    rows: ['.......', '..RRR..', '.RWRWR.', 'RRRRRRR', 'RRRRRRR', 'K.....K', '.K...K.'],
+    colors: { R: PAL.orange, W: PAL.white, K: PAL.asphalt },
+  },
+  gear_neon_jacket: {
+    rows: ['.MM.MM.', 'MMMCMMM', 'MCMCMCM', 'M.MCM.M', 'C.MCM.C', '..MCM..', '..MMM..'],
+    colors: { M: PAL.magenta, C: PAL.cyan },
+  },
 } satisfies Record<string, IconDef>;

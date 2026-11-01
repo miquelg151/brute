@@ -72,6 +72,8 @@ export interface Character {
   title?: string;
   /** Running fight record. Use fighterStats() to read it. */
   stats?: FighterStats;
+  /** League items (LOCKED_CONTENT) this fighter may be offered; copied from the league at creation. */
+  unlocked?: string[];
 }
 
 /** A fighter's running record, kept for feats. */

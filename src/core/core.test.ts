@@ -21,6 +21,7 @@ import {
   UPGRADES,
   UPGRADES_BY_ID,
   eligibleUpgrades,
+  LOCKED_CONTENT,
   addXp,
   applyUpgrade,
   botCardLevel,
@@ -1768,8 +1769,8 @@ describe('content expansion data', () => {
     }
   });
 
-  it('the general pool has 8 weapons and 7 gear', () => {
-    const general = UPGRADES.filter((u) => u.pool === 'general');
+  it('the general pool has 8 weapons and 7 gear (plus the league gear)', () => {
+    const general = UPGRADES.filter((u) => u.pool === 'general' && !LOCKED_CONTENT.includes((u as { ref?: string }).ref ?? ''));
     expect(general.filter((u) => u.kind === 'weapon').map((u) => u.id).sort()).toEqual(
       ['bat', 'chain', 'skateboard', 'umbrella', 'brick', 'bottle', 'pool_cue', 'crowbar'].map((id) => `weapon:${id}`).sort(),
     );
@@ -2084,6 +2085,49 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
     }
     // Card level 4 dodges one more.
     expect(attacksOn0(play(me, 'backflip', 5, 2, foe, 4)).slice(0, 3).map((e) => e.t)).toEqual(['dodge', 'dodge', 'dodge']);
+  });
+
+  // --- League cards ---
+  it('Cheap Shot: the next hit ignores armor', () => {
+    const wall = fresh('bouncer');
+    wall.gear = ['riot_vest'];
+    const firstHitAfter = (log: FightLog, card: string) =>
+      log.events.slice(cardIndex(log, card)).find((e) => e.t === 'hit' && e.actor === 0 && e.target === 1) as { damage: number } | undefined;
+    let higher = 0;
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const shot = firstHitAfter(play(fresh('brawler'), 'cheap_shot', 5, seed, wall), 'cheap_shot');
+      if (shot && shot.damage > 1) higher++;
+    }
+    expect(higher).toBeGreaterThan(0);
+    expect(CARDS.cheap_shot!.describe(1)).toContain('ignores armor');
+  });
+
+  it('Smoke Bomb: their next attack misses, then a sure dodge', () => {
+    const me = fresh('bouncer');
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const log = play(me, 'smoke_bomb', 5, seed, foe);
+      const after = log.events.slice(cardIndex(log, 'smoke_bomb'));
+      const onMe = after.filter((e) => (e.t === 'miss' || e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && (e as { target?: number }).target === 0 && (e as { kind?: string }).kind !== 'counter');
+      expect(onMe.slice(0, 2).map((e) => e.t)).toEqual(['miss', 'dodge']);
+    }
+  });
+
+  it('Crowd Favourite heals and gives 2 energy', () => {
+    const me = fresh('bouncer');
+    const log = play(me, 'crowd_favourite', 5, 1, foe);
+    const after = log.events.slice(cardIndex(log, 'crowd_favourite') + 1);
+    expect(after[0]).toMatchObject({ t: 'heal', actor: 0 });
+    expect(after.find((e) => e.t === 'energy' && e.actor === 0)).toMatchObject({ energy: 2 });
+  });
+
+  it('league items are only offered once unlocked', () => {
+    const c = fresh('brawler');
+    const refs = (list: { kind: string; ref?: string }[]) => list.map((u) => u.ref);
+    expect(refs(eligibleUpgrades(c, 'general') as { kind: string; ref?: string }[])).not.toContain('cheap_shot');
+    c.unlocked = ['cheap_shot'];
+    const now = refs(eligibleUpgrades(c, 'general') as { kind: string; ref?: string }[]);
+    expect(now).toContain('cheap_shot');
+    expect(now).not.toContain('bike_helmet');
   });
 
   // --- Steal (Thief) ---

@@ -105,4 +105,20 @@ export const CARD_ART = {
     rows: ['...G...', '..GGG..', '.GLGGG.', 'GKGGGKF', 'GGGGGGF', '.GKKKF.', '..FFF..'],
     colors: { G: PAL.green, L: PAL.lime, F: PAL.forest, K: PAL.ink },
   },
+  // League cards.
+  // A fist sneaking past a cracked shield.
+  card_cheap_shot: {
+    rows: ['..LL...', '.LGGD..', '.GRGD..', '..GDSSS', '....SSD', '...SSSD', '....DD.'],
+    colors: { L: PAL.fog, G: PAL.stone, D: PAL.asphalt, R: PAL.red, S: PAL.skin3 },
+  },
+  // A smoke bomb with a lit fuse.
+  card_smoke_bomb: {
+    rows: ['....Y.O', '...K.Y.', '..KKK..', '.KKLKK.', '.KKKKK.', '.KKKKK.', '..KKK..'],
+    colors: { K: PAL.asphalt, L: PAL.smoke, Y: PAL.yellow, O: PAL.orange },
+  },
+  // Raised hands and a star: the crowd loves you.
+  card_crowd_favourite: {
+    rows: ['...Y...', '..YYY..', 'YYYWYYY', '.YYYYY.', '.YY.YY.', 'S.....S', 'SS...SS'],
+    colors: { Y: PAL.yellow, W: PAL.white, S: PAL.skin2 },
+  },
 } satisfies Record<string, IconDef>;

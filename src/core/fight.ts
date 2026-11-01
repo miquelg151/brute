@@ -306,6 +306,8 @@ interface Unit {
   nextHitSure: boolean;
   /** Headbutt: if the unit's next hit lands on the enemy fighter, they lose their next turn. */
   nextHitStuns: boolean;
+  /** Cheap Shot: the unit's next hit ignores armor. */
+  nextHitIgnoresArmor: boolean;
   /** Overcharge card: bonus (%) for the next spell. */
   spellBonusPct: number;
   /** Flurry card: strikes left on the next turn, and each one's damage change (%). */
@@ -483,6 +485,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     nextHitPct: 0,
     nextHitSure: false,
     nextHitStuns: false,
+    nextHitIgnoresArmor: false,
     spellBonusPct: 0,
     flurryHits: 0,
     flurryPct: 0,
@@ -886,9 +889,11 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     const nextHitPct = att.nextHitPct + jabPct + wallRunPct;
     const nextHitSure = att.nextHitSure;
     const nextHitStuns = att.nextHitStuns;
+    const ignoresArmor = att.nextHitIgnoresArmor;
     att.nextHitPct = 0;
     att.nextHitSure = false;
     att.nextHitStuns = false;
+    att.nextHitIgnoresArmor = false;
     if (missesBlind(att, def)) return true;
     if (ninthLifeDodge(att, def, kind)) return true;
     const sure = kind === 'special' || kind === 'throw' || nextHitSure;
@@ -920,7 +925,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     // so armor only counts half against them.
     const quickHit = kind === 'double' || kind === 'counter';
     const fullArmor = Math.max(0, def.armor - (att.weapon && kind !== 'throw' ? att.armorPierce : 0));
-    const armor = att.isMain && !quickHit ? fullArmor : Math.floor(fullArmor / 2);
+    const armor = ignoresArmor ? 0 : att.isMain && !quickHit ? fullArmor : Math.floor(fullArmor / 2);
     // Pack Call: a pet hits harder for each other pet its owner has (worked into the roll, so small hits keep their fractions).
     const packPct = packBonus(att);
     let damage = Math.max(1, Math.floor((baseDamage(att, kind, quality, specialBonus, nextHitPct) * roll * (100 + packPct)) / 10000) - armor);
@@ -1358,17 +1363,31 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
       case 'taunt':
         u.tauntTurns = 2;
         break;
+      case 'cheap_shot':
+        u.nextHitIgnoresArmor = true;
+        u.nextHitPct += scaled(10, level);
+        break;
+      case 'smoke_bomb':
+        enemyMainOf(u).blinded = true;
+        u.sureDodges += scaledCount(1, level);
+        break;
+      case 'crowd_favourite':
+        heal(u, Math.floor((u.maxHp * scaled(8, level)) / 100));
+        u.energy = Math.min(MAX_ENERGY, u.energy + 2);
+        emitEnergy();
+        break;
     }
   };
 
   const OFFENSIVE = new Set(['rage', 'haymaker', 'flurry', 'special']);
-  const DEFENSIVE = ['wall', 'roll', 'feint', 'weather_wave', 'leap', 'scrap_shield', 'backflip', 'taunt'];
+  const DEFENSIVE = ['wall', 'roll', 'feint', 'smoke_bomb', 'weather_wave', 'leap', 'scrap_shield', 'backflip', 'taunt'];
 
   /** A bot's choice for this tick, from what it can see: its own state and the enemy's last card. */
   const botChoice = (u: Unit, tick: number): { card: string; quality?: number } | null => {
     const can = (id: string) => canPlay(u, id);
     const pick = (id: string) => (id === 'special' ? { card: id, quality: u.specialQuality ?? rng.int(40, 91) } : { card: id });
     if (u.hp * 100 < u.maxHp * 35 && can('patch_up')) return pick('patch_up');
+    if (u.hp * 100 < u.maxHp * 35 && can('crowd_favourite')) return pick('crowd_favourite');
     const enemyLast = seenLastCard[u.team === 0 ? 1 : 0];
     if (enemyLast && tick - enemyLast.tick <= BOT_REACTION_TICKS && OFFENSIVE.has(enemyLast.card)) {
       // A Special Strike can't be dodged, so Roll, Leap and Backflip do not answer it.
