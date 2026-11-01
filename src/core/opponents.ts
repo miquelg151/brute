@@ -21,15 +21,17 @@ export function randomAppearance(rng: Rng): Appearance {
 /**
  * Builds a bot opponent by levelling a fresh character with the same offer
  * system players use, picking randomly at each level-up (and a random branch at level 5).
- * Pass `branchId` (a branch of `classId`) to force the branch instead of picking one.
+ * Pass `branchId` (a branch of `classId`) to force the branch instead of picking one, and
+ * `unlocked` for the league items (LOCKED_CONTENT) the bot may be offered.
  */
-export function generateOpponent(level: number, rng: Rng, classId?: ClassId, originId?: string, branchId?: BranchId): Character {
+export function generateOpponent(level: number, rng: Rng, classId?: ClassId, originId?: string, branchId?: BranchId, unlocked?: string[]): Character {
   const c = createCharacter(
     rng.pick(NAMES),
     randomAppearance(rng),
     classId ?? rng.pick(CLASS_IDS),
     originId ?? rng.pick(ORIGIN_IDS),
   );
+  if (unlocked?.length) c.unlocked = [...unlocked];
   while (c.level < level) {
     c.level++;
     if (needsBranch(c)) chooseBranch(c, branchId ?? rng.pick(BRANCHES[c.classId]).id);

@@ -3,13 +3,14 @@ import { BOSSES, buildBoss, challengeableBoss, gateLevel, gatedBoss, type BossId
 import { createCharacter } from './character';
 import { evaluateFeats } from './feats';
 import { gearFor, loadoutFor, runFight, type BreakChoice, type CardPlay, type FightLog, type GearChoice } from './fight';
+import { applyMatch, arenaIndex, ARENAS, buildRival, newLeague, type LeagueState, type MatchOutcome } from './league';
 import { generateOpponent } from './opponents';
 import { OFFER_SIZE, XP_LOSS, XP_WIN, addXp, applyUpgrade, chooseBranch, rollBossOffer, rollOffer, xpToNext } from './progression';
 import { Rng, mixSeed } from './rng';
-import { DEFAULT_PLAN, STANCE_IDS, TARGET_IDS, WEAPON_STYLE_IDS, type Plan } from './tactics';
+import { DEFAULT_PLAN, STANCE_IDS, TARGET_IDS, WEAPON_STYLE_IDS, counterPlan, type Plan } from './tactics';
 import type { Appearance, BranchId, Character, ClassId, FighterStats, Legend } from './types';
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 /** What the player decides before a fight. Locked once the fight starts. */
 export interface Tactics extends Plan {
@@ -41,6 +42,8 @@ export interface PendingFight {
   inputs: FightInputs;
   /** Set when the opponent is a boss. */
   bossId?: BossId;
+  /** Set for a league match: the legend (index in `legends`) that fights instead of the fighter. */
+  league?: { legend: number };
 }
 
 /** Everything the game persists. Plain JSON, designed to be synced to a server later. */
@@ -55,6 +58,8 @@ export interface SaveData {
   pendingFight: PendingFight | null;
   /** Fighters that graduated. They stay when a new fighter is made or the current one is deleted. */
   legends: Legend[];
+  /** The Legends League: trophies, road rewards and unlocked items. Kept like the legends. */
+  league: LeagueState;
 }
 
 export interface FightResult {
@@ -74,9 +79,14 @@ export interface FightResult {
   bossBeaten?: boolean;
   /** Ids of the medals earned in this fight (feats, and `boss_<id>` for a boss beaten). */
   newMedals: string[];
+  /** Set for a league match: trophies, arenas and road stops reached. */
+  league?: MatchOutcome;
 }
 
-/** Pass the old save's legends so they carry over to the new fighter. */
+/**
+ * Pass the old save's legends and league so they carry over to the new fighter. The new
+ * fighter may be offered every item the league has unlocked so far.
+ */
 export function newGame(
   name: string,
   appearance: Appearance,
@@ -84,17 +94,27 @@ export function newGame(
   originId: string,
   seed: number,
   legends: Legend[] = [],
+  league: LeagueState = newLeague(),
 ): SaveData {
+  const character = createCharacter(name, appearance, classId, originId);
+  if (league.unlocked.length) character.unlocked = [...league.unlocked];
   return {
     version: SAVE_VERSION,
     seed: seed >>> 0,
     fightCount: 0,
-    character: createCharacter(name, appearance, classId, originId),
+    character,
     pendingLevelUps: 0,
     offer: null,
     pendingFight: null,
     legends,
+    league,
   };
+}
+
+/** Who fights in the pending fight: the legend in a league match, otherwise the fighter. */
+export function fighterOf(save: SaveData): Character {
+  const league = save.pendingFight?.league;
+  return league ? save.legends[league.legend]!.character : save.character;
 }
 
 /** All the XP a fighter has ever put in: the XP of the levels behind them plus the current bar. */
@@ -200,20 +220,39 @@ export function prepareBossFight(save: SaveData): PendingFight | null {
   return save.pendingFight;
 }
 
+/**
+ * Starts a league match for a legend, so the player can study the rival. Returns the league
+ * match already pending, or null if another fight or a level-up is waiting.
+ */
+export function prepareLeagueFight(save: SaveData, legend: number): PendingFight | null {
+  if (save.pendingFight) return save.pendingFight.league ? save.pendingFight : null;
+  if (save.pendingLevelUps > 0 || !save.legends[legend]) return null;
+  // League matches count their own seeds, so they never change the fighter's next opponents.
+  const rng = new Rng(mixSeed(save.seed, 2_000_000 + save.league.fights));
+  save.league.fights++;
+  const arena = arenaIndex(save.league.trophies);
+  const opponent = buildRival(arena, rng);
+  const randomPlan: Plan = { stance: rng.pick(STANCE_IDS), target: rng.pick(TARGET_IDS), weaponStyle: rng.pick(WEAPON_STYLE_IDS) };
+  const opponentPlan = ARENAS[arena]!.rivalsCounter ? counterPlan(save.legends[legend]!.character, DEFAULT_PLAN, randomPlan) : randomPlan;
+  save.pendingFight = { opponent, opponentPlan, live: false, seed: rng.next(), tactics: null, inputs: { plays: [], breaks: [] }, league: { legend } };
+  return save.pendingFight;
+}
+
 /** Locks the player's choices. Later calls keep the first choice. */
 export function startFight(save: SaveData, plan: Plan, weapons: string[], gear?: GearChoice, deck?: string[]): Tactics {
   const fight = save.pendingFight;
   if (!fight) throw new Error('No pending fight');
+  const me = fighterOf(save);
   fight.tactics ??= {
     stance: plan.stance,
     target: plan.target,
     weaponStyle: plan.weaponStyle,
-    weapons: loadoutFor(save.character, weapons),
-    gear: gearFor(save.character, gear),
-    deck: Object.keys(playerDeck(save.character, deck)),
+    weapons: loadoutFor(me, weapons),
+    gear: gearFor(me, gear),
+    deck: Object.keys(playerDeck(me, deck)),
   };
-  // Remember the deck that was brought, so the next fight starts with it.
-  setPreferredDeck(save.character, fight.tactics.deck);
+  // Remember the deck that was brought, so the next fight starts with it (a legend remembers its own).
+  setPreferredDeck(me, fight.tactics.deck);
   return fight.tactics;
 }
 
@@ -239,15 +278,16 @@ export function lastPlayTick(save: SaveData): number {
 }
 
 export function recordBreak(save: SaveData, choice: BreakChoice): void {
-  save.pendingFight?.inputs.breaks.push({ ...choice, weapons: loadoutFor(save.character, choice.weapons) });
+  save.pendingFight?.inputs.breaks.push({ ...choice, weapons: loadoutFor(fighterOf(save), choice.weapons) });
 }
 
 /** Simulates the started fight with the inputs recorded so far. Stops at the next missing input. */
 export function simulateFight(save: SaveData): FightLog {
   const fight = save.pendingFight;
   if (!fight?.tactics) throw new Error('Fight not started');
-  return runFight(save.character, fight.opponent, fight.seed, {
-    a: { ...fight.tactics, deck: playerDeck(save.character, fight.tactics.deck), interactive: true, plays: fight.inputs.plays, breaks: fight.inputs.breaks },
+  const me = fighterOf(save);
+  return runFight(me, fight.opponent, fight.seed, {
+    a: { ...fight.tactics, deck: playerDeck(me, fight.tactics.deck), interactive: true, plays: fight.inputs.plays, breaks: fight.inputs.breaks },
     b: { ...fight.opponentPlan },
   });
 }
@@ -259,6 +299,11 @@ export function finishFight(save: SaveData): FightResult {
   if (log.winner === null) throw new Error('Fight still waiting for input');
 
   const won = log.winner === 0;
+  // A league match only moves trophies: the legend and the fighter stay as they are.
+  if (fight.league) {
+    save.pendingFight = null;
+    return { opponent: fight.opponent, log, won, xpGained: 0, levelsGained: 0, cardsPlayed: {}, cardLevelUps: [], newMedals: [], league: applyMatch(save.league, won) };
+  }
   // Update the fighter's record. A knockout is a main fighter going down before the end of round 3.
   const stats = fighterStats(save.character);
   stats.fights++;
@@ -371,6 +416,11 @@ export function migrateSave(raw: unknown): SaveData | null {
       if (boss.id !== 'champion' && c.level > gateLevel(boss)) (c.bosses ??= {})[boss.id] = 'skipped';
     }
     save.version = 8;
+  }
+  if (save.version === 8) {
+    // The league is new: no trophies yet.
+    save.league = newLeague();
+    save.version = 9;
   }
   return save.version === SAVE_VERSION ? (save as unknown as SaveData) : null;
 }

@@ -9,6 +9,8 @@ export interface Stats {
 
 export const ZERO_STATS: Stats = { health: 0, strength: 0, agility: 0, speed: 0, magic: 0 };
 
+export const STATS_KEYS = Object.keys(ZERO_STATS) as (keyof Stats)[];
+
 export function addStats(a: Stats, b: Partial<Stats>): Stats {
   return {
     health: a.health + (b.health ?? 0),
