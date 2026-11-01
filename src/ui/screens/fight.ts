@@ -206,7 +206,10 @@ function resultPanel(result: FightResult, foeName: string): HTMLElement[] {
   const medal = (text: string) => h('span', { class: 'reward reward-medal' }, icon('medal', 'New medal', 'small'), text);
   if (result.newMedals.length === 1) rewards.push(medal(`New medal: ${medalName(result.newMedals[0]!)}`));
   // Several medals: each sticker already carries the medal, so no 'New medals' label (it would push the rewards off a small screen).
-  else if (result.newMedals.length > 1) rewards.push(...result.newMedals.map((id) => medal(medalName(id))));
+  else if (result.newMedals.length === 2) rewards.push(...result.newMedals.map((id) => medal(medalName(id))));
+  // Many at once (a boss win often brings several) share one sticker; the Fighter tab lists them.
+  else if (result.newMedals.length > 2)
+    rewards.push(h('span', { class: 'reward reward-medal', title: result.newMedals.map(medalName).join(', ') }, icon('medal', 'New medals', 'small'), `${result.newMedals.length} new medals`));
   // Each sticker waits a little longer than the one before (CSS: .reward).
   rewards.forEach((el, i) => el.style.setProperty('--delay', `${300 + i * REWARD_STAGGER_MS}ms`));
 

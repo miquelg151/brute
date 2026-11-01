@@ -2,7 +2,7 @@
 // opponent traits that tell them which choice is good. Each option names the trait it
 // is strong against; `npm run balance` checks that this advice is actually true.
 import { CLASSES, ORIGINS, SPELLS, WEAPONS } from './catalog';
-import { maxHpFor } from './character';
+import { HP_SCALE, maxHpFor } from './character';
 import { addStats, type Character } from './types';
 
 export type Trait = 'tough' | 'fragile' | 'many_hits' | 'heavy_hitter' | 'has_pets' | 'counters' | 'magic_user';
@@ -30,8 +30,10 @@ export function traitsOf(c: Character): Trait[] {
   const hp = maxHpFor(stats.health, origin.hpPercent, c.skills.includes('thick_skull'));
   const armor = origin.armor + (c.skills.includes('iron_skin') ? 3 : 0);
   const traits: Trait[] = [];
-  if (hp >= 80 || armor >= 3 || c.skills.includes('shield')) traits.push('tough');
-  if (hp <= 55) traits.push('fragile');
+  // Thresholds are in base health (before HP_SCALE), so they keep meaning the same fighters.
+  const baseHp = (hp * 100) / HP_SCALE;
+  if (baseHp >= 80 || armor >= 3 || c.skills.includes('shield')) traits.push('tough');
+  if (baseHp <= 55) traits.push('fragile');
   if (c.pets.length > 0 || c.skills.includes('combo') || c.skills.includes('double_strike')) traits.push('many_hits');
   if (c.weapons.some((w) => WEAPONS[w]?.heavy) || stats.strength >= 8) traits.push('heavy_hitter');
   if (c.pets.length > 0) traits.push('has_pets');

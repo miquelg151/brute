@@ -69,7 +69,7 @@ export const BOSSES: Record<BossId, BossDef> = {
         originId: 'scrapyard',
         branch: 'wall',
         // Tuned with `npm run balance -- 600 bosses`: the Riot Vest makes him slow, and Spare Parts is strong.
-        upgrades: ['gen_agility', 'gen_agility', 'gear:riot_vest', 'card:body_slam'],
+        upgrades: ['gen_agility', 'gen_agility', 'gear:riot_vest', 'gen_agility'],
         trick: 'boss_spare_parts',
       }),
   },
@@ -90,7 +90,7 @@ export const BOSSES: Record<BossId, BossDef> = {
         branch: 'acrobat',
         upgrades: [
           'parkour_agility', 'gen_speed', 'gear:tracksuit', 'skill:sixth_sense', 'card:flurry',
-          'skill:momentum', 'gen_health', 'gen_agility', 'gen_health',
+          'skill:momentum', 'gen_health', 'gen_health', 'gen_health',
         ],
         trick: 'boss_nine_lives',
       }),
@@ -112,8 +112,8 @@ export const BOSSES: Record<BossId, BossDef> = {
         branch: 'pack',
         // Only a dog and a rat to start with: Rat Tide brings the rest of the pack.
         upgrades: [
-          'tamer_health', 'gen_health', 'gen_speed', 'pet:rat', 'card:gang_up', 'gen_speed', 'gen_speed',
-          'gen_speed', 'gen_agility', 'gen_agility', 'gen_agility', 'gen_agility', 'tamer_agility', 'skill:pack_call',
+          'tamer_health', 'gen_agility', 'gen_speed', 'pet:rat', 'card:gang_up', 'gen_speed', 'gen_speed',
+          'gen_speed', 'gen_agility', 'gen_agility', 'gen_agility', 'gen_agility', 'tamer_agility', 'gen_agility',
         ],
         trick: 'boss_rat_tide',
       }),
@@ -134,7 +134,7 @@ export const BOSSES: Record<BossId, BossDef> = {
         originId: 'port',
         branch: 'boxer',
         upgrades: [
-          'brawler_strength', 'brawler_health', 'gen_health', 'gen_agility', 'gen_speed', 'gen_strength',
+          'brawler_strength', 'brawler_health', 'gen_agility', 'gen_agility', 'gen_speed', 'gen_agility',
           'gear:leather_jacket', 'skill:jab', 'skill:rhythm', 'card:haymaker', 'gen_speed', 'gen_speed',
           'gen_speed', 'gen_agility', 'gen_agility', 'gen_speed', 'gen_agility', 'gen_speed', 'gen_agility',
         ],

@@ -142,20 +142,20 @@ export const SKILLS: Record<string, SkillDef> = {
   shield: { id: 'shield', name: 'Shield', description: '25% chance to block a hit, taking only a quarter of the damage. Useless against magic.' },
   pack_leader: { id: 'pack_leader', name: 'Pack Leader', description: 'Your pets get +25% health and +35% damage.' },
   iron_fists: { id: 'iron_fists', name: 'Iron Fists', description: '+4 damage when fighting unarmed.' },
-  fury: { id: 'fury', name: 'Fury', description: '+30% damage while below 30% health.' },
+  fury: { id: 'fury', name: 'Fury', description: '+40% damage while below 30% health.' },
   second_wind: { id: 'second_wind', name: 'Second Wind', description: 'Once per fight, heal 25% when dropping below 25% health.' },
-  double_strike: { id: 'double_strike', name: 'Double Strike', description: '+15% chance to attack twice.' },
+  double_strike: { id: 'double_strike', name: 'Double Strike', description: '+20% chance to attack twice.' },
   quick_start: { id: 'quick_start', name: 'Quick Start', description: 'Start every round with a head start on initiative.' },
   disarm: { id: 'disarm', name: 'Disarm', description: '15% chance on hit to knock the enemy weapon away.' },
   heavy_hands: { id: 'heavy_hands', name: 'Heavy Hands', description: 'Heavy weapons deal +25% damage and never miss more.' },
-  iron_skin: { id: 'iron_skin', name: 'Iron Skin', description: '+3 armor.' },
+  iron_skin: { id: 'iron_skin', name: 'Iron Skin', description: '+2 armor.' },
   whistle: { id: 'whistle', name: 'Whistle', description: 'Your pets act much faster.' },
   thrower: { id: 'thrower', name: 'Thrower', description: 'Throw weapons more often, for double damage.' },
   sixth_sense: { id: 'sixth_sense', name: 'Sixth Sense', description: '+6% dodge.' },
-  jab: { id: 'jab', name: 'Jab', description: 'The first attack of each of your turns does +25% damage.' },
+  jab: { id: 'jab', name: 'Jab', description: 'The first attack of each of your turns does +35% damage.' },
   thick_skull: { id: 'thick_skull', name: 'Thick Skull', description: '+10% max health. Below half health you take 15% less damage.' },
   wall_run: { id: 'wall_run', name: 'Wall Run', description: 'Your counters do +50% damage.' },
-  bulwark: { id: 'bulwark', name: 'Bulwark', description: 'Your Shield blocks 40% of the time instead of 25%.' },
+  bulwark: { id: 'bulwark', name: 'Bulwark', description: 'Your Shield blocks 35% of the time instead of 25%.' },
   bond: { id: 'bond', name: 'Bond', description: 'When one of your pets deals damage, you heal 25% of it.' },
   feral: { id: 'feral', name: 'Feral', description: "Your pets' hits have a 20% chance to do double damage." },
   arcane_flow: { id: 'arcane_flow', name: 'Arcane Flow', description: 'Your spells cost 25% less mana.' },
@@ -167,7 +167,7 @@ export const SKILLS: Record<string, SkillDef> = {
   demolition: { id: 'demolition', name: 'Demolition', description: 'Each landed hit removes 1 armor from the target for the rest of the fight.' },
   pack_call: { id: 'pack_call', name: 'Pack Call', description: 'Each pet beyond the first gives all your pets +10% damage.' },
   guardian: { id: 'guardian', name: 'Guardian', description: 'While your healthiest pet is alive, it takes 15% of the damage aimed at you.' },
-  flame: { id: 'flame', name: 'Flame', description: 'Your damaging spells burn the target for 3 on each of its next 3 turns. Burning halves their heals.' },
+  flame: { id: 'flame', name: 'Flame', description: 'Your damaging spells burn the target for 2 on each of its next 3 turns. Burning halves their heals.' },
   overflow: { id: 'overflow', name: 'Overflow', description: 'Healing above your max health becomes a ward, up to 20% of max health.' },
   // Boss tricks. Only bosses carry these; they are in no upgrade pool.
   boss_spare_parts: { id: 'boss_spare_parts', name: 'Spare Parts', description: 'Boss trick: once per fight, when first at or below half health, heals 25% and gains +1 armor.' },
@@ -243,13 +243,13 @@ const origin = (id: string, name: string, description: string, bonus: Partial<Om
 });
 
 export const ORIGINS: Record<string, OriginDef> = {
-  port: origin('port', 'The Port', '+8% health.', { hpPercent: 8 }),
+  port: origin('port', 'The Port', '+12% health.', { hpPercent: 12 }),
   rooftops: origin('rooftops', 'The Rooftops', '+9% dodge.', { dodge: 9 }),
   metro: origin('metro', 'The Metro', 'Acts right away at the start of every round.', { initiative: 100 }),
   industrial: origin('industrial', 'Industrial Zone', '+1 armor.', { armor: 1 }),
   // The two strange ones: mutants from under the city and half-robots from the scrapyard.
-  sewers: origin('sewers', 'The Sewers', 'Heals 1 health every turn.', { hpRegen: 1 }),
-  scrapyard: origin('scrapyard', 'The Scrapyard', '+15% magic resistance.', { magicResist: 15 }),
+  sewers: origin('sewers', 'The Sewers', 'Heals 1 health every other turn.', { hpRegen: 1 }),
+  scrapyard: origin('scrapyard', 'The Scrapyard', '+20% magic resistance.', { magicResist: 20 }),
 };
 
 export const CLASSES: Record<ClassId, ClassDef> = {
@@ -275,7 +275,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: 'bouncer',
     name: 'Bouncer',
     description: 'Slow wall of muscle. Blocks hits, shrugs off some magic, loves heavy weapons.',
-    baseStats: { health: 7, strength: 4, agility: 2, speed: 2, magic: 0 },
+    baseStats: { health: 8, strength: 4, agility: 2, speed: 2, magic: 0 },
     startSkill: 'shield',
     startWeapon: 'bat',
     mana: 0,
@@ -298,7 +298,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     baseStats: { health: 5, strength: 2, agility: 5, speed: 4, magic: 6 },
     startSkill: 'spark',
     /** Plus 1 per level. */
-    mana: 50,
+    mana: 65,
     magicResist: 10,
   },
 };
@@ -476,7 +476,7 @@ export const UPGRADES: UpgradeDef[] = [
   ref('card', 'tamer', 'together', 'bond'),
   ref('gear', 'tamer', 'key_collar', 'bond'),
   // Mystic: common
-  stat('mystic_magic', 'mystic', '+3 Magic, +1 Health', { magic: 3, health: 1 }),
+  stat('mystic_magic', 'mystic', '+2 Magic, +2 Health', { magic: 2, health: 2 }),
   stat('mystic_health', 'mystic', '+2 Health, +1 Agility', { health: 2, agility: 1 }),
   ref('gear', 'mystic', 'rune_hoodie'),
   // Mystic: Witch

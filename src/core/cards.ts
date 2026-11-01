@@ -69,17 +69,17 @@ export const CARDS: Record<string, CardDef> = {
   sic_em: card('sic_em', "Sic 'em", 3, 'tamer', true, (l) => `Every pet attacks right now with +${scaled(100, l)}% damage.`),
   overcharge: card('overcharge', 'Overcharge', 4, 'mystic', true, (l) => `+${scaled(10, l)} mana and your next spell does +${scaled(30, l)}%.`),
   // Won at level-ups
-  patch_up: card('patch_up', 'Patch Up', 4, 'general', false, (l) => `Heal ${scaled(10, l)}% of your health.`),
+  patch_up: card('patch_up', 'Patch Up', 4, 'general', false, (l) => `Heal ${scaled(7, l)}% of your health.`),
   hurl: card('hurl', 'Hurl', 3, 'general', false, (l) => `Throw your weapon now for ${scaled(200, l)}% damage.`),
   rush: card('rush', 'Rush', 2, 'general', false, (l) => `Act right away${l > 1 ? `, with +${10 * (l - 1)}% damage` : ''}.`),
   feint: card('feint', 'Feint', 3, 'general', false, (l) => `Their next attack misses and your next one does +${scaled(20, l)}%.`),
   second_breath: card('second_breath', 'Second Breath', 2, 'general', false, (l) => `+${scaled(40, l)} stamina.`),
-  haymaker: card('haymaker', 'Haymaker', 4, 'brawler', false, (l) => `Your next hit does +${scaled(80, l)}% and can't be dodged.`),
+  haymaker: card('haymaker', 'Haymaker', 4, 'brawler', false, (l) => `Your next hit does +${scaled(120, l)}% and can't be dodged.`),
   flurry: card('flurry', 'Flurry', 5, 'parkour', false, (l) => `Your next turn strikes 3 times at ${scaled(90, l)}% damage each.`),
-  body_slam: card('body_slam', 'Body Slam', 5, 'bouncer', false, (l) => `A heavy hit (+${scaled(40, l)}%) that pushes their next turn back.`),
+  body_slam: card('body_slam', 'Body Slam', 5, 'bouncer', false, (l) => `A heavy hit (+${scaled(70, l)}%) that pushes their next turn back.`),
   stray_dog: card('stray_dog', 'Stray Dog', 6, 'tamer', false, (l) => `A dog with ${scaled(100, l)}% health joins until the round ends.`),
   bolt: card('bolt', 'Bolt', 5, 'mystic', false, (l) => `A spell that can't be dodged and does +${scaled(30, l)}%.`),
-  headbutt: card('headbutt', 'Headbutt', 6, 'brawler', false, (l) => `Your next hit does +${scaled(10, l)}%: if it lands, they lose their next turn.`),
+  headbutt: card('headbutt', 'Headbutt', 6, 'brawler', false, (l) => `Your next hit does +${scaled(40, l)}%: if it lands, they lose their next turn.`),
   pickpocket: card('pickpocket', 'Pickpocket', 3, 'parkour', false, (l) => `Steal ${scaledCount(2, l)} energy from them.`),
   ground_pound: card('ground_pound', 'Ground Pound', 5, 'bouncer', false, (l) => `Hit them and every pet of theirs for ${scaled(60, l)}% damage. Can't be dodged.`),
   jab_flurry: card('jab_flurry', 'Jab Flurry', 4, 'brawler', false, (l) => `3 quick hits at ${scaled(60, l)}% damage each. Every hit adds rhythm.`),
@@ -89,9 +89,9 @@ export const CARDS: Record<string, CardDef> = {
   taunt: card('taunt', 'Taunt', 3, 'bouncer', false, () => 'For your next 2 turns enemy pets must attack you, and your thorns against them are doubled.'),
   sledge_swing: card('sledge_swing', 'Sledge Swing', 5, 'bouncer', false, (l) => `A heavy hit (+${scaled(20, l)}%): if it lands, they lose 4 armor.`),
   gang_up: card('gang_up', 'Gang Up', 5, 'tamer', false, () => 'Every pet attacks at once and you attack too.'),
-  together: card('together', 'Together', 4, 'tamer', false, (l) => `You and your pets heal ${scaled(30, l)}% of their health.`),
+  together: card('together', 'Together', 4, 'tamer', false, (l) => `You and your pets heal ${scaled(10, l)}% of their health.`),
   fireball: card('fireball', 'Fireball', 5, 'mystic', false, (l) => `A spell (5 + magic) that can't be dodged and burns ${scaled(3, l)} on each of their next 3 turns.`),
-  rune_circle: card('rune_circle', 'Rune Circle', 4, 'mystic', false, (l) => `Heal ${scaled(10, l)}% of your health and raise a ward of 8 + magic.`),
+  rune_circle: card('rune_circle', 'Rune Circle', 4, 'mystic', false, (l) => `Heal ${scaled(6, l)}% of your health and raise a ward of 8 + magic.`),
   // Origin cards: every fighter starts with the one from where they grew up.
   weather_wave: card('weather_wave', 'Weather the Wave', 3, 'origin', true, (l) => `The next ${scaledCount(2, l)} hits you take do ${weatherWavePct(l)}% less damage.`),
   leap: card('leap', 'Leap', 3, 'origin', true, (l) => `Dodge the next attack for sure and strike back with +${scaled(20, l)}%.`),
@@ -101,7 +101,7 @@ export const CARDS: Record<string, CardDef> = {
   // League cards: won on the trophy road (see league.ts), then offered to any class.
   cheap_shot: card('cheap_shot', 'Cheap Shot', 3, 'general', false, (l) => `Your next hit ignores armor and does +${scaled(25, l)}% damage.`),
   smoke_bomb: card('smoke_bomb', 'Smoke Bomb', 4, 'general', false, (l) => `Their next attack misses and you dodge the ${scaledCount(1, l) === 1 ? 'one after for sure' : `next ${scaledCount(1, l)} after it for sure`}.`),
-  crowd_favourite: card('crowd_favourite', 'Crowd Favourite', 4, 'general', false, (l) => `Heal ${scaled(5, l)}% of your health and gain 2 energy.`),
+  crowd_favourite: card('crowd_favourite', 'Crowd Favourite', 4, 'general', false, (l) => `Heal ${scaled(3, l)}% of your health and gain 2 energy.`),
   power_surge: card('power_surge', 'Power Surge', 6, 'origin', true, (l) => `A shocking hit${l > 1 ? ` (+${10 * (l - 1)}%)` : ''}: if it lands, they lose their next turn.`),
 };
 

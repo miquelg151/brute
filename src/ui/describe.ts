@@ -10,6 +10,7 @@ import {
   WEAPONS,
   addStats,
   maxHpFor,
+  scaledHp,
   maxManaFor,
   type Character,
   type GearDef,
@@ -82,7 +83,7 @@ export function weaponDetail(weaponId: string): string {
 export function petDetail(petId: string): string {
   const p = PETS[petId];
   if (!p) return '';
-  return `Fights by your side. Health ${p.maxHp}, damage ${p.damage}, speed ${p.speed}.`;
+  return `Fights by your side. Health ${scaledHp(p.maxHp)}, damage ${p.damage}, speed ${p.speed}.`;
 }
 
 export function upgradeDetail(upgradeId: string): string {

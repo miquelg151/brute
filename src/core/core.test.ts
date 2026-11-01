@@ -21,6 +21,8 @@ import {
   UPGRADES,
   UPGRADES_BY_ID,
   eligibleUpgrades,
+  ENERGY_EVERY,
+  scaledHp,
   LOCKED_CONTENT,
   addXp,
   applyUpgrade,
@@ -114,6 +116,12 @@ function playThrough(a: Character, b: Character, seed: number, plays: CardPlay[]
     breaks.push(keep(a.weapons, recover));
   }
 }
+
+/**
+ * Card ticks in these tests were written for one energy point every 5 ticks: a card costing c
+ * first fits at tick 5 * (c - 3). This turns such a tick into the same moment at the real pace.
+ */
+const at = (tick: number) => Math.ceil((tick * ENERGY_EVERY) / 5);
 
 describe('Rng', () => {
   it('is deterministic for a seed', () => {
@@ -317,7 +325,7 @@ describe('game', () => {
     save.character.cardUses.rage = 2;
     prepareFight(save);
     startFight(save, DEFAULT_PLAN, []);
-    recordPlay(save, { tick: 5, card: 'rage' });
+    recordPlay(save, { tick: at(5), card: 'rage' });
     for (let log = simulateFight(save); log.winner === null; log = simulateFight(save)) recordBreak(save, keep([]));
     const result = finishFight(save);
     expect(result.cardsPlayed.rage).toBe(1);
@@ -340,13 +348,13 @@ describe('game', () => {
   });
 
   it('the simulation applies plays only in non-decreasing tick order', () => {
-    expect(playsInOrder([{ tick: 5, card: 'a' }, { tick: 3, card: 'b' }, { tick: 5, card: 'c' }, { tick: 9, card: 'd' }]).map((p) => p.card)).toEqual(['a', 'c', 'd']);
+    expect(playsInOrder([{ tick: at(5), card: 'a' }, { tick: at(3), card: 'b' }, { tick: at(5), card: 'c' }, { tick: at(9), card: 'd' }]).map((p) => p.card)).toEqual(['a', 'c', 'd']);
     const a = generateOpponent(10, new Rng(11), 'brawler');
     const b = generateOpponent(10, new Rng(12), 'bouncer');
     const run = (plays: CardPlay[]) => runFight(a, b, 42, { a: { interactive: true, deck: { rage: 1, second_breath: 1 }, plays, breaks: [] }, b: { deck: {} } });
     // The Second Breath at tick 10 comes after a play at tick 20 in the list, so it never happens.
-    const late = run([{ tick: 20, card: 'rage' }, { tick: 10, card: 'second_breath' }]);
-    expect(late.events).toEqual(run([{ tick: 20, card: 'rage' }]).events);
+    const late = run([{ tick: at(20), card: 'rage' }, { tick: at(10), card: 'second_breath' }]);
+    expect(late.events).toEqual(run([{ tick: at(20), card: 'rage' }]).events);
     expect(late.events.filter((e) => e.t === 'card' && e.actor === 0).map((e) => (e.t === 'card' ? e.card : ''))).toEqual(['rage']);
   });
 
@@ -381,19 +389,19 @@ describe('energy and cards', () => {
   const b = generateOpponent(10, new Rng(12), 'bouncer');
   const energyOf = (log: FightLog, actor: number) => log.events.filter((e) => e.t === 'energy' && e.actor === actor).map((e) => (e.t === 'energy' ? e.energy : 0));
 
-  it('energy starts at 3, fills one point every 5 ticks and never passes 10', () => {
+  it('energy starts at 3, fills one point every ENERGY_EVERY ticks and never passes 10', () => {
     const { log } = playThrough(a, b, 42);
     const first = log.events.find((e) => e.t === 'energy' && e.actor === 0);
     expect(first).toEqual({ t: 'energy', actor: 0, energy: 3 });
     expect(Math.max(...energyOf(log, 0))).toBeLessThanOrEqual(10);
-    const tick10 = log.events.findIndex((e) => e.t === 'tick' && e.n === 10);
+    const tick10 = log.events.findIndex((e) => e.t === 'tick' && e.n === 2 * ENERGY_EVERY);
     const at10 = log.events.slice(0, tick10 + 2).filter((e) => e.t === 'energy' && e.actor === 0).at(-1);
     expect(at10).toMatchObject({ energy: 5 });
   });
 
   it('a play is applied at its tick and leaves earlier events identical', () => {
     const before = playThrough(a, b, 42).log;
-    const plays = [{ tick: 8, card: 'rage' }];
+    const plays = [{ tick: at(8), card: 'rage' }];
     const after = playThrough(a, b, 42, plays).log;
     const cut = before.events.findIndex((e) => e.t === 'tick' && e.n === 8);
     expect(after.events.slice(0, cut + 1)).toEqual(before.events.slice(0, cut + 1));
@@ -402,12 +410,12 @@ describe('energy and cards', () => {
   });
 
   it('a play without enough energy does nothing', () => {
-    const { log } = playThrough(a, b, 42, [{ tick: 1, card: 'special', quality: 100 }]);
+    const { log } = playThrough(a, b, 42, [{ tick: at(1), card: 'special', quality: 100 }]);
     expect(log.events.some((e) => e.t === 'card' && e.actor === 0)).toBe(false);
   });
 
   it('the special strike card makes the next attack an undodgeable special', () => {
-    const { log } = playThrough(a, b, 42, [{ tick: 10, card: 'special', quality: 90 }]);
+    const { log } = playThrough(a, b, 42, [{ tick: at(10), card: 'special', quality: 90 }]);
     const i = log.events.findIndex((e) => e.t === 'special' && e.actor === 0);
     expect(i).toBeGreaterThanOrEqual(0);
     expect(log.events[i]).toEqual({ t: 'special', actor: 0, quality: 90 });
@@ -416,7 +424,7 @@ describe('energy and cards', () => {
   });
 
   it('a failed special strike plays a normal turn', () => {
-    const { log } = playThrough(a, b, 42, [{ tick: 10, card: 'special', quality: 0 }]);
+    const { log } = playThrough(a, b, 42, [{ tick: at(10), card: 'special', quality: 0 }]);
     expect(log.events.some((e) => (e.t === 'hit' || e.t === 'block') && e.kind === 'special' && e.actor === 0)).toBe(false);
   });
 
@@ -640,7 +648,7 @@ describe('starting cards', () => {
       return log.events.slice(log.events.findIndex((e) => e.t === 'tick' && e.n === 5)).filter((e) => e.t === 'hit' && e.actor === 0).slice(0, 3).map((e) => (e.t === 'hit' ? e.damage : 0));
     };
     const normal = hits([]);
-    const raged = hits([{ tick: 5, card: 'rage' }]);
+    const raged = hits([{ tick: at(5), card: 'rage' }]);
     expect(raged.reduce((s, d) => s + d, 0)).toBeGreaterThan(normal.reduce((s, d) => s + d, 0));
   });
 
@@ -650,7 +658,7 @@ describe('starting cards', () => {
       const from = plays.length > 0 ? after(log, 'roll') : log.events;
       return from.filter((e) => (e.t === 'hit' || e.t === 'dodge' || e.t === 'block') && e.actor !== 0 && 'target' in e && e.target === 0).slice(0, 2);
     };
-    const withCard = firstTwo([{ tick: 0, card: 'roll' }]);
+    const withCard = firstTwo([{ tick: at(0), card: 'roll' }]);
     expect(withCard).toHaveLength(2);
     expect(withCard.every((e) => e.t === 'dodge')).toBe(true);
     expect(firstTwo([]).every((e) => e.t === 'dodge')).toBe(false);
@@ -663,14 +671,14 @@ describe('starting cards', () => {
       const from = plays.length > 0 ? after(log, 'wall') : log.events.slice(log.events.findIndex((e) => e.t === 'tick' && e.n === 10));
       return from.filter((e) => (e.t === 'hit' || e.t === 'block') && e.actor !== 0 && e.target === 0 && e.kind !== 'spell').slice(0, 1);
     };
-    const withCard = firstOne([{ tick: 10, card: 'wall' }]);
+    const withCard = firstOne([{ tick: at(10), card: 'wall' }]);
     expect(withCard).toHaveLength(1);
     expect(withCard[0]!.t).toBe('block');
     expect(firstOne([])[0]!.t).toBe('hit');
   });
 
   it("Sic 'em makes every pet attack at once", () => {
-    const log = runFight(tamer, brawler, 4, { a: { interactive: true, deck: deckOf('sic_em'), plays: [{ tick: 0, card: 'sic_em' }], breaks: [] }, b: { deck: {} } });
+    const log = runFight(tamer, brawler, 4, { a: { interactive: true, deck: deckOf('sic_em'), plays: [{ tick: at(0), card: 'sic_em' }], breaks: [] }, b: { deck: {} } });
     const i = log.events.findIndex((e) => e.t === 'card' && e.card === 'sic_em');
     const pets = log.roster.map((u, idx) => (u.team === 0 && !u.isMain ? idx : -1)).filter((idx) => idx >= 0);
     const next = log.events.slice(i + 1, i + 1 + pets.length);
@@ -679,7 +687,7 @@ describe('starting cards', () => {
   });
 
   it('Overcharge gives mana and boosts the next spell', () => {
-    const log = runFight(mystic, brawler, 2, { a: { interactive: true, deck: deckOf('overcharge'), plays: [{ tick: 5, card: 'overcharge' }], breaks: [] }, b: { deck: {} } });
+    const log = runFight(mystic, brawler, 2, { a: { interactive: true, deck: deckOf('overcharge'), plays: [{ tick: at(5), card: 'overcharge' }], breaks: [] }, b: { deck: {} } });
     const plain = runFight(mystic, brawler, 2, { a: { interactive: true, deck: deckOf('overcharge'), plays: [], breaks: [] }, b: { deck: {} } });
     // Overcharge costs 4, so it is played at tick 5; look at spells after that.
     const firstSpell = (l: FightLog) => l.events.slice(l.events.findIndex((e) => e.t === 'tick' && e.n === 5)).find((e) => e.t === 'hit' && e.kind === 'spell' && e.actor === 0);
@@ -692,7 +700,7 @@ describe('level-up cards', () => {
   const foe = generateOpponent(12, new Rng(262), 'bouncer');
   // A fighter starts with 3 energy and gains 1 every 5 ticks, so a card costing c can first be played at tick 5 * (c - 3).
   const run = (c: Character, card: string, tick: number, opts: Partial<TeamOptions> = {}) =>
-    runFight(c, foe, 5, { a: { interactive: true, deck: { [card]: 1 }, plays: [{ tick, card }], breaks: [], ...opts }, b: { deck: {} } });
+    runFight(c, foe, 5, { a: { interactive: true, deck: { [card]: 1 }, plays: [{ tick: at(tick), card }], breaks: [], ...opts }, b: { deck: {} } });
   const cardIndex = (log: FightLog, card: string) => log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0);
   const evAfter = (log: FightLog, card: string) => {
     const i = cardIndex(log, card);
@@ -714,7 +722,7 @@ describe('level-up cards', () => {
 
   it('Hurl throws the weapon in hand at once', () => {
     const armed = { ...me, weapons: ['bat'] };
-    const log = runFight(armed, foe, 5, { a: { interactive: true, deck: { hurl: 1 }, plays: [{ tick: 30, card: 'hurl' }], breaks: [], weaponStyle: 'keep' }, b: { deck: {} } });
+    const log = runFight(armed, foe, 5, { a: { interactive: true, deck: { hurl: 1 }, plays: [{ tick: at(30), card: 'hurl' }], breaks: [], weaponStyle: 'keep' }, b: { deck: {} } });
     const i = cardIndex(log, 'hurl');
     expect(i).toBeGreaterThanOrEqual(0);
     const holding = log.events.slice(0, i).some((e) => e.t === 'draw' && e.actor === 0);
@@ -745,11 +753,11 @@ describe('level-up cards', () => {
     // Played at tick 24, when the fighter has already spent some stamina.
     const firstRes = (plays: CardPlay[]) => {
       const log = runFight(me, foe, 5, { a: { interactive: true, deck: { second_breath: 1 }, plays, breaks: [] }, b: { deck: {} } });
-      const from = log.events.findIndex((e) => e.t === 'tick' && e.n === 24);
+      const from = log.events.findIndex((e) => e.t === 'tick' && e.n === at(24));
       const res = log.events.slice(from).find((e) => e.t === 'res' && e.actor === 0);
       return (res as { stamina: number }).stamina;
     };
-    expect(firstRes([{ tick: 24, card: 'second_breath' }])).toBeGreaterThan(firstRes([]));
+    expect(firstRes([{ tick: at(24), card: 'second_breath' }])).toBeGreaterThan(firstRes([]));
   });
 
   // A defender who dodges a lot, to show that a "can't be dodged" card really changes something.
@@ -757,8 +765,8 @@ describe('level-up cards', () => {
   const dodgesOver = (seeds: number, a: Character, card: string, tick: number, played: boolean, spell = false) => {
     let dodged = 0;
     for (let seed = 0; seed < seeds; seed++) {
-      const log = runFight(a, dodger, seed, { a: { interactive: true, deck: { [card]: 1 }, plays: played ? [{ tick, card }] : [], breaks: [] }, b: { deck: {} } });
-      const from = played ? cardIndex(log, card) : log.events.findIndex((e) => e.t === 'tick' && e.n === tick);
+      const log = runFight(a, dodger, seed, { a: { interactive: true, deck: { [card]: 1 }, plays: played ? [{ tick: at(tick), card }] : [], breaks: [] }, b: { deck: {} } });
+      const from = played ? cardIndex(log, card) : log.events.findIndex((e) => e.t === 'tick' && e.n === at(tick));
       expect(from).toBeGreaterThanOrEqual(0);
       const first = log.events.slice(from).find((e) => (e.t === 'hit' || e.t === 'block' || e.t === 'dodge') && e.actor === 0 && (spell ? e.kind === 'spell' : e.kind !== 'spell'));
       if (first?.t === 'dodge') dodged++;
@@ -789,7 +797,7 @@ describe('level-up cards', () => {
       let tick = -1;
       for (const e of l.events) {
         if (e.t === 'tick') tick = e.n;
-        else if (tick >= 10 && 'actor' in e && e.actor === 1 && e.t !== 'energy' && e.t !== 'res') return tick;
+        else if (tick >= at(10) && 'actor' in e && e.actor === 1 && e.t !== 'energy' && e.t !== 'res') return tick;
       }
       return Infinity;
     };
@@ -834,7 +842,7 @@ describe('level-up cards', () => {
 
   it('a bot reacts to a card from the next tick on, never in the same tick', () => {
     // Team 0 plays Rage at tick 5; the bot on team 1 can afford Feint, but only sees the Rage at tick 6.
-    const log = runFight(me, foe, 5, { a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: 5, card: 'rage' }], breaks: [] }, b: { deck: { feint: 1 } } });
+    const log = runFight(me, foe, 5, { a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: at(5), card: 'rage' }], breaks: [] }, b: { deck: { feint: 1 } } });
     const tickOf = (i: number) => {
       for (let j = i; j >= 0; j--) {
         const e = log.events[j]!;
@@ -844,8 +852,8 @@ describe('level-up cards', () => {
     };
     const rage = cardIndex(log, 'rage');
     const feint = log.events.findIndex((e) => e.t === 'card' && e.actor !== 0 && e.card === 'feint');
-    expect(tickOf(rage)).toBe(5);
-    expect(tickOf(feint)).toBe(6);
+    expect(tickOf(rage)).toBe(at(5));
+    expect(tickOf(feint)).toBe(at(5) + 1);
   });
 
   it('bots never play a defence in the same tick as the enemy offensive card', () => {
@@ -896,7 +904,7 @@ describe('level-up cards', () => {
     const weak = { ...generateOpponent(3, new Rng(272), 'mystic'), pets: [] };
     let checked = 0;
     for (let seed = 0; seed < 20; seed++) {
-      // Energy is full (10) when round 2 starts at tick 45; a second play at tick 60 could afford it (7 energy).
+      // The card is played when round 2 starts at tick 45; by tick 60 a second play could afford it.
       const plays = [{ tick: 45, card: 'stray_dog' }, { tick: 60, card: 'stray_dog' }];
       const breaks: BreakChoice[] = [keep(t.weapons)];
       const log = runFight(t, weak, seed, { a: { interactive: true, deck: { stray_dog: 1 }, plays, breaks }, b: { deck: {} } });
@@ -908,7 +916,8 @@ describe('level-up cards', () => {
       // Only one Stray Dog card was played, and the energy was not spent a second time.
       expect(log.events.filter((e) => e.t === 'card' && e.actor === 0).length).toBe(1);
       const energyAt60 = log.events.slice(0, tick60 + 3).filter((e) => e.t === 'energy' && e.actor === 0).at(-1);
-      expect(energyAt60).toMatchObject({ energy: 7 });
+      // Full at 45, minus the card's 6, plus the points that arrived by tick 60.
+      expect(energyAt60).toMatchObject({ energy: Math.min(10, 3 + Math.floor(45 / ENERGY_EVERY)) - 6 + Math.floor(60 / ENERGY_EVERY) - Math.floor(45 / ENERGY_EVERY) });
     }
     expect(checked).toBeGreaterThan(0);
   });
@@ -918,7 +927,9 @@ describe('level-up cards', () => {
     let healed = 0;
     let walled = 0;
     for (let seed = 0; seed < 40; seed++) {
-      const log = runFight(me, bot, seed, { a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: 12, card: 'rage' }], breaks: [] } });
+      // A hard hitter, so the bot gets low enough to heal.
+      const hitter = { ...me, bonusStats: { ...me.bonusStats, strength: me.bonusStats.strength + 25 } };
+      const log = runFight(hitter, bot, seed, { a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: at(12), card: 'rage' }], breaks: [] } });
       const mine = log.events.findIndex((e) => e.t === 'card' && e.actor === 0);
       if (log.events.slice(mine).some((e) => e.t === 'card' && e.actor !== 0 && e.card === 'wall')) walled++;
       if (log.events.some((e) => e.t === 'card' && e.card === 'patch_up')) healed++;
@@ -945,13 +956,13 @@ describe('origins', () => {
   });
 
   it('origin passives match the design', () => {
-    expect(ORIGINS.port!.hpPercent).toBe(8);
+    expect(ORIGINS.port!.hpPercent).toBe(12);
     expect(ORIGINS.rooftops!.dodge).toBe(9);
     expect(ORIGINS.metro!.initiative).toBe(100);
     expect(ORIGINS.industrial!.armor).toBe(1);
     expect(ORIGINS.sewers!.hpRegen).toBe(1);
     expect(ORIGINS.scrapyard!.armor).toBe(0);
-    expect(ORIGINS.scrapyard!.magicResist).toBe(15);
+    expect(ORIGINS.scrapyard!.magicResist).toBe(20);
   });
 
   it('a new fighter gets its origin card', () => {
@@ -1002,7 +1013,7 @@ describe('origin cards', () => {
   const robot = generateOpponent(10, new Rng(76), 'brawler', 'scrapyard');
   const foe = generateOpponent(10, new Rng(77), 'brawler', 'metro');
   const play = (me: Character, card: string, tick: number, seed: number, other: Character = foe) =>
-    runFight(me, other, seed, { a: { interactive: true, deck: deckOf(card), plays: [{ tick, card }], breaks: [] }, b: { deck: {} } });
+    runFight(me, other, seed, { a: { interactive: true, deck: deckOf(card), plays: [{ tick: at(tick), card }], breaks: [] }, b: { deck: {} } });
   const noPlay = (me: Character, card: string, seed: number, other: Character = foe) =>
     runFight(me, other, seed, { a: { interactive: true, deck: deckOf(card), plays: [], breaks: [] }, b: { deck: {} } });
   const cardIndex = (log: FightLog, card: string) => log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0);
@@ -1043,7 +1054,7 @@ describe('origin cards', () => {
   it('Scrap Shield stops physical damage until the round ends', () => {
     // Costs 4: playable at tick 5. One break choice so the fight goes on into round 2.
     const log = runFight(bouncer, foe, 4, {
-      a: { interactive: true, deck: deckOf('scrap_shield'), plays: [{ tick: 5, card: 'scrap_shield' }], breaks: [keep(bouncer.weapons)] },
+      a: { interactive: true, deck: deckOf('scrap_shield'), plays: [{ tick: at(5), card: 'scrap_shield' }], breaks: [keep(bouncer.weapons)] },
       b: { deck: {} },
     });
     const from = cardIndex(log, 'scrap_shield');
@@ -1577,7 +1588,8 @@ describe('class branch skills and cards', () => {
   it('Thick Skull gives more max health and less damage taken below half health', () => {
     const skull = plain(learn(fresh('brawler'), 'thick_skull'), foe, 4);
     const none = plain(fresh('brawler'), foe, 4);
-    expect(skull.roster[0]!.maxHp).toBe(Math.floor((none.roster[0]!.maxHp * 110) / 100));
+    // Health is rounded once (with HP_SCALE), so the 10% can be one point off.
+    expect(Math.abs(skull.roster[0]!.maxHp - Math.floor((none.roster[0]!.maxHp * 110) / 100))).toBeLessThanOrEqual(1);
     // The same hits are rolled; once below half health they do less.
     const taken = (log: FightLog) =>
       log.events.filter((e) => (e.t === 'hit' || e.t === 'block') && e.target === 0).map((e) => (e.t === 'hit' || e.t === 'block' ? e.damage : 0));
@@ -1630,7 +1642,7 @@ describe('class branch skills and cards', () => {
   });
 
   const play = (me: Character, card: string, tick: number, seed: number, other: Character = foe) =>
-    runFight(me, other, seed, { a: { interactive: true, deck: deckOf(card), plays: [{ tick, card }], breaks: [] }, b: { deck: {} } });
+    runFight(me, other, seed, { a: { interactive: true, deck: deckOf(card), plays: [{ tick: at(tick), card }], breaks: [] }, b: { deck: {} } });
   const noPlay = (me: Character, card: string, seed: number, other: Character = foe) =>
     runFight(me, other, seed, { a: { interactive: true, deck: deckOf(card), plays: [], breaks: [] }, b: { deck: {} } });
   const cardIndex = (log: FightLog, card: string) => log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0);
@@ -1681,7 +1693,7 @@ describe('class branch skills and cards', () => {
       const log = play(me, 'headbutt', 15, seed);
       const without = noPlay(me, 'headbutt', seed);
       const butt = nextStrike(log, cardIndex(log, 'headbutt'));
-      const tick = without.events.findIndex((e) => e.t === 'tick' && e.n === 15);
+      const tick = without.events.findIndex((e) => e.t === 'tick' && e.n === at(15));
       const plainHit = nextStrike(without, tick);
       expect(butt.t).toBe(plainHit.t);
       if (butt.t === 'hit' && plainHit.t === 'hit') {
@@ -1871,7 +1883,7 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
   const plain = (a: Character, b: Character, seed: number, opts: { a?: TeamOptions; b?: TeamOptions } = {}) =>
     runFight(a, b, seed, { a: { deck: {}, ...opts.a }, b: { deck: {}, ...opts.b } });
   const play = (me: Character, card: string, tick: number, seed: number, other: Character, level = 1) =>
-    runFight(me, other, seed, { a: { interactive: true, deck: { [card]: level }, plays: [{ tick, card }], breaks: [] }, b: { deck: {} } });
+    runFight(me, other, seed, { a: { interactive: true, deck: { [card]: level }, plays: [{ tick: at(tick), card }], breaks: [] }, b: { deck: {} } });
   const noPlay = (me: Character, card: string, seed: number, other: Character, level = 1) =>
     runFight(me, other, seed, { a: { interactive: true, deck: { [card]: level }, plays: [], breaks: [] }, b: { deck: {} } });
   const cardIndex = (log: FightLog, card: string) => log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0);
@@ -2160,7 +2172,7 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
       // The foe has played its energy away, and heist is played again and again.
       const log = runFight(me, foe, seed, {
         a: { interactive: true, deck: { heist: 1 }, plays: [10, 15, 20, 25, 30, 35, 40, 45, 50].map((tick) => ({ tick, card: 'heist' })), breaks: [] },
-        b: { interactive: true, deck: { rage: 1 }, plays: [{ tick: 0, card: 'rage' }], breaks: [] },
+        b: { interactive: true, deck: { rage: 1 }, plays: [{ tick: at(0), card: 'rage' }], breaks: [] },
       });
       for (const e of log.events) {
         if (e.t === 'steal') expect(e.energy + e.stamina).toBeGreaterThan(0);
@@ -2215,7 +2227,7 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
       const tamer = fresh('tamer');
       const worn = { gear: { armor: 'test_spikes', accessory: null } };
       const run = (taunt: boolean, seed: number) =>
-        runFight(me, tamer, seed, { a: { interactive: true, deck: { taunt: 1 }, plays: taunt ? [{ tick: 0, card: 'taunt' }] : [], breaks: [], ...worn }, b: { deck: {} } });
+        runFight(me, tamer, seed, { a: { interactive: true, deck: { taunt: 1 }, plays: taunt ? [{ tick: at(0), card: 'taunt' }] : [], breaks: [], ...worn }, b: { deck: {} } });
       const enemyPets = (log: FightLog) => log.roster.map((u, i) => (u.team === 1 && !u.isMain ? i : -1)).filter((i) => i >= 0);
       /** Events from the card to the end of the fighter's second turn after it (Taunt lasts 2 turns). */
       const window = (log: FightLog) => {
@@ -2267,7 +2279,7 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
   it('bots answer an enemy Rage with Backflip or Taunt', () => {
     const bot = fresh('parkour');
     const log = runFight(foe, bot, 5, {
-      a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: 10, card: 'rage' }], breaks: [] },
+      a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: at(10), card: 'rage' }], breaks: [] },
       b: { deck: { backflip: 1, taunt: 1 } },
     });
     const reaction = log.events.find((e) => e.t === 'card' && e.actor === 1);
@@ -2286,7 +2298,7 @@ describe('signature mechanics: Rhythm, Bleed, Momentum, Steal, Thorns', () => {
       }
       return ticks;
     };
-    const opts = { a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: 10, card: 'rage' }], breaks: [] }, b: { deck: { taunt: 1 } } };
+    const opts = { a: { interactive: true, deck: { rage: 1 }, plays: [{ tick: at(10), card: 'rage' }], breaks: [] }, b: { deck: { taunt: 1 } } };
     // Only Taunt in the deck: with no enemy pets, the bot does not pick it as a defence.
     expect(tauntReactions(runFight(foe, bot, 5, opts))).toEqual([]);
     // With an enemy pet around, it is a valid answer.
@@ -2301,7 +2313,7 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
   const plain = (a: Character, b: Character, seed: number, opts: { a?: TeamOptions; b?: TeamOptions } = {}) =>
     runFight(a, b, seed, { a: { deck: {}, ...opts.a }, b: { deck: {}, ...opts.b } });
   const play = (me: Character, card: string, tick: number, seed: number, other: Character, level = 1) =>
-    runFight(me, other, seed, { a: { interactive: true, deck: { [card]: level }, plays: [{ tick, card }], breaks: [] }, b: { deck: {} } });
+    runFight(me, other, seed, { a: { interactive: true, deck: { [card]: level }, plays: [{ tick: at(tick), card }], breaks: [] }, b: { deck: {} } });
   const noPlay = (me: Character, card: string, seed: number, other: Character, level = 1) =>
     runFight(me, other, seed, { a: { interactive: true, deck: { [card]: level }, plays: [], breaks: [] }, b: { deck: {} } });
   const cardIndex = (log: FightLog, card: string) => log.events.findIndex((e) => e.t === 'card' && e.card === card && e.actor === 0);
@@ -2464,13 +2476,13 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
     }
   });
 
-  it('Together heals you and your pets 30% of their health (more at card level 4)', () => {
+  it('Together heals you and your pets 10% of their health (more at card level 4)', () => {
     const me = guardian();
-    // Late enough to be hurt: tick 40.
+    // Late in round 1, to be hurt (the fight waits for a break choice after it).
     let healed = 0;
     for (const level of [1, 4]) {
       for (const seed of seeds.slice(0, 10)) {
-        const log = play(me, 'together', 40, seed, foe, level);
+        const log = play(me, 'together', 30, seed, foe, level);
         const at = cardIndex(log, 'together');
         if (at < 0) continue;
         sameBefore(log, noPlay(me, 'together', seed, foe, level), 'together');
@@ -2479,7 +2491,7 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
         expect(heals.map((e) => (e.t === 'heal' ? e.actor : -1))).toEqual(alive);
         for (const h of heals) {
           if (h.t !== 'heal') continue;
-          const raw = Math.floor((log.roster[h.actor]!.maxHp * scaled(30, level)) / 100);
+          const raw = Math.floor((log.roster[h.actor]!.maxHp * scaled(10, level)) / 100);
           // Either the full heal, or it filled the bar.
           expect(h.amount === raw || h.hp === log.roster[h.actor]!.maxHp).toBe(true);
           if (h.amount === raw) healed++;
@@ -2497,20 +2509,20 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
     // Tamers start with Pack Leader (+25%): the collar adds its 80 on top of that.
     for (const i of petIdx(base, 0)) {
       const pet = PETS[base.roster[i]!.defId]!;
-      expect(base.roster[i]!.maxHp).toBe(Math.floor((pet.maxHp * 125) / 100));
-      expect(collared.roster[i]!.maxHp).toBe(Math.floor((pet.maxHp * 205) / 100));
+      expect(base.roster[i]!.maxHp).toBe(scaledHp(Math.floor((pet.maxHp * 125) / 100)));
+      expect(collared.roster[i]!.maxHp).toBe(scaledHp(Math.floor((pet.maxHp * 205) / 100)));
     }
   });
 
   // --- Burn (Witch) ---
   const witch = (...skills: string[]): Character => learn(fresh('mystic'), ...skills);
 
-  it('Flame makes damaging spells burn 3 on each of their next 3 turns', () => {
+  it('Flame makes damaging spells burn 2 on each of their next 3 turns', () => {
     let burns = 0;
     for (const seed of seeds) {
       const events = plain(witch('flame'), foe, seed).events.filter((e) => e.t === 'burn');
       burns += events.length;
-      for (const b of events) expect(b).toMatchObject({ actor: 1, damage: 3 });
+      for (const b of events) expect(b).toMatchObject({ actor: 1, damage: 2 });
       expect(plain(witch(), foe, seed).events.some((e) => e.t === 'burn')).toBe(false);
     }
     expect(burns).toBeGreaterThan(5);
@@ -2547,8 +2559,8 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
     const healer = fresh('bouncer');
     const run = (burn: boolean, seed: number) =>
       runFight(witch(), healer, seed, {
-        a: { interactive: true, deck: { fireball: 1 }, plays: burn ? [{ tick: 10, card: 'fireball' }] : [], breaks: [] },
-        b: { interactive: true, deck: { patch_up: 1 }, plays: [{ tick: 12, card: 'patch_up' }], breaks: [] },
+        a: { interactive: true, deck: { fireball: 1 }, plays: burn ? [{ tick: at(10), card: 'fireball' }] : [], breaks: [] },
+        b: { interactive: true, deck: { patch_up: 1 }, plays: [{ tick: at(12), card: 'patch_up' }], breaks: [] },
       });
     const healOf = (log: FightLog) => {
       const at = log.events.findIndex((e) => e.t === 'card' && e.actor === 1 && e.card === 'patch_up');
@@ -2559,7 +2571,7 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
       const burning = run(true, seed);
       const heal = healOf(burning);
       if (heal?.t !== 'heal') continue;
-      const raw = Math.floor((burning.roster[1]!.maxHp * 10) / 100);
+      const raw = Math.floor((burning.roster[1]!.maxHp * 7) / 100);
       // The burn from tick 10 is still running (3 turns), so the heal is half.
       expect(heal.amount === Math.max(1, Math.floor(raw / 2)) || heal.hp === burning.roster[1]!.maxHp).toBe(true);
       if (heal.amount < raw) halved++;
@@ -2602,13 +2614,15 @@ describe('signature mechanics: Armor break, Pack bonus, Guardian, Burn, Overheal
   });
 
   it('overheal stops at the cap when the wards pile up', () => {
-    // A foe who can barely hurt a ward: two heals at full health add up past 20%, and the second is cut off.
+    // A foe who can barely hurt a ward: a few heals at full health add up past 20%, and the last is cut off.
     const weakFoe: Character = { ...fresh('mystic'), gear: [], skills: [] };
     const me: Character = { ...learn(fresh('mystic'), 'overflow'), bonusStats: { health: 40, strength: 0, agility: 0, speed: 0, magic: 0 } };
-    const plays = [5, 25].map((tick) => ({ tick, card: 'patch_up' }));
+    const plays = [5, 25, 45, 65].map((tick) => ({ tick: at(tick), card: 'patch_up' }));
     let capped = 0;
     for (const seed of seeds) {
-      const log = runFight(me, weakFoe, seed, { a: { interactive: true, deck: { patch_up: 4 }, plays, breaks: [] }, b: { deck: {} } });
+      // Break choices keep the fight going past round 1, where the later heals land.
+      const breaks: BreakChoice[] = [0, 1].map(() => ({ ...DEFAULT_PLAN, weapons: [], recover: false }));
+      const log = runFight(me, weakFoe, seed, { a: { interactive: true, deck: { patch_up: 4 }, plays, breaks }, b: { deck: {} } });
       const cap = Math.floor((log.roster[0]!.maxHp * 20) / 100);
       const overs = log.events.filter((e) => e.t === 'overheal');
       for (const o of overs) if (o.t === 'overheal') expect(o.ward).toBeLessThanOrEqual(cap);
@@ -2748,10 +2762,10 @@ describe('old content regression guard', () => {
   };
   const fighters = (id: Character['classId']) => createCharacter('N', look, id, 'port');
   const expected: Record<string, string> = {
-    'brawler vs tamer, seed 1': '6986:fa59e3de',
-    'tamer vs mystic, seed 2': '5788:df0a9366',
-    'mystic vs brawler, seed 3': '5399:2a52057e',
-    'brawler vs brawler, seed 4': '4967:e0c14c83',
+    'brawler vs tamer, seed 1': '12773:175f5397',
+    'tamer vs mystic, seed 2': '12096:3d62d955',
+    'mystic vs brawler, seed 3': '12067:cc4c39e9',
+    'brawler vs brawler, seed 4': '11671:c0911f7d',
   };
 
   it('keeps the exact fight logs of old-content fights', () => {
@@ -3026,8 +3040,8 @@ describe('boss tricks', () => {
       const at = firstIndex(log, (e) => e.t === 'repair');
       if (at < 0) continue;
       const before = log.events.slice(0, at);
-      // Only in round 1, so the stance is still the starting one.
-      if (before.some((e) => e.t === 'break')) continue;
+      // Before the first break the stance is still the starting one, so the armor is known.
+      const firstRound = !before.some((e) => e.t === 'break');
       const max = log.roster[1]!.maxHp;
       // Same seed without the trick: identical until the repair.
       expect(runFight(attacker, plain, seed).events.slice(0, at)).toEqual(before);
@@ -3037,7 +3051,7 @@ describe('boss tricks', () => {
       expect(damaged.slice(0, -1).every((e) => e.hp * 2 > max)).toBe(true);
       const repair = log.events[at] as Extract<FightEvent, { t: 'repair' }>;
       expect(repair.actor).toBe(1);
-      expect(repair.armor).toBe(ORIGINS.port!.armor + 1);
+      if (firstRound) expect(repair.armor).toBe(ORIGINS.port!.armor + 1);
       expect(log.events[at + 1]).toMatchObject({ t: 'heal', actor: 1, amount: Math.floor((max * 25) / 100) });
       expect(log.events.filter((e) => e.t === 'repair')).toHaveLength(1);
       checked++;

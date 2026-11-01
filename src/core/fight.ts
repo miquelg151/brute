@@ -1,7 +1,7 @@
 // The fight simulation. See docs/COMBAT.md for the rules in plain words.
 import { CLASSES, FISTS_DAMAGE, GEAR, LEARNED_MANA, LOADOUT_SIZE, ORIGINS, PETS, SPELLS, WEAPONS, type GearDef } from './catalog';
 import { CARDS, DECK_SIZE, botCardLevel, scaled, scaledCount, weatherWavePct } from './cards';
-import { maxHpFor } from './character';
+import { maxHpFor, scaledHp } from './character';
 import { Rng } from './rng';
 import { DEFAULT_PLAN, STANCES, TARGETS, WEAPON_STYLES, counterPlan, type Plan } from './tactics';
 import { addStats, type Appearance, type Character } from './types';
@@ -156,7 +156,7 @@ export const SPECIAL_MAX_BONUS = 60;
 export const MAX_ENERGY = 10;
 export const START_ENERGY = 3;
 /** One energy point every this many ticks. */
-export const ENERGY_EVERY = 5;
+export const ENERGY_EVERY = 7;
 /** Bots play a card when their energy reaches this (unless a rule fires earlier). */
 const BOT_SPEND_AT = 8;
 /** Bots answer an enemy attack card played within this many ticks. */
@@ -170,7 +170,7 @@ export const START_STAMINA = 80;
 /** Base stamina cost of each kind of action, before stance and gear. */
 export const STAMINA_COST = { melee: 7, heavy: 9, extra: 5, throw: 8, counter: 4, special: 20 } as const;
 export const STAMINA_REGEN = 2;
-export const MANA_REGEN = 2;
+export const MANA_REGEN = 3;
 /** Below this much stamina a fighter is tired. */
 export const TIRED_BELOW = 40;
 const REST_STAMINA = 25;
@@ -184,9 +184,9 @@ const GAUGE_FULL = 100;
 const DODGE_CAP = 40;
 /** Chance (%) that the Shield skill blocks a hit, and with the Bulwark skill. */
 const SHIELD_BLOCK = 25;
-const BULWARK_BLOCK = 40;
+const BULWARK_BLOCK = 35;
 /** Jab: extra damage (%) of the first attack of each turn. */
-const JAB_PCT = 25;
+const JAB_PCT = 35;
 /** Thick Skull: less damage taken (%) below half health. */
 const THICK_SKULL_PCT = 15;
 /** Rhythm: extra damage (%) per stack, and the most stacks. */
@@ -207,7 +207,7 @@ const PACK_PCT = 10;
 const GUARDIAN_PCT = 15;
 /** Burn lasts this many turns. Flame: damage per turn of the burn from a damaging spell. */
 const BURN_TURNS = 3;
-const FLAME_BURN = 3;
+const FLAME_BURN = 2;
 /** Overflow: the most health (%) that overhealing can turn into a ward. */
 const OVERFLOW_CAP_PCT = 20;
 /** Wall Run: extra counter damage (%). */
@@ -432,7 +432,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     agility: stats.agility,
     speed: Math.max(0, stats.speed + sum('speed')),
     base: {
-      armor: origin.armor + sum('armor') + (skills.has('iron_skin') ? 3 : 0),
+      armor: origin.armor + sum('armor') + (skills.has('iron_skin') ? 2 : 0),
       dodge: origin.dodge + sum('dodge') + (skills.has('sixth_sense') ? 6 : 0),
       damagePct: 100,
       staminaPct: 100 + sum('staminaCost'),
@@ -562,7 +562,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
   for (const petId of c.pets) {
     const pet = PETS[petId];
     if (!pet) throw new Error(`Unknown pet '${petId}'`);
-    const petHp = Math.floor((pet.maxHp * petBoost) / 100);
+    const petHp = scaledHp(Math.floor((pet.maxHp * petBoost) / 100));
     const petPower = Math.floor((pet.damage * (skills.has('pack_leader') ? 135 : 100)) / 100);
     companion(
       { team, isMain: false, name: pet.name, defId: pet.id, maxHp: petHp, maxStamina: 0, maxMana: 0 },
@@ -573,7 +573,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
     );
   }
   if (skills.has('spirit')) {
-    const spiritHp = 10 + stats.magic;
+    const spiritHp = scaledHp(10 + stats.magic);
     companion(
       { team, isMain: false, name: 'Spirit', defId: 'spirit', maxHp: spiritHp, maxStamina: 0, maxMana: 0, summoned: true },
       spiritHp,
@@ -586,7 +586,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
   if (skills.has('boss_rat_tide')) {
     const rat = PETS.rat!;
     for (let i = 0; i < RAT_TIDE_MAX; i++) {
-      const hp = Math.floor((rat.maxHp * petBoost) / 100);
+      const hp = scaledHp(Math.floor((rat.maxHp * petBoost) / 100));
       const power = Math.floor((rat.damage * (skills.has('pack_leader') ? 135 : 100)) / 100);
       companion({ team, isMain: false, name: rat.name, defId: rat.id, maxHp: hp, maxStamina: 0, maxMana: 0, summoned: true, stays: true }, hp, power, rat.agility, rat.speed + (skills.has('whistle') ? 4 : 0));
     }
@@ -594,7 +594,7 @@ function buildUnits(c: Character, team: Team, opts: TeamOptions, roster: UnitInf
   if (deckHas(opts, c, 'stray_dog')) {
     const dog = PETS.dog!;
     const level = (opts.deck ?? defaultDeck(c)).stray_dog!;
-    const hp = scaled(dog.maxHp, level);
+    const hp = scaledHp(scaled(dog.maxHp, level));
     companion({ team, isMain: false, name: 'Stray Dog', defId: 'dog', maxHp: hp, maxStamina: 0, maxMana: 0, summoned: true }, hp, dog.damage, dog.agility, dog.speed);
   }
 }
@@ -693,7 +693,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (weapon?.heavy && att.skills.has('heavy_hands')) dmg = Math.floor((dmg * 125) / 100);
     if (kind === 'throw') dmg = Math.floor((dmg * throwPct(att)) / 100);
     if (kind === 'special') dmg = Math.floor((dmg * (100 + (quality * specialBonus) / 100)) / 100);
-    if (att.skills.has('fury') && att.hp * 100 < att.maxHp * 30) dmg = Math.floor((dmg * 130) / 100);
+    if (att.skills.has('fury') && att.hp * 100 < att.maxHp * 30) dmg = Math.floor((dmg * 140) / 100);
     if (tired(att)) dmg = Math.floor((dmg * 75) / 100);
     const rhythmPct = att.rhythmWorks ? RHYTHM_PCT * att.rhythm : 0;
     const cardBonus = (att.rageTurns > 0 ? att.ragePct : 0) + nextHitPct + rhythmPct;
@@ -1171,7 +1171,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         u.spellBonusPct = scaled(30, level);
         break;
       case 'patch_up': {
-        heal(u, Math.floor((u.maxHp * scaled(10, level)) / 100));
+        heal(u, Math.floor((u.maxHp * scaled(7, level)) / 100));
         break;
       }
       case 'hurl': {
@@ -1202,7 +1202,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         u.stamina = Math.min(u.maxStamina, u.stamina + scaled(40, level));
         break;
       case 'haymaker':
-        u.nextHitPct += scaled(80, level);
+        u.nextHitPct += scaled(120, level);
         u.nextHitSure = true;
         break;
       case 'flurry':
@@ -1211,7 +1211,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         break;
       case 'body_slam': {
         const foe = enemyMainOf(u);
-        u.nextHitPct += scaled(40, level);
+        u.nextHitPct += scaled(70, level);
         const seen = events.length;
         attack(u, foe, 'melee');
         // Only a hit that landed (even blocked) pushes their turn back; a dodge or a blinded miss doesn't.
@@ -1258,7 +1258,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         break;
       }
       case 'headbutt':
-        u.nextHitPct += scaled(10, level);
+        u.nextHitPct += scaled(40, level);
         u.nextHitStuns = true;
         break;
       case 'pickpocket': {
@@ -1326,7 +1326,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         if (winner === null) attack(u, enemyMainOf(u), 'melee');
         break;
       case 'together': {
-        const pct = scaled(30, level);
+        const pct = scaled(10, level);
         heal(u, Math.floor((u.maxHp * pct) / 100));
         for (const pet of livingPets(u.team)) heal(pet, Math.floor((pet.maxHp * pct) / 100));
         break;
@@ -1336,7 +1336,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         magicAttack(u, enemyMainOf(u), 5 + u.magic, true, scaled(3, level));
         break;
       case 'rune_circle':
-        heal(u, Math.floor((u.maxHp * scaled(10, level)) / 100));
+        heal(u, Math.floor((u.maxHp * scaled(6, level)) / 100));
         // A bigger ward is kept, not replaced.
         u.ward = Math.max(u.ward, 8 + u.magic);
         events.push({ t: 'ward', actor: u.idx, absorbed: 0, left: u.ward });
@@ -1372,7 +1372,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
         u.sureDodges += scaledCount(1, level);
         break;
       case 'crowd_favourite':
-        heal(u, Math.floor((u.maxHp * scaled(5, level)) / 100));
+        heal(u, Math.floor((u.maxHp * scaled(3, level)) / 100));
         u.energy = Math.min(MAX_ENERGY, u.energy + 2);
         emitEnergy();
         break;
@@ -1433,7 +1433,8 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
     if (u.isMain) {
       u.stamina = Math.min(u.maxStamina, u.stamina + u.staminaRegen);
       if (u.maxMana > 0) u.mana = Math.min(u.maxMana, u.mana + MANA_REGEN);
-      if (u.hpRegen > 0 && u.hp < u.maxHp) {
+      // Sewers: a little health back every other turn.
+      if (u.hpRegen > 0 && u.hp < u.maxHp && u.roundTurns % 2 === 0) {
         heal(u, u.hpRegen);
       }
     }
@@ -1479,7 +1480,7 @@ export function runFight(a: Character, b: Character, seed: number, options: Figh
 
     if (!attack(u, target, 'melee') || winner !== null || !alive(u)) return;
     if (u.isMain) {
-      const doubleChance = Math.min(40, u.agility * 3 + (u.skills.has('double_strike') ? 15 : 0));
+      const doubleChance = Math.min(40, u.agility * 3 + (u.skills.has('double_strike') ? 20 : 0));
       if (rng.chance(doubleChance) && pay(u, STAMINA_COST.extra) && !attack(u, target, 'double')) return;
       if (winner !== null || !alive(u)) return;
       if (u.skills.has('combo')) {
