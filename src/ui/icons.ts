@@ -438,6 +438,19 @@ const BASE_ICONS = {
     ],
     colors: { S: PAL.fog, L: PAL.white, Y: PAL.sand, D: PAL.wood, K: PAL.brownDark },
   },
+  // A trophy cup, for the Legends League.
+  trophy: {
+    rows: [
+      'LYYYYYD',
+      'LYYYYYD',
+      '.LYYYD.',
+      '..LYD..',
+      '...Y...',
+      '..LYD..',
+      '.DDDDD.',
+    ],
+    colors: { Y: PAL.yellow, L: PAL.white, D: PAL.amber },
+  },
   // A medal on a ribbon, for feats and boss wins.
   medal: {
     rows: [

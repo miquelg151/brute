@@ -9,10 +9,11 @@ import { drawFighter } from './sprites';
 import { renderCardsTab } from './tabs/cardsTab';
 import { renderFightTab } from './tabs/fightTab';
 import { renderFighterTab } from './tabs/fighterTab';
+import { renderLeagueTab } from './tabs/leagueTab';
 import { renderLegendsTab } from './tabs/legendsTab';
 import { rankBadge } from './widgets';
 
-export type TabId = 'fighter' | 'fight' | 'cards' | 'legends';
+export type TabId = 'fighter' | 'fight' | 'cards' | 'legends' | 'league';
 
 /** What the shell asks main.ts to do. */
 export interface ShellActions {
@@ -23,6 +24,8 @@ export interface ShellActions {
   onReset(): void;
   /** The fighter graduated: main.ts keeps the legends and goes to creation. */
   onGraduate(): void;
+  /** Starts a league match for the legend at this index in `legends`. */
+  onLeague(legend: number): void;
   /** Stores the save after a tab changed it (for example the deck). */
   onSave(): void;
 }
@@ -38,7 +41,14 @@ const TABS: { id: TabId; label: string; icon: IconName }[] = [
   { id: 'fight', label: 'Fight', icon: 'fist' },
   { id: 'cards', label: 'Cards', icon: 'skill' },
   { id: 'legends', label: 'Legends', icon: 'medal' },
+  // Only shown once there is a legend to play with (see tabsFor).
+  { id: 'league', label: 'League', icon: 'trophy' },
 ];
+
+/** The tabs this save shows: the League needs at least one legend. */
+function tabsFor(save: SaveData) {
+  return TABS.filter((t) => t.id !== 'league' || save.legends.length > 0);
+}
 
 const TAB_KEY = 'brute.tab';
 
@@ -51,11 +61,11 @@ const XP_FILL_MS = 600;
  */
 let shownXp: { name: string; level: number; xp: number } | null = null;
 
-/** The tab that was open last time (Fight if none, or if storage is blocked). */
-function loadTab(): TabId {
+/** The tab that was open last time (Fight if none, if it is not shown, or if storage is blocked). */
+function loadTab(save: SaveData): TabId {
   try {
     const stored = localStorage.getItem(TAB_KEY);
-    if (TABS.some((t) => t.id === stored)) return stored as TabId;
+    if (tabsFor(save).some((t) => t.id === stored)) return stored as TabId;
   } catch {
     // Storage blocked: just open the Fight tab.
   }
@@ -114,6 +124,7 @@ export function renderShell(root: HTMLElement, save: SaveData, actions: ShellAct
     if (id === 'fight') renderFightTab(body, save, tabActions);
     else if (id === 'fighter') renderFighterTab(body, save, tabActions);
     else if (id === 'legends') renderLegendsTab(body, save);
+    else if (id === 'league') renderLeagueTab(body, save, tabActions);
     else renderCardsTab(body, save, tabActions);
     if (animate) tabIn(body);
   }
@@ -121,7 +132,7 @@ export function renderShell(root: HTMLElement, save: SaveData, actions: ShellAct
   const tabBar = h(
     'nav',
     { class: 'tab-bar', 'aria-label': 'Tabs' },
-    ...TABS.map((tab) => {
+    ...tabsFor(save).map((tab) => {
       // The label already names the tab, so screen readers skip the icon.
       const picture = icon(tab.icon, tab.label, tab.id === 'fight' ? 'normal' : 'small');
       picture.setAttribute('aria-hidden', 'true');
@@ -132,7 +143,7 @@ export function renderShell(root: HTMLElement, save: SaveData, actions: ShellAct
   );
 
   root.append(h('div', { class: 'shell' }, topBar(save), body, tabBar));
-  open(loadTab(), false);
+  open(loadTab(save), false);
 }
 
 /** The strip at the top: small fighter, name, level, rank and how far to the next level. */

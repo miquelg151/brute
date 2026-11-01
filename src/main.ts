@@ -1,6 +1,6 @@
 import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
-import { chooseFighterBranch, chooseUpgrade, graduate, needsBranch, prepareBossFight, prepareFight, prepareLevelUp, startFight, type Legend, type SaveData } from './core';
+import { chooseFighterBranch, chooseUpgrade, graduate, needsBranch, prepareBossFight, prepareFight, prepareLeagueFight, prepareLevelUp, startFight, type LeagueState, type Legend, type SaveData } from './core';
 import { loadArt } from './ui/art';
 import { animateIn } from './ui/motion';
 import { applyTheme } from './ui/theme';
@@ -13,7 +13,7 @@ import { renderLevelUp } from './ui/screens/levelup';
 import { renderPrefight } from './ui/screens/prefight';
 import { renderTitle } from './ui/screens/title';
 import { renderShell } from './ui/shell';
-import { clearSave, loadLegends, loadSave, storeSave } from './ui/storage';
+import { clearSave, loadLeague, loadLegends, loadSave, storeSave } from './ui/storage';
 
 applyTheme();
 
@@ -21,6 +21,8 @@ const root = document.getElementById('app')!;
 let save: SaveData | null = loadSave();
 /** Legends waiting for the next fighter (while there is no save, e.g. after deleting the fighter). */
 let keptLegends: Legend[] = save ? [] : loadLegends();
+/** The league waiting for the next fighter, kept like the legends. */
+let keptLeague: LeagueState = loadLeague();
 /** The title screen is shown once, before creating the first fighter. */
 let titleShown = false;
 /** True once the player has seen the boss intro for the boss fight that is pending. */
@@ -48,7 +50,7 @@ function render(): void {
   }
 
   if (!current) {
-    renderCreate(root, keptLegends, (created) => {
+    renderCreate(root, keptLegends, keptLeague, (created) => {
       save = created;
       keptLegends = [];
       storeSave(created);
@@ -125,7 +127,8 @@ function render(): void {
     onReset: () => {
       // Legends survive the fighter being deleted.
       keptLegends = current.legends;
-      clearSave(keptLegends);
+      keptLeague = current.league;
+      clearSave(keptLegends, keptLeague);
       save = null;
       show();
     },
@@ -135,8 +138,14 @@ function render(): void {
       // Straight to creation: the title screen is only for the very first start.
       titleShown = true;
       keptLegends = current.legends;
-      clearSave(keptLegends);
+      keptLeague = current.league;
+      clearSave(keptLegends, keptLeague);
       save = null;
+      show();
+    },
+    onLeague: (legend) => {
+      if (!prepareLeagueFight(current, legend)) return;
+      storeSave(current);
       show();
     },
     onSave: () => storeSave(current),

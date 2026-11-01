@@ -17,6 +17,7 @@ import {
   WEAPONS,
   WEAPON_STYLES,
   defaultTactics,
+  fighterOf,
   gearFor,
   loadoutFor,
   rankOf,
@@ -50,7 +51,8 @@ const names = (ids: string[], name: (id: string) => string | undefined) => (ids.
 
 export function renderPrefight(root: HTMLElement, save: SaveData, actions: PrefightActions): void {
   const fight = save.pendingFight!;
-  const me = save.character;
+  // In a league match the legend fights.
+  const me = fighterOf(save);
   const foe = fight.opponent;
   const foeStats = totalStats(foe);
   const foeTraits = traitsOf(foe);
@@ -64,7 +66,7 @@ export function renderPrefight(root: HTMLElement, save: SaveData, actions: Prefi
 
   const screen = h('main', { class: 'screen prefight' });
 
-  const fightBtn = h('button', { class: 'btn btn-primary btn-big' }, 'Start fight');
+  const fightBtn = h('button', { class: 'btn btn-primary btn-big' }, fight.league ? 'Start match' : 'Start fight');
   fightBtn.addEventListener('click', () => actions.onStart({ ...plan }, [...loadout], { ...worn }, [...deck]));
 
   // ---- The poster: both fighters, each with the name and, under it, level and rank ----

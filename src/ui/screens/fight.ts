@@ -7,7 +7,9 @@ import {
   TARGETS,
   TIRED_BELOW,
   WEAPON_STYLES,
+  ARENAS,
   finishFight,
+  fighterOf,
   lastPlayTick,
   medalName,
   recordBreak,
@@ -21,6 +23,7 @@ import {
 } from '../../core';
 import { ARENA_H, ARENA_W, ARENA_ZOOM, ReplayScene, type BreakEvent, type FighterState } from '../../fight/ReplayScene';
 import { cardSticker, levelOf } from '../cardView';
+import { roadRewardText } from '../tabs/leagueTab';
 import { h } from '../dom';
 import { icon, iconValue } from '../icons';
 import { playSpecialStrike } from '../minigames';
@@ -134,13 +137,13 @@ function breakSheet(save: SaveData, event: BreakEvent, fighters: [FighterState, 
             : '',
       ),
       ...planEditor(plan, traitsOf(fight.opponent)),
-      save.character.weapons.length > 0
+      fighterOf(save).weapons.length > 0
         ? h(
             'section',
             {},
             h('h2', {}, 'Weapons'),
             h('p', { class: 'lede small' }, 'Thrown weapons are gone for the rest of this fight.'),
-            weaponPicker(save.character.weapons, weapons),
+            weaponPicker(fighterOf(save).weapons, weapons),
           )
         : '',
       h('h2', {}, 'Rest'),
@@ -186,6 +189,14 @@ function resultPanel(result: FightResult, foeName: string): HTMLElement[] {
     );
   }
   if (result.levelsGained > 0) rewards.push(h('span', { class: 'reward reward-big' }, 'Level up!'));
+  // A league match: trophies won or lost, a new arena, and the road rewards reached.
+  const league = result.league;
+  if (league) {
+    const change = league.trophiesAfter - league.trophiesBefore;
+    rewards.push(h('span', { class: change > 0 ? 'reward reward-big' : 'reward' }, icon('trophy', 'Trophies'), `${change >= 0 ? '+' : ''}${change} → ${league.trophiesAfter}`));
+    if (league.arenaAfter > league.arenaBefore) rewards.push(h('span', { class: 'reward reward-big' }, `New arena: ${ARENAS[league.arenaAfter]!.name}!`));
+    for (const stop of league.newStops) for (const r of stop.rewards) rewards.push(h('span', { class: 'reward reward-medal' }, icon('medal', 'Road reward', 'small'), roadRewardText(r)));
+  }
   // Medals slap on in gold. One medal says "New medal: name"; several share a "New medals" sticker so they fit in fewer rows.
   const medal = (text: string) => h('span', { class: 'reward reward-medal' }, icon('medal', 'New medal', 'small'), text);
   if (result.newMedals.length === 1) rewards.push(medal(`New medal: ${medalName(result.newMedals[0]!)}`));
@@ -222,7 +233,7 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
   let energy = START_ENERGY;
   const deck = save.pendingFight!.tactics!.deck;
   const cardButtons = deck.map((id) => {
-    const btn = h('button', { class: 'card-button', 'aria-label': `${CARDS[id]!.name}, costs ${CARDS[id]!.cost} energy` }, cardSticker(id, levelOf(save.character.cardUses, id)));
+    const btn = h('button', { class: 'card-button', 'aria-label': `${CARDS[id]!.name}, costs ${CARDS[id]!.cost} energy` }, cardSticker(id, levelOf(fighterOf(save).cardUses, id)));
     btn.addEventListener('click', () => {
       // One card waits at a time.
       if (cardButtons.some((b) => b.classList.contains('queued'))) return;
