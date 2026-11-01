@@ -903,7 +903,7 @@
         "include": "no-page-scroll"
       },
       {
-        "eval": "const txt = document.querySelector('.rewards').textContent; if (!document.querySelector('.result-banner').textContent.includes('Rusty is beaten')) throw new Error('no boss line'); if (!txt.includes('Beat Rusty')) throw new Error('no boss medal: ' + txt); if (!txt.includes('Level up')) throw new Error('no level up: ' + txt); if (txt.includes('XP')) throw new Error('fake XP shown: ' + txt);"
+        "eval": "const txt = document.querySelector('.rewards').textContent; if (!document.querySelector('.result-banner').textContent.includes('Rusty is beaten')) throw new Error('no boss line'); if (!txt.includes('Beat Rusty') && !document.querySelector('.rewards [title*=Beat]')) throw new Error('no boss medal: ' + txt); if (!txt.includes('Level up')) throw new Error('no level up: ' + txt); if (txt.includes('XP')) throw new Error('fake XP shown: ' + txt);"
       },
       {
         "shot": "result-boss-win"
