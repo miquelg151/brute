@@ -119,7 +119,17 @@ Després de canviar un número:
   del que està bloquejat és `LOCKED_CONTENT` (`catalog.ts`).
 - La pestanya és `src/ui/tabs/leagueTab.ts`.
 
-## 6. Colors i textos
+## 6. Cosmètics (barrets, pentinats, colors, celebracions)
+
+- La llista de cosmètics, com s'aconsegueix cadascun i quins dona cada medalla és a
+  `src/core/cosmetics.ts` (`COSMETICS` i `MEDAL_COSMETICS`). Els del camí de trofeus són a `ROAD`
+  (`src/core/league.ts`).
+- Els dibuixos dels barrets i dels pentinats Spiky i Bun són a `src/ui/cosmeticArt.ts`. Per
+  substituir-los per PNG teus, mira `docs/ART.md` (apartat "Hats").
+- Els colors nous són al final de `HAIR_COLORS` i `OUTFIT_COLORS` (`src/ui/palette.ts`).
+- L'armari és `src/ui/wardrobe.ts`; les celebracions, `confetti()` a `src/ui/motion.ts`.
+
+## 6b. Colors i textos
 
 - Colors de tot el joc: `PAL` a `src/ui/theme.ts`. Canviar-ne un el canvia a tot arreu.
 - Noms i textos del joc (en anglès): són a `catalog.ts`, `cards.ts` i a les pantalles de

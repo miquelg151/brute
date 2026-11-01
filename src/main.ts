@@ -1,6 +1,6 @@
 import '@fontsource-variable/shantell-sans/full.css';
 import './style.css';
-import { chooseFighterBranch, chooseUpgrade, graduate, needsBranch, prepareBossFight, prepareFight, prepareLeagueFight, prepareLevelUp, startFight, type LeagueState, type Legend, type SaveData } from './core';
+import { chooseFighterBranch, chooseUpgrade, graduate, needsBranch, prepareBossFight, prepareFight, prepareLeagueFight, prepareLevelUp, startFight, type CosmeticState, type LeagueState, type Legend, type SaveData } from './core';
 import { loadArt } from './ui/art';
 import { animateIn } from './ui/motion';
 import { applyTheme } from './ui/theme';
@@ -13,7 +13,7 @@ import { renderLevelUp } from './ui/screens/levelup';
 import { renderPrefight } from './ui/screens/prefight';
 import { renderTitle } from './ui/screens/title';
 import { renderShell } from './ui/shell';
-import { clearSave, loadLeague, loadLegends, loadSave, storeSave } from './ui/storage';
+import { clearSave, loadCosmetics, loadLeague, loadLegends, loadSave, storeSave } from './ui/storage';
 
 applyTheme();
 
@@ -23,6 +23,8 @@ let save: SaveData | null = loadSave();
 let keptLegends: Legend[] = save ? [] : loadLegends();
 /** The league waiting for the next fighter, kept like the legends. */
 let keptLeague: LeagueState = loadLeague();
+/** The cosmetics waiting for the next fighter, kept like the legends. */
+let keptCosmetics: CosmeticState = loadCosmetics();
 /** The title screen is shown once, before creating the first fighter. */
 let titleShown = false;
 /** True once the player has seen the boss intro for the boss fight that is pending. */
@@ -50,7 +52,7 @@ function render(): void {
   }
 
   if (!current) {
-    renderCreate(root, keptLegends, keptLeague, (created) => {
+    renderCreate(root, keptLegends, keptLeague, keptCosmetics, (created) => {
       save = created;
       keptLegends = [];
       storeSave(created);
@@ -128,7 +130,8 @@ function render(): void {
       // Legends survive the fighter being deleted.
       keptLegends = current.legends;
       keptLeague = current.league;
-      clearSave(keptLegends, keptLeague);
+      keptCosmetics = current.cosmetics;
+      clearSave(keptLegends, keptLeague, keptCosmetics);
       save = null;
       show();
     },
@@ -139,7 +142,8 @@ function render(): void {
       titleShown = true;
       keptLegends = current.legends;
       keptLeague = current.league;
-      clearSave(keptLegends, keptLeague);
+      keptCosmetics = current.cosmetics;
+      clearSave(keptLegends, keptLeague, keptCosmetics);
       save = null;
       show();
     },

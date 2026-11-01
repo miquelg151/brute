@@ -1,14 +1,15 @@
 // The Fighter tab: who your fighter is, their stats, and everything they own laid out like
 // an inventory. Tap any square to read what it does.
-import { BOSSES, BRANCHES_BY_ID, CLASSES, GEAR, ORIGINS, PETS, SKILLS, SPELLS, WEAPONS, availableTitles, canGraduate, featsFor, setTitle, type SaveData } from '../../core';
+import { BOSSES, BRANCHES_BY_ID, CLASSES, GEAR, ORIGINS, PETS, SKILLS, SPELLS, WEAPONS, availableTitles, canGraduate, featsFor, leagueTitles, setTitle, type SaveData } from '../../core';
 import { STAT_NOTES, gearEffects, maxHpOf, maxManaOf, petDetail, totalStats, weaponDetail } from '../describe';
 import { h, pixelArt } from '../dom';
 import { gearIcon, icon, skillIcon, type IconName } from '../icons';
 import { reducedMotion } from '../motion';
 import { CLASS_COLORS } from '../palette';
 import type { TabActions } from '../shell';
-import { drawPet, drawWeapon } from '../sprites';
+import { drawFighter, drawPet, drawWeapon } from '../sprites';
 import { PIXEL } from '../theme';
+import { openWardrobe } from '../wardrobe';
 import { lockedSlot, openSheet, showTopTitle } from '../widgets';
 
 /** Size of an inventory square in screen pixels (style.css reads it as --inv-square). */
@@ -75,9 +76,11 @@ function featsSection(save: SaveData, actions: TabActions): HTMLElement {
     if (medals.includes(`boss_${boss.id}`)) rows.push(featRow(`Beat ${boss.name}`, `Win against ${boss.name} at level ${boss.level}.`, true, 'Done'));
   }
 
-  const titles = availableTitles(c);
+  // Feat titles first, then the ones won on the league's trophy road.
+  const leagueOnes = leagueTitles(save.league);
+  const titles = [...availableTitles(c), ...leagueOnes.filter((t) => !availableTitles(c).includes(t))];
   const picker = titles.length
-    ? h('div', { class: 'title-picker' }, h('p', { class: 'title-label' }, 'Your title'), titleButtons(c, titles, actions))
+    ? h('div', { class: 'title-picker' }, h('p', { class: 'title-label' }, 'Your title'), titleButtons(c, titles, leagueOnes, actions))
     : '';
 
   const medalIcon = icon('medal', 'Medals', 'normal');
@@ -91,12 +94,12 @@ function featsSection(save: SaveData, actions: TabActions): HTMLElement {
 }
 
 /** "None" plus one button per earned title. The chosen one is pressed; it shows in the top bar at once. */
-function titleButtons(c: SaveData['character'], titles: string[], actions: TabActions): HTMLElement {
+function titleButtons(c: SaveData['character'], titles: string[], leagueOnes: string[], actions: TabActions): HTMLElement {
   const options: (string | undefined)[] = [undefined, ...titles];
   const buttons = options.map((title) => {
     const button = h('button', { class: 'segment', type: 'button', 'aria-pressed': String(c.title === title) }, title ?? 'No title');
     button.addEventListener('click', () => {
-      setTitle(c, title);
+      setTitle(c, title, leagueOnes);
       for (const other of buttons) other.setAttribute('aria-pressed', String(other === button));
       showTopTitle(title);
       actions.onSave();
@@ -227,6 +230,17 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
     });
   }
 
+  // The wardrobe: hat, hair, colours and the victory celebration.
+  const lookBtn = h('button', { class: 'btn btn-small btn-with-icon look-btn', type: 'button' }, icon('look', '', 'small'), 'Look');
+  lookBtn.addEventListener('click', () =>
+    openWardrobe(save, () => {
+      actions.onSave();
+      // The top bar keeps its place; only its little portrait is drawn again.
+      document.querySelector('.top-portrait')?.replaceChildren(pixelArt(drawFighter(c), 'small'));
+      actions.openTab('fighter');
+    }),
+  );
+
   body.append(
     h(
       'div',
@@ -240,6 +254,7 @@ export function renderFighterTab(body: HTMLElement, save: SaveData, actions: Tab
         c.branch ? h('span', { class: 'fighter-branch', style: `--branch:${CLASS_COLORS[c.classId]}` }, ` · ${BRANCHES_BY_ID[c.branch].name}`) : '',
         ' ',
         h('span', { class: 'dim' }, `from ${ORIGINS[c.originId]?.name ?? ''}`),
+        lookBtn,
       ),
       // One paper strip of stats; magic and mana only join when the fighter has some.
       h(

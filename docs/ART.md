@@ -60,6 +60,7 @@ fighter is assembled from layers that the game colours in:
 | `extra` (one per class, optional) | not coloured | Real colours: trousers and shoes, plus the class details (headband, cap, sunglasses, hood, runes...). |
 | `origin` (one per origin, optional) | not coloured | Where the fighter grew up: beanie and anchor tattoos (port), hood and scarf (rooftops), headphones (metro), goggles and apron (industrial), mutant ears and eyes (sewers), metal plates and LED eye (scrapyard). Drawn after `extra`. |
 | `rank` (one per rank, optional) | not coloured | How seasoned the fighter is: wrist wraps, chain, medal, gold belt... Drawn last, and they stack (see below). |
+| `hat` (one per hat id, optional) | not coloured | Hats from the wardrobe (cap, bandana, sweatband, hard_hat, cat_ears, rat_crown, champion_band, shades, ninja_mask, crown). Drawn after the rank layers. Without a file, the hat is drawn in code from `src/ui/cosmeticArt.ts`. |
 
 They are drawn in that order, so `rank` covers everything else.
 
@@ -95,6 +96,17 @@ the lines black.
 
 Once you add `fighter.body`, **every class** uses your layers, so draw an outfit
 for each class too, or classes without one will have no clothes.
+
+## Hats and the extra hair styles
+
+Hats and the hair styles Spiky and Bun are cosmetics (see `src/core/cosmetics.ts`). They are
+drawn in code from small grids in `src/ui/cosmeticArt.ts`: the game finds the head in each frame
+of `body.png` and puts the grid on it, so they follow every pose. To draw your own:
+
+- a hat: a strip the same size as the other layers, listed as `"hat": { "crown": "fighter/hat-crown.png" }`
+  inside `"fighter"`;
+- a hair style: add the file to the `"hair"` list at its index (4 = Spiky, 5 = Bun), in
+  greyscale like the other hair files.
 
 ## The manifest
 

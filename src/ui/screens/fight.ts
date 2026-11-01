@@ -8,6 +8,7 @@ import {
   TIRED_BELOW,
   WEAPON_STYLES,
   ARENAS,
+  COSMETICS,
   finishFight,
   fighterOf,
   lastPlayTick,
@@ -191,16 +192,21 @@ function resultPanel(result: FightResult, foeName: string): HTMLElement[] {
   if (result.levelsGained > 0) rewards.push(h('span', { class: 'reward reward-big' }, 'Level up!'));
   // A league match: trophies won or lost, a new arena, and the road rewards reached.
   const league = result.league;
+  // Cosmetics earned (a road stop or a medal) share one short sticker; their names are in the wardrobe.
+  const looks = result.newCosmetics;
+  if (looks.length === 1) rewards.push(h('span', { class: 'reward reward-medal' }, icon('look', 'New look', 'small'), `New look: ${COSMETICS[looks[0]!]?.name ?? looks[0]}`));
+  else if (looks.length > 1) rewards.push(h('span', { class: 'reward reward-medal', title: looks.map((id) => COSMETICS[id]?.name ?? id).join(', ') }, icon('look', 'New looks', 'small'), `${looks.length} new looks`));
   if (league) {
     const change = league.trophiesAfter - league.trophiesBefore;
     rewards.push(h('span', { class: change > 0 ? 'reward reward-big' : 'reward' }, icon('trophy', 'Trophies'), `${change >= 0 ? '+' : ''}${change} → ${league.trophiesAfter}`));
     if (league.arenaAfter > league.arenaBefore) rewards.push(h('span', { class: 'reward reward-big' }, `New arena: ${ARENAS[league.arenaAfter]!.name}!`));
     for (const stop of league.newStops) for (const r of stop.rewards) rewards.push(h('span', { class: 'reward reward-medal' }, icon('medal', 'Road reward', 'small'), roadRewardText(r)));
   }
-  // Medals slap on in gold. One medal says "New medal: name"; several share a "New medals" sticker so they fit in fewer rows.
+  // Medals slap on in gold. One medal says "New medal: name".
   const medal = (text: string) => h('span', { class: 'reward reward-medal' }, icon('medal', 'New medal', 'small'), text);
   if (result.newMedals.length === 1) rewards.push(medal(`New medal: ${medalName(result.newMedals[0]!)}`));
-  else if (result.newMedals.length > 1) rewards.push(h('span', { class: 'reward reward-medal' }, 'New medals:'), ...result.newMedals.map((id) => medal(medalName(id))));
+  // Several medals: each sticker already carries the medal, so no 'New medals' label (it would push the rewards off a small screen).
+  else if (result.newMedals.length > 1) rewards.push(...result.newMedals.map((id) => medal(medalName(id))));
   // Each sticker waits a little longer than the one before (CSS: .reward).
   rewards.forEach((el, i) => el.style.setProperty('--delay', `${300 + i * REWARD_STAGGER_MS}ms`));
 
@@ -339,7 +345,7 @@ export function renderFight(root: HTMLElement, save: SaveData, store: () => void
         el.classList.remove('hidden');
         el.classList.add('slap');
       }
-      if (result.won) confetti();
+      if (result.won) confetti(save.cosmetics.celebration);
     },
   });
   const game = new Phaser.Game({

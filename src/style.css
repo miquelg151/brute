@@ -4117,3 +4117,112 @@ button.game-card {
   align-items: center;
   gap: 4px;
 }
+
+/* ---- Victory celebrations (see confetti() in motion.ts) ---- */
+.confetti-gold_rain span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.confetti-hearts span {
+  width: auto;
+  height: auto;
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.confetti-fireworks span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 4px currentColor;
+  animation: firework-burst 900ms ease-out var(--delay, 0ms) both;
+}
+
+@keyframes firework-burst {
+  from {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate(var(--dx), var(--dy)) scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* ---- Wardrobe (see wardrobe.ts) ---- */
+.look-btn {
+  margin-left: auto;
+}
+
+.wardrobe-spot {
+  align-self: center;
+  margin: 0 auto var(--step);
+}
+
+.look-swatches,
+.look-celebrations {
+  flex-wrap: wrap;
+}
+
+.swatch-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.swatch {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 12px;
+  background: var(--swatch);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.swatch[aria-pressed='true'] {
+  box-shadow: 0 0 0 3px var(--yellow);
+}
+
+.swatch.locked {
+  filter: saturate(0.5);
+}
+
+.celebration-segments {
+  --count: 2;
+  flex: 1;
+}
+
+.wardrobe-note {
+  min-height: 1.2em;
+  margin: 0;
+  color: var(--coral-lit);
+}
+
+.sheet .look-row {
+  grid-template-columns: 5.5em auto 1fr auto;
+  margin-bottom: 6px;
+}
+
+.sheet .look-swatches,
+.sheet .look-celebrations {
+  display: flex;
+  align-items: center;
+  gap: 6px var(--step);
+}
+
+.sheet .look-swatches .look-label,
+.sheet .look-celebrations .look-label {
+  flex: none;
+  width: 5.5em;
+}
+
+.wardrobe-note:empty {
+  display: none;
+}

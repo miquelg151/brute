@@ -1,10 +1,12 @@
-import { migrateSave, newLeague, type LeagueState, type Legend, type SaveData } from '../core';
+import { migrateSave, newCosmetics, newLeague, type CosmeticState, type LeagueState, type Legend, type SaveData } from '../core';
 
 const KEY = 'brute.save';
 // Legends waiting for a new fighter, kept when the fighter is deleted so a reload does not lose them.
 const LEGENDS_KEY = 'brute.legends';
 // The league (trophies, road rewards, unlocked items), kept the same way as the legends.
 const LEAGUE_KEY = 'brute.league';
+// The cosmetics owned and the chosen celebration, kept the same way.
+const COSMETICS_KEY = 'brute.cosmetics';
 // A copy of a save that could not be read, so a bad save is never lost for good.
 const UNREADABLE_KEY = 'brute.save.unreadable';
 
@@ -37,6 +39,8 @@ function rescueUnreadable(raw: string): void {
     }
     const league: unknown = JSON.parse(raw)?.league;
     if (league && typeof league === 'object' && !localStorage.getItem(LEAGUE_KEY)) localStorage.setItem(LEAGUE_KEY, JSON.stringify(league));
+    const cosmetics: unknown = JSON.parse(raw)?.cosmetics;
+    if (cosmetics && typeof cosmetics === 'object' && !localStorage.getItem(COSMETICS_KEY)) localStorage.setItem(COSMETICS_KEY, JSON.stringify(cosmetics));
   } catch {
     // The raw text was not even JSON: only the copy above remains.
   }
@@ -47,17 +51,19 @@ export function storeSave(save: SaveData): void {
     localStorage.setItem(KEY, JSON.stringify(save));
     localStorage.removeItem(LEGENDS_KEY);
     localStorage.removeItem(LEAGUE_KEY);
+    localStorage.removeItem(COSMETICS_KEY);
   } catch {
     // Progress just won't persist this session.
   }
 }
 
 /** Deletes the fighter. The legends and the league are kept apart, for the next fighter. */
-export function clearSave(legends: Legend[] = [], league?: LeagueState): void {
+export function clearSave(legends: Legend[] = [], league?: LeagueState, cosmetics?: CosmeticState): void {
   try {
     // Legends and league first: if a write fails, the fighter (and its legends) is still there.
     if (legends.length > 0) localStorage.setItem(LEGENDS_KEY, JSON.stringify(legends));
     if (league) localStorage.setItem(LEAGUE_KEY, JSON.stringify(league));
+    if (cosmetics) localStorage.setItem(COSMETICS_KEY, JSON.stringify(cosmetics));
     localStorage.removeItem(KEY);
   } catch {
     // Nothing to clear.
@@ -87,4 +93,16 @@ export function loadLeague(): LeagueState {
     // Falls through to a fresh league.
   }
   return newLeague();
+}
+
+/** The cosmetics kept after the fighter was deleted (fresh ones if there are none). */
+export function loadCosmetics(): CosmeticState {
+  try {
+    const raw = localStorage.getItem(COSMETICS_KEY);
+    const cosmetics = raw ? JSON.parse(raw) : null;
+    if (cosmetics && typeof cosmetics === 'object' && Array.isArray(cosmetics.owned)) return { ...newCosmetics(), ...cosmetics };
+  } catch {
+    // Falls through to fresh cosmetics.
+  }
+  return newCosmetics();
 }
